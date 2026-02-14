@@ -283,27 +283,10 @@ fn convert_header(mei_head: &MeiHead, ctx: &mut ConversionContext) -> Conversion
         }
     }
 
-    // Preferred path: read typed data from ExtensionStore singleton
-    let ext_found = if let Some(hdr) = &ctx.ext_store().score_header {
+    // Read typed data from ExtensionStore singleton
+    if let Some(hdr) = &ctx.ext_store().score_header {
         header_from_ext_store(
             hdr,
-            &mut work,
-            &mut identification,
-            &mut defaults,
-            &mut credits,
-            &mut movement_number,
-            &mut movement_title,
-        );
-        true
-    } else {
-        false
-    };
-
-    // Fallback path: scan extMeta elements for JSON roundtrip data
-    if !ext_found {
-        header_from_ext_meta(
-            mei_head,
-            &title_text,
             &mut work,
             &mut identification,
             &mut defaults,
@@ -437,57 +420,6 @@ fn header_from_ext_store(
         if let Ok(c) = serde_json::from_value::<crate::model::elements::Credit>(credit_val.clone())
         {
             credits.push(c);
-        }
-    }
-}
-
-/// Populate header fields by scanning extMeta elements for JSON roundtrip data.
-/// This is the legacy fallback path for MEI documents without ExtensionStore.
-#[allow(clippy::too_many_arguments)]
-fn header_from_ext_meta(
-    mei_head: &MeiHead,
-    title_text: &Option<String>,
-    work: &mut Option<Work>,
-    identification: &mut Option<Identification>,
-    defaults: &mut Option<Defaults>,
-    credits: &mut Vec<crate::model::elements::Credit>,
-    movement_number: &mut Option<String>,
-    movement_title: &mut Option<String>,
-) {
-    use crate::import::{
-        CREDITS_LABEL_PREFIX, DEFAULTS_LABEL_PREFIX, IDENTIFICATION_LABEL_PREFIX,
-        MOVEMENT_NUMBER_LABEL_PREFIX, MOVEMENT_TITLE_LABEL_PREFIX, WORK_LABEL_PREFIX,
-    };
-
-    for child in &mei_head.children {
-        if let MeiHeadChild::ExtMeta(ext_meta) = child {
-            if let Some(analog) = &ext_meta.bibl.analog {
-                if let Some(json) = analog.strip_prefix(IDENTIFICATION_LABEL_PREFIX) {
-                    if let Ok(ident) = serde_json::from_str::<Identification>(json) {
-                        *identification = Some(ident);
-                    }
-                } else if let Some(json) = analog.strip_prefix(WORK_LABEL_PREFIX) {
-                    if let Ok(mut w) = serde_json::from_str::<Work>(json) {
-                        if w.work_title.is_none() {
-                            w.work_title = title_text.clone();
-                        }
-                        *work = Some(w);
-                    }
-                } else if let Some(data) = analog.strip_prefix(MOVEMENT_NUMBER_LABEL_PREFIX) {
-                    *movement_number = Some(data.to_string());
-                } else if let Some(data) = analog.strip_prefix(MOVEMENT_TITLE_LABEL_PREFIX) {
-                    *movement_title = Some(data.to_string());
-                } else if let Some(json) = analog.strip_prefix(DEFAULTS_LABEL_PREFIX) {
-                    if let Ok(d) = serde_json::from_str::<Defaults>(json) {
-                        *defaults = Some(d);
-                    }
-                } else if let Some(json) = analog.strip_prefix(CREDITS_LABEL_PREFIX) {
-                    if let Ok(c) = serde_json::from_str::<Vec<crate::model::elements::Credit>>(json)
-                    {
-                        *credits = c;
-                    }
-                }
-            }
         }
     }
 }

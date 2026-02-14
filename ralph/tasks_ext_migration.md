@@ -478,22 +478,32 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 8.2 StaffGrp label elimination
 
-- [ ] Import: stop writing `musicxml:group-details,`, `musicxml:part-symbol,` to staffGrp labels
-- [ ] Export: read only from ExtensionStore maps
-- [ ] Tests pass
+- [x] Import: stop writing `musicxml:group-details,`, `musicxml:part-symbol,` to staffGrp labels
+  - Already done in Phase 8.1: all staffGrp label writes removed
+- [x] Export: read only from ExtensionStore maps
+  - Already done in Phase 8.1: export reads from ExtensionStore only
+- [x] Tests pass
+  - All 2500 tests pass, clippy clean
 
 ### 8.3 Remove label utilities
 
-- [ ] Remove `append_label()`, `extract_label_segment()`, `strip_label_segment()` from import/attributes.rs or wherever defined
-- [ ] Tests pass
+- [x] Remove `append_label()`, `extract_label_segment()`, `strip_label_segment()` from import/attributes.rs or wherever defined
+  - Already done in Phase 8.1: all MusicXML label utilities removed (only LilyPond versions remain)
+- [x] Tests pass
+  - All 2500 tests pass, clippy clean
 
 ## Phase 9: Header label elimination
 
 ### 9.1 Header metadata
 
-- [ ] Import (`import/mod.rs`): stop writing `musicxml:identification,`, `musicxml:work,`, `musicxml:movement-number,`, `musicxml:movement-title,`, `musicxml:defaults,`, `musicxml:credits,` to extMeta/scoreDef labels
-- [ ] Export: read from `ext_store.score_header`
-- [ ] Tests pass
+- [x] Import (`import/mod.rs`): stop writing `musicxml:identification,`, `musicxml:work,`, `musicxml:movement-number,`, `musicxml:movement-title,`, `musicxml:defaults,`, `musicxml:credits,` to extMeta/scoreDef labels
+  - Import already writes to `ext_store.score_header` only (no extMeta elements written)
+  - Removed 6 label prefix constants: `IDENTIFICATION_LABEL_PREFIX`, `WORK_LABEL_PREFIX`, `MOVEMENT_NUMBER_LABEL_PREFIX`, `MOVEMENT_TITLE_LABEL_PREFIX`, `DEFAULTS_LABEL_PREFIX`, `CREDITS_LABEL_PREFIX`
+- [x] Export: read from `ext_store.score_header`
+  - Removed `header_from_ext_meta()` legacy fallback function (scanned extMeta elements for JSON roundtrip data)
+  - Export now reads only from `ext_store.score_header` singleton
+- [x] Tests pass
+  - All 2500 tests pass, clippy clean
 
 ## Phase 10: Lyric label elimination
 

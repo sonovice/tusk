@@ -64,19 +64,6 @@ use crate::model::elements::ScorePartwise;
 use tusk_model::elements::{Mei, MeiChild, MeiHead, MeiHeadChild, Music};
 use tusk_model::extensions::ExtensionStore;
 
-/// Label prefix for legacy extMeta identification JSON (kept for export fallback).
-pub(crate) const IDENTIFICATION_LABEL_PREFIX: &str = "musicxml:identification,";
-/// Label prefix for legacy extMeta work JSON (kept for export fallback).
-pub(crate) const WORK_LABEL_PREFIX: &str = "musicxml:work,";
-/// Label prefix for legacy extMeta movement-number (kept for export fallback).
-pub(crate) const MOVEMENT_NUMBER_LABEL_PREFIX: &str = "musicxml:movement-number,";
-/// Label prefix for legacy extMeta movement-title (kept for export fallback).
-pub(crate) const MOVEMENT_TITLE_LABEL_PREFIX: &str = "musicxml:movement-title,";
-/// Label prefix for legacy extMeta defaults JSON (kept for export fallback).
-pub(crate) const DEFAULTS_LABEL_PREFIX: &str = "musicxml:defaults,";
-/// Label prefix for legacy extMeta credits JSON (kept for export fallback).
-pub(crate) const CREDITS_LABEL_PREFIX: &str = "musicxml:credits,";
-
 /// Convert a MusicXML score-partwise document to MEI.
 ///
 /// This is the main entry point for MusicXML → MEI conversion.
