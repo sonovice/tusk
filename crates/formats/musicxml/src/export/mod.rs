@@ -283,26 +283,18 @@ fn convert_header(mei_head: &MeiHead, ctx: &mut ConversionContext) -> Conversion
         }
     }
 
-    // Preferred path: read typed data from ExtensionStore
-    let ext_found = if let Some(head_id) = &mei_head.basic.xml_id {
-        if let Some(ext) = ctx.ext_store().get(head_id) {
-            if let Some(hdr) = &ext.score_header {
-                header_from_ext_store(
-                    hdr,
-                    &mut work,
-                    &mut identification,
-                    &mut defaults,
-                    &mut credits,
-                    &mut movement_number,
-                    &mut movement_title,
-                );
-                true
-            } else {
-                false
-            }
-        } else {
-            false
-        }
+    // Preferred path: read typed data from ExtensionStore singleton
+    let ext_found = if let Some(hdr) = &ctx.ext_store().score_header {
+        header_from_ext_store(
+            hdr,
+            &mut work,
+            &mut identification,
+            &mut defaults,
+            &mut credits,
+            &mut movement_number,
+            &mut movement_title,
+        );
+        true
     } else {
         false
     };

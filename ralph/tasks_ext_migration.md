@@ -205,9 +205,13 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 2.11 Score header migration
 
-- [ ] Import (`import/mod.rs`): write to `ext_store.score_header` singleton
-- [ ] Export: read from `ext_store.score_header`
-- [ ] Tests pass
+- [x] Import (`import/mod.rs`): write to `ext_store.score_header` singleton
+  - Uses `ext_store_mut().score_header = Some(header)` directly; no more `entry()` + ExtData
+- [x] Export: read from `ext_store.score_header`
+  - Uses `ext_store().score_header` singleton instead of `ext_store().get(head_id)?.score_header`
+  - No longer needs meiHead @xml:id for ExtensionStore lookup
+- [x] Tests pass
+  - All 2499 tests pass, clippy clean
 
 ## Phase 3: Eliminate mxml_json
 

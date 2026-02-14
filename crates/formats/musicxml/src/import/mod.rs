@@ -249,7 +249,7 @@ fn populate_ext_store_header(
     if has_data {
         let head_id = ctx.generate_id_with_suffix("meihead");
         mei_head.basic.xml_id = Some(head_id.clone());
-        ctx.ext_store_mut().entry(head_id).score_header = Some(header);
+        ctx.ext_store_mut().score_header = Some(header);
     }
 }
 
