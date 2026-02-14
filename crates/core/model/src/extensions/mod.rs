@@ -866,7 +866,7 @@ pub struct ExtensionStore {
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub grace_infos: HashMap<String, GraceInfo>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
-    pub property_ops_map: HashMap<String, Vec<PropertyOp>>,
+    pub property_op_infos: HashMap<String, PropertyOpInfo>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub function_calls: HashMap<String, FunctionCall>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
@@ -891,6 +891,32 @@ pub struct ExtensionStore {
     pub drum_events: HashMap<String, DrumEvent>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub lyric_extenders: HashMap<String, LyricExtender>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub tuplet_infos: HashMap<String, TupletInfo>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub tremolo_infos: HashMap<String, TremoloInfo>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub ornament_infos: HashMap<String, OrnamentInfo>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub articulation_infos: HashMap<String, ArticulationInfo>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub phrasing_slurs: HashMap<String, PhrasingSlur>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub tempo_infos: HashMap<String, TempoInfo>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub mark_infos: HashMap<String, MarkInfo>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub textmark_infos: HashMap<String, TextMarkInfo>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub ending_infos: HashMap<String, EndingInfo>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub chord_mode_infos: HashMap<String, ChordModeInfo>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub figured_bass_infos: HashMap<String, FiguredBassInfo>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub scheme_music_infos: HashMap<String, SchemeMusicInfo>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub text_script_infos: HashMap<String, TextScriptInfo>,
 }
 
 /// Generate get/get_mut/insert/remove accessor methods for ExtensionStore HashMap fields.
@@ -955,7 +981,7 @@ ext_store_accessors! {
     staff_context / insert_staff_context => staff_contexts: StaffContext,
     repeat_info / insert_repeat_info => repeat_infos: RepeatInfo,
     grace_info / insert_grace_info => grace_infos: GraceInfo,
-    property_ops / insert_property_ops => property_ops_map: Vec<PropertyOp>,
+    property_op_info / insert_property_op_info => property_op_infos: PropertyOpInfo,
     function_call / insert_function_call => function_calls: FunctionCall,
     event_sequence / insert_event_sequence => event_sequences: EventSequence,
     variable_assignments / insert_variable_assignments => variable_assignments_map: VariableAssignments,
@@ -968,6 +994,19 @@ ext_store_accessors! {
     mrest_info / insert_mrest_info => mrest_infos: MultiMeasureRestInfo,
     drum_event / insert_drum_event => drum_events: DrumEvent,
     lyric_extender / insert_lyric_extender => lyric_extenders: LyricExtender,
+    tuplet_info / insert_tuplet_info => tuplet_infos: TupletInfo,
+    tremolo_info / insert_tremolo_info => tremolo_infos: TremoloInfo,
+    ornament_info / insert_ornament_info => ornament_infos: OrnamentInfo,
+    articulation_info / insert_articulation_info => articulation_infos: ArticulationInfo,
+    phrasing_slur / insert_phrasing_slur => phrasing_slurs: PhrasingSlur,
+    tempo_info / insert_tempo_info => tempo_infos: TempoInfo,
+    mark_info / insert_mark_info => mark_infos: MarkInfo,
+    textmark_info / insert_textmark_info => textmark_infos: TextMarkInfo,
+    ending_info / insert_ending_info => ending_infos: EndingInfo,
+    chord_mode_info / insert_chord_mode_info => chord_mode_infos: ChordModeInfo,
+    figured_bass_info / insert_figured_bass_info => figured_bass_infos: FiguredBassInfo,
+    scheme_music_info / insert_scheme_music_info => scheme_music_infos: SchemeMusicInfo,
+    text_script_info / insert_text_script_info => text_script_infos: TextScriptInfo,
 }
 
 impl ExtensionStore {

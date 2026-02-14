@@ -4,6 +4,7 @@
 //! then matched 1:1 to notes in the staff layer.
 
 use tusk_model::elements::{NoteChild, Syl, SylChild, Verse, VerseChild};
+use tusk_model::ExtensionStore;
 
 use crate::model::{LyricEvent, Music, PostEvent};
 
@@ -145,6 +146,7 @@ pub(super) fn attach_lyrics_to_layer(
     layer_children: &mut [tusk_model::elements::LayerChild],
     syllables: &[LyricSyllable],
     verse_n: u32,
+    ext_store: &mut ExtensionStore,
 ) {
     let mut syl_idx = 0;
     for child in layer_children.iter_mut() {
@@ -156,7 +158,7 @@ pub(super) fn attach_lyrics_to_layer(
                 let syl = &syllables[syl_idx];
                 syl_idx += 1;
                 if !syl.text.is_empty() {
-                    let verse = build_verse(syl, verse_n);
+                    let verse = build_verse(syl, verse_n, ext_store);
                     note.children.push(NoteChild::Verse(Box::new(verse)));
                 }
             }
@@ -168,7 +170,7 @@ pub(super) fn attach_lyrics_to_layer(
                     if let Some(tusk_model::elements::ChordChild::Note(note)) =
                         chord.children.first_mut()
                     {
-                        let verse = build_verse(syl, verse_n);
+                        let verse = build_verse(syl, verse_n, ext_store);
                         note.children.push(NoteChild::Verse(Box::new(verse)));
                     }
                 }
@@ -189,7 +191,7 @@ pub(super) fn attach_lyrics_to_layer(
                             let syl = &syllables[syl_idx];
                             syl_idx += 1;
                             if !syl.text.is_empty() {
-                                let verse = build_verse(syl, verse_n);
+                                let verse = build_verse(syl, verse_n, ext_store);
                                 note.children.push(NoteChild::Verse(Box::new(verse)));
                             }
                         }
@@ -200,7 +202,7 @@ pub(super) fn attach_lyrics_to_layer(
                                 && let Some(tusk_model::elements::ChordChild::Note(note)) =
                                     chord.children.first_mut()
                             {
-                                let verse = build_verse(syl, verse_n);
+                                let verse = build_verse(syl, verse_n, ext_store);
                                 note.children.push(NoteChild::Verse(Box::new(verse)));
                             }
                         }
@@ -216,8 +218,11 @@ pub(super) fn attach_lyrics_to_layer(
     }
 }
 
+/// Counter for generating synthetic syl IDs.
+static SYL_COUNTER: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+
 /// Build a MEI Verse element from a lyric syllable.
-fn build_verse(syl: &LyricSyllable, verse_n: u32) -> Verse {
+fn build_verse(syl: &LyricSyllable, verse_n: u32, ext_store: &mut ExtensionStore) -> Verse {
     let mut verse = Verse::default();
     verse.common.n = Some(tusk_model::generated::data::DataWord(verse_n.to_string()));
 
@@ -226,15 +231,17 @@ fn build_verse(syl: &LyricSyllable, verse_n: u32) -> Verse {
 
     // Set wordpos and con based on hyphen/extender
     if syl.has_hyphen {
-        // This syllable is followed by a hyphen → it's either initial or medial
+        // This syllable is followed by a hyphen -> it's either initial or medial
         // We'll refine in a second pass (see below), but for now mark with con="d"
         mei_syl.syl_log.con = Some("d".to_string());
     }
 
-    // Store extender as typed JSON label for roundtrip
+    // Store extender in ext_store for roundtrip
     if syl.has_extender {
-        let json = serde_json::to_string(&tusk_model::LyricExtender).unwrap_or_default();
-        mei_syl.common.label = Some(format!("tusk:extender,{json}"));
+        let n = SYL_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let syl_id = format!("ly-syl-{n}");
+        mei_syl.common.xml_id = Some(syl_id.clone());
+        ext_store.insert_lyric_extender(syl_id, tusk_model::LyricExtender);
     }
 
     verse.children.push(VerseChild::Syl(Box::new(mei_syl)));

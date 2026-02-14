@@ -64,28 +64,6 @@ pub(super) fn extract_voices(music: &Music) -> Vec<Vec<&Music>> {
     }
 }
 
-/// Escape pipe characters in JSON so they don't break `|`-delimited label segments.
-pub(super) fn escape_json_pipe(json: &str) -> String {
-    json.replace('|', "\\u007c")
-}
-
-/// Append a label segment to the last note/rest/chord in a layer.
-pub(super) fn append_label_to_last_layer_child(layer: &mut Layer, segment: &str) {
-    let last = layer.children.last_mut();
-    let label = match last {
-        Some(LayerChild::Note(n)) => &mut n.common.label,
-        Some(LayerChild::Rest(r)) => &mut r.common.label,
-        Some(LayerChild::Chord(c)) => &mut c.common.label,
-        _ => return,
-    };
-    match label {
-        Some(existing) => {
-            existing.push('|');
-            existing.push_str(segment);
-        }
-        None => *label = Some(segment.to_string()),
-    }
-}
 
 /// Check if a `\tweak` path targets an element ID property.
 ///

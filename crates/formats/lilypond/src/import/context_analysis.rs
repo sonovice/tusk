@@ -6,7 +6,7 @@
 
 use tusk_model::elements::{ScoreDef, ScoreDefChild, StaffDef, StaffGrp, StaffGrpChild};
 use tusk_model::{
-    ContextKeywordExt, ExtPitch, LyricsInfo as ExtLyricsInfo, LyricsStyle,
+    ContextKeywordExt, ExtPitch, ExtensionStore, LyricsInfo as ExtLyricsInfo, LyricsStyle,
     PitchContext as ExtPitchContext, StaffContext,
 };
 
@@ -422,24 +422,31 @@ fn group_context_to_symbol(context_type: &str) -> Option<&'static str> {
 pub(super) fn build_score_def_from_staves(
     layout: &StaffLayout<'_>,
     assignments: &[crate::model::Assignment],
+    ext_store: &mut ExtensionStore,
 ) -> ScoreDef {
     let mut staff_grp = StaffGrp::default();
+    let mut grp_counter = 0u32;
 
     // Set group symbol if present
     if let Some(group) = &layout.group {
         staff_grp.staff_grp_vis.symbol =
             group_context_to_symbol(&group.context_type).map(String::from);
 
-        // Store group context metadata as typed JSON in label for roundtrip
-        let label = build_group_label_json(group);
-        if !label.is_empty() {
-            staff_grp.common.label = Some(label);
-        }
+        // Store group context metadata in ext_store
+        let ctx = build_group_context(group);
+        grp_counter += 1;
+        let grp_id = format!("ly-staffgrp-{grp_counter}");
+        staff_grp.common.xml_id = Some(grp_id.clone());
+        ext_store.insert_staff_context(grp_id, ctx);
     }
 
     for staff_info in &layout.staves {
         let mut staff_def = StaffDef::default();
         staff_def.n_integer.n = Some(staff_info.n.to_string());
+
+        // Assign synthetic ID
+        let sd_id = format!("ly-staffdef-{}", staff_info.n);
+        staff_def.basic.xml_id = Some(sd_id.clone());
 
         // Collect events from all voices to find initial clef/key/time
         let mut events = Vec::new();
@@ -456,35 +463,24 @@ pub(super) fn build_score_def_from_staves(
         // Detect relative/transpose context from the music tree
         let pitch_ctx = detect_pitch_context_ext(&staff_info.voices);
 
-        // Build label from typed JSON segments
-        let mut segments: Vec<String> = Vec::new();
-
-        // Staff context
+        // Staff context → ext_store
         let staff_ctx = build_staff_context(staff_info);
-        let json = escape_json_pipe(&serde_json::to_string(&staff_ctx).unwrap_or_default());
-        segments.push(format!("tusk:staff-context,{json}"));
+        ext_store.insert_staff_context(sd_id.clone(), staff_ctx);
 
-        // Event sequence
+        // Event sequence → ext_store
         if let Some(seq) = event_seq {
-            let json = escape_json_pipe(&serde_json::to_string(&seq).unwrap_or_default());
-            segments.push(format!("tusk:events,{json}"));
+            ext_store.insert_event_sequence(sd_id.clone(), seq);
         }
 
-        // Pitch context
+        // Pitch context → ext_store
         if let Some(pc) = pitch_ctx {
-            let json = escape_json_pipe(&serde_json::to_string(&pc).unwrap_or_default());
-            segments.push(format!("tusk:pitch-context,{json}"));
+            ext_store.insert_pitch_context(sd_id.clone(), pc);
         }
 
-        // Lyrics info
+        // Lyrics info → ext_store
         let lyrics_ext = build_lyrics_info_ext(&staff_info.lyrics);
         if let Some(li) = lyrics_ext {
-            let json = escape_json_pipe(&serde_json::to_string(&li).unwrap_or_default());
-            segments.push(format!("tusk:lyrics-info,{json}"));
-        }
-
-        if !segments.is_empty() {
-            staff_def.labelled.label = Some(segments.join("|"));
+            ext_store.insert_lyrics_info(sd_id, li);
         }
 
         staff_grp
@@ -492,23 +488,26 @@ pub(super) fn build_score_def_from_staves(
             .push(StaffGrpChild::StaffDef(Box::new(staff_def)));
     }
 
-    // Store chord-names context info in staffGrp label for roundtrip
+    // Store chord-names context info in ext_store
     if !layout.chord_names.is_empty() {
-        let cn_ctx = build_chord_names_context(&layout.chord_names);
-        if let Some(ctx) = cn_ctx {
-            let json = escape_json_pipe(&serde_json::to_string(&ctx).unwrap_or_default());
-            let segment = format!("tusk:chord-names-context,{json}");
-            append_label_segment(&mut staff_grp.common.label, &segment);
+        if let Some(ctx) = build_chord_names_context(&layout.chord_names) {
+            let grp_id = staff_grp.common.xml_id.get_or_insert_with(|| {
+                grp_counter += 1;
+                format!("ly-staffgrp-{grp_counter}")
+            }).clone();
+            // Use a separate key to avoid overwriting group context
+            ext_store.insert_staff_context(format!("{grp_id}-chordnames"), ctx);
         }
     }
 
-    // Store figured-bass context info in staffGrp label for roundtrip
+    // Store figured-bass context info in ext_store
     if !layout.figured_bass.is_empty() {
-        let fb_ctx = build_figured_bass_context(&layout.figured_bass);
-        if let Some(ctx) = fb_ctx {
-            let json = escape_json_pipe(&serde_json::to_string(&ctx).unwrap_or_default());
-            let segment = format!("tusk:figured-bass-context,{json}");
-            append_label_segment(&mut staff_grp.common.label, &segment);
+        if let Some(ctx) = build_figured_bass_context(&layout.figured_bass) {
+            let grp_id = staff_grp.common.xml_id.get_or_insert_with(|| {
+                grp_counter += 1;
+                format!("ly-staffgrp-{grp_counter}")
+            }).clone();
+            ext_store.insert_staff_context(format!("{grp_id}-figuredbass"), ctx);
         }
     }
 
@@ -517,12 +516,11 @@ pub(super) fn build_score_def_from_staves(
         .children
         .push(ScoreDefChild::StaffGrp(Box::new(staff_grp)));
 
-    // Store variable assignments on ScoreDef label
+    // Store variable assignments in ext_store
     if !assignments.is_empty() {
         let vars = variables::build_assignments_ext(assignments);
-        let json = escape_json_pipe(&serde_json::to_string(&vars).unwrap_or_default());
-        let segment = format!("tusk:vars,{json}");
-        score_def.common.label = Some(segment);
+        let sd_id = score_def.common.xml_id.get_or_insert_with(|| "ly-scoredef-0".to_string()).clone();
+        ext_store.insert_variable_assignments(sd_id, vars);
     }
 
     score_def
@@ -531,22 +529,6 @@ pub(super) fn build_score_def_from_staves(
 // ---------------------------------------------------------------------------
 // Typed extension builders
 // ---------------------------------------------------------------------------
-
-/// Escape pipe characters in JSON so they don't break `|`-delimited label segments.
-fn escape_json_pipe(json: &str) -> String {
-    json.replace('|', "\\u007c")
-}
-
-/// Append a segment to an optional label, creating it if needed.
-fn append_label_segment(label: &mut Option<String>, segment: &str) {
-    match label {
-        Some(existing) => {
-            existing.push('|');
-            existing.push_str(segment);
-        }
-        None => *label = Some(segment.to_string()),
-    }
-}
 
 /// Build a StaffContext extension from staff info.
 fn build_staff_context(staff: &StaffInfo<'_>) -> StaffContext {
@@ -565,9 +547,9 @@ fn build_staff_context(staff: &StaffInfo<'_>) -> StaffContext {
     }
 }
 
-/// Build a StaffContext extension from group info (as JSON label on StaffGrp).
-fn build_group_label_json(group: &GroupInfo) -> String {
-    let ctx = StaffContext {
+/// Build a StaffContext extension from group info.
+fn build_group_context(group: &GroupInfo) -> StaffContext {
+    StaffContext {
         context_type: group.context_type.clone(),
         name: group.name.clone(),
         with_block: group
@@ -576,9 +558,7 @@ fn build_group_label_json(group: &GroupInfo) -> String {
             .filter(|items| !items.is_empty())
             .map(|items| serialize_with_block(items)),
         keyword: None,
-    };
-    let json = escape_json_pipe(&serde_json::to_string(&ctx).unwrap_or_default());
-    format!("tusk:group-context,{json}")
+    }
 }
 
 /// Build a StaffContext extension for a ChordNames context.

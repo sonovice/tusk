@@ -3,8 +3,9 @@
 use super::*;
 use crate::parser::Parser;
 use tusk_model::elements::Mei;
+use tusk_model::ExtensionStore;
 
-fn parse_and_import(src: &str) -> Mei {
+fn parse_and_import(src: &str) -> (Mei, ExtensionStore) {
     let file = Parser::new(src).unwrap().parse().unwrap();
     import(&file).unwrap()
 }
@@ -26,12 +27,10 @@ fn all_mdivs(mei: &Mei) -> Vec<&tusk_model::elements::Mdiv> {
     mdivs
 }
 
-/// Helper: extract BookStructure from mdiv label.
-fn mdiv_book_structure(mdiv: &tusk_model::elements::Mdiv) -> Option<tusk_model::BookStructure> {
-    let label = mdiv.common.label.as_deref()?;
-    let escaped = label.strip_prefix("tusk:book-structure,")?;
-    let json = crate::import::signatures::unescape_label_value(escaped);
-    serde_json::from_str(&json).ok()
+/// Helper: extract BookStructure from ext_store via mdiv xml:id.
+fn mdiv_book_structure(mdiv: &tusk_model::elements::Mdiv, ext_store: &ExtensionStore) -> Option<tusk_model::BookStructure> {
+    let id = mdiv.common.xml_id.as_deref()?;
+    ext_store.book_structure(id).cloned()
 }
 
 // -------------------------------------------------------------------------
@@ -40,7 +39,7 @@ fn mdiv_book_structure(mdiv: &tusk_model::elements::Mdiv) -> Option<tusk_model::
 
 #[test]
 fn book_single_score_creates_mdiv_with_structure() {
-    let mei = parse_and_import(
+    let (mei, ext_store) = parse_and_import(
         r#"\version "2.24.0"
 \book {
   \score { { c4 d e f } }
@@ -49,7 +48,7 @@ fn book_single_score_creates_mdiv_with_structure() {
     let mdivs = all_mdivs(&mei);
     assert_eq!(mdivs.len(), 1);
 
-    let bs = mdiv_book_structure(mdivs[0]).expect("book structure should exist");
+    let bs = mdiv_book_structure(mdivs[0], &ext_store).expect("book structure should exist");
     assert_eq!(bs.book_index, Some(0));
     assert_eq!(bs.bookpart_index, None);
     assert_eq!(bs.score_index, Some(0));
@@ -61,7 +60,7 @@ fn book_single_score_creates_mdiv_with_structure() {
 
 #[test]
 fn book_with_header_paper_stores_output_defs() {
-    let mei = parse_and_import(
+    let (mei, ext_store) = parse_and_import(
         r#"\version "2.24.0"
 \book {
   \header { title = "My Book" }
@@ -72,7 +71,7 @@ fn book_with_header_paper_stores_output_defs() {
     let mdivs = all_mdivs(&mei);
     assert_eq!(mdivs.len(), 1);
 
-    let bs = mdiv_book_structure(mdivs[0]).expect("book structure");
+    let bs = mdiv_book_structure(mdivs[0], &ext_store).expect("book structure");
     assert_eq!(bs.book_output_defs.len(), 2);
     assert_eq!(
         bs.book_output_defs[0].kind,
@@ -90,7 +89,7 @@ fn book_with_header_paper_stores_output_defs() {
 
 #[test]
 fn bookpart_in_book_creates_mdiv() {
-    let mei = parse_and_import(
+    let (mei, ext_store) = parse_and_import(
         r#"\version "2.24.0"
 \book {
   \bookpart {
@@ -101,7 +100,7 @@ fn bookpart_in_book_creates_mdiv() {
     let mdivs = all_mdivs(&mei);
     assert_eq!(mdivs.len(), 1);
 
-    let bs = mdiv_book_structure(mdivs[0]).expect("book structure");
+    let bs = mdiv_book_structure(mdivs[0], &ext_store).expect("book structure");
     assert_eq!(bs.book_index, Some(0));
     assert_eq!(bs.bookpart_index, Some(0));
     assert_eq!(bs.score_index, Some(0));
@@ -113,7 +112,7 @@ fn bookpart_in_book_creates_mdiv() {
 
 #[test]
 fn bookpart_header_paper_stored_in_structure() {
-    let mei = parse_and_import(
+    let (mei, ext_store) = parse_and_import(
         r#"\version "2.24.0"
 \book {
   \bookpart {
@@ -126,7 +125,7 @@ fn bookpart_header_paper_stored_in_structure() {
     let mdivs = all_mdivs(&mei);
     assert_eq!(mdivs.len(), 1);
 
-    let bs = mdiv_book_structure(mdivs[0]).expect("book structure");
+    let bs = mdiv_book_structure(mdivs[0], &ext_store).expect("book structure");
     assert_eq!(bs.bookpart_output_defs.len(), 2);
     assert_eq!(
         bs.bookpart_output_defs[0].kind,
@@ -144,7 +143,7 @@ fn bookpart_header_paper_stored_in_structure() {
 
 #[test]
 fn nested_book_bookpart_score_hierarchy() {
-    let mei = parse_and_import(
+    let (mei, ext_store) = parse_and_import(
         r#"\version "2.24.0"
 \book {
   \header { title = "Book Title" }
@@ -162,7 +161,7 @@ fn nested_book_bookpart_score_hierarchy() {
     assert_eq!(mdivs.len(), 2);
 
     // First bookpart score
-    let bs0 = mdiv_book_structure(mdivs[0]).expect("bs0");
+    let bs0 = mdiv_book_structure(mdivs[0], &ext_store).expect("bs0");
     assert_eq!(bs0.book_index, Some(0));
     assert_eq!(bs0.bookpart_index, Some(0));
     assert_eq!(bs0.score_index, Some(0));
@@ -170,7 +169,7 @@ fn nested_book_bookpart_score_hierarchy() {
     assert_eq!(bs0.bookpart_output_defs.len(), 1); // bookpart 1 header
 
     // Second bookpart score
-    let bs1 = mdiv_book_structure(mdivs[1]).expect("bs1");
+    let bs1 = mdiv_book_structure(mdivs[1], &ext_store).expect("bs1");
     assert_eq!(bs1.book_index, Some(0));
     assert_eq!(bs1.bookpart_index, Some(1));
     assert_eq!(bs1.score_index, Some(0));
@@ -184,7 +183,7 @@ fn nested_book_bookpart_score_hierarchy() {
 
 #[test]
 fn multiple_bookparts_create_separate_mdivs() {
-    let mei = parse_and_import(
+    let (mei, ext_store) = parse_and_import(
         r#"\version "2.24.0"
 \book {
   \bookpart { \score { { c4 } } }
@@ -202,7 +201,7 @@ fn multiple_bookparts_create_separate_mdivs() {
 
     // Check hierarchy
     for (i, mdiv) in mdivs.iter().enumerate() {
-        let bs = mdiv_book_structure(mdiv).expect("book structure");
+        let bs = mdiv_book_structure(mdiv, &ext_store).expect("book structure");
         assert_eq!(bs.bookpart_index, Some(i));
     }
 }
@@ -213,7 +212,7 @@ fn multiple_bookparts_create_separate_mdivs() {
 
 #[test]
 fn book_direct_scores_without_bookparts() {
-    let mei = parse_and_import(
+    let (mei, ext_store) = parse_and_import(
         r#"\version "2.24.0"
 \book {
   \score { { c4 d e f } }
@@ -223,12 +222,12 @@ fn book_direct_scores_without_bookparts() {
     let mdivs = all_mdivs(&mei);
     assert_eq!(mdivs.len(), 2);
 
-    let bs0 = mdiv_book_structure(mdivs[0]).expect("bs0");
+    let bs0 = mdiv_book_structure(mdivs[0], &ext_store).expect("bs0");
     assert_eq!(bs0.book_index, Some(0));
     assert_eq!(bs0.bookpart_index, None);
     assert_eq!(bs0.score_index, Some(0));
 
-    let bs1 = mdiv_book_structure(mdivs[1]).expect("bs1");
+    let bs1 = mdiv_book_structure(mdivs[1], &ext_store).expect("bs1");
     assert_eq!(bs1.book_index, Some(0));
     assert_eq!(bs1.bookpart_index, None);
     assert_eq!(bs1.score_index, Some(1));
@@ -240,7 +239,7 @@ fn book_direct_scores_without_bookparts() {
 
 #[test]
 fn non_book_single_score_no_book_structure() {
-    let mei = parse_and_import(
+    let (mei, ext_store) = parse_and_import(
         r#"\version "2.24.0"
 \score { { c4 d e f } }"#,
     );
@@ -248,15 +247,15 @@ fn non_book_single_score_no_book_structure() {
     assert_eq!(mdivs.len(), 1);
 
     // No book structure on mdiv
-    assert!(mdiv_book_structure(mdivs[0]).is_none());
+    assert!(mdiv_book_structure(mdivs[0], &ext_store).is_none());
 }
 
 #[test]
 fn bare_music_no_book_structure() {
-    let mei = parse_and_import("{ c4 d e f }");
+    let (mei, ext_store) = parse_and_import("{ c4 d e f }");
     let mdivs = all_mdivs(&mei);
     assert_eq!(mdivs.len(), 1);
-    assert!(mdiv_book_structure(mdivs[0]).is_none());
+    assert!(mdiv_book_structure(mdivs[0], &ext_store).is_none());
 }
 
 // -------------------------------------------------------------------------
@@ -265,7 +264,7 @@ fn bare_music_no_book_structure() {
 
 #[test]
 fn book_score_music_content_preserved() {
-    let mei = parse_and_import(
+    let (mei, _ext_store) = parse_and_import(
         r#"\version "2.24.0"
 \book {
   \score { { c4 d e f } }

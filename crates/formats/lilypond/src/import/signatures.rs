@@ -356,29 +356,3 @@ fn major_fifths_to_pitch(fifths: i32) -> (char, f32) {
     }
 }
 
-/// Escape a string for safe inclusion in a label segment.
-///
-/// Characters that conflict with the label format (`|`, `@`, `;`) are
-/// percent-encoded to `%7C`, `%40`, `%3B` respectively. `%` itself is
-/// encoded as `%25` to make the encoding reversible.
-pub(super) fn escape_label_value(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    for c in s.chars() {
-        match c {
-            '%' => out.push_str("%25"),
-            '|' => out.push_str("%7C"),
-            '@' => out.push_str("%40"),
-            ';' => out.push_str("%3B"),
-            _ => out.push(c),
-        }
-    }
-    out
-}
-
-/// Reverse the percent-encoding applied by `escape_label_value`.
-pub(crate) fn unescape_label_value(s: &str) -> String {
-    s.replace("%7C", "|")
-        .replace("%40", "@")
-        .replace("%3B", ";")
-        .replace("%25", "%")
-}

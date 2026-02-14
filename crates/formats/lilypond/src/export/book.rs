@@ -5,10 +5,9 @@
 //! `BookPart` wrappers around scores.
 
 use tusk_model::elements::{BodyChild, Mei, MeiChild};
-use tusk_model::extensions::{BookStructure, OutputDefKind};
+use tusk_model::extensions::{BookStructure, ExtensionStore, OutputDefKind};
 
 use crate::import::output_def_conv;
-use crate::import::signatures::unescape_label_value;
 use crate::model::{BookBlock, BookItem, BookPartBlock, BookPartItem, ToplevelExpression};
 
 /// A single score entry extracted from an mdiv with its book structure metadata.
@@ -17,10 +16,10 @@ pub(super) struct MdivEntry<'a> {
     pub book_structure: BookStructure,
 }
 
-/// Find all mdivs that have `tusk:book-structure` labels.
+/// Find all mdivs that have book-structure entries in ext_store.
 ///
-/// Returns `None` if there are no mdivs or none have book structure labels.
-pub(super) fn find_book_entries(mei: &Mei) -> Option<Vec<MdivEntry<'_>>> {
+/// Returns `None` if there are no mdivs or none have book structure data.
+pub(super) fn find_book_entries<'a>(mei: &'a Mei, ext_store: &ExtensionStore) -> Option<Vec<MdivEntry<'a>>> {
     let mut entries = Vec::new();
 
     for child in &mei.children {
@@ -29,7 +28,8 @@ pub(super) fn find_book_entries(mei: &Mei) -> Option<Vec<MdivEntry<'_>>> {
                 let tusk_model::elements::MusicChild::Body(body) = mc;
                 for bc in &body.children {
                     let BodyChild::Mdiv(mdiv) = bc;
-                    if let Some(bs) = extract_book_structure(mdiv) {
+                    let bs = mdiv.common.xml_id.as_deref().and_then(|id| ext_store.book_structure(id));
+                    if let Some(bs) = bs {
                         for mdiv_child in &mdiv.children {
                             let tusk_model::elements::MdivChild::Score(score) = mdiv_child;
                             entries.push(MdivEntry {
@@ -48,14 +48,6 @@ pub(super) fn find_book_entries(mei: &Mei) -> Option<Vec<MdivEntry<'_>>> {
     } else {
         Some(entries)
     }
-}
-
-/// Extract `BookStructure` from an mdiv's label.
-fn extract_book_structure(mdiv: &tusk_model::elements::Mdiv) -> Option<BookStructure> {
-    let label = mdiv.common.label.as_deref()?;
-    let escaped = label.strip_prefix("tusk:book-structure,")?;
-    let json = unescape_label_value(escaped);
-    serde_json::from_str(&json).ok()
 }
 
 /// Reconstruct `ToplevelExpression::Book` items from grouped mdiv entries.

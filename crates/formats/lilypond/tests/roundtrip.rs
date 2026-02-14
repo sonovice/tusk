@@ -83,12 +83,12 @@ fn assert_serialization_roundtrip(src: &str) {
 
 fn assert_triangle_mei_roundtrip(src: &str) {
     let file1 = parse(src);
-    let mei1 = import(&file1).unwrap_or_else(|e| panic!("import1 error: {e}"));
-    let exported1 = export(&mei1).unwrap_or_else(|e| panic!("export1 error: {e}"));
+    let (mei1, ext1) = import(&file1).unwrap_or_else(|e| panic!("import1 error: {e}"));
+    let exported1 = export(&mei1, &ext1).unwrap_or_else(|e| panic!("export1 error: {e}"));
     let ly2 = serializer::serialize(&exported1);
     let file2 = parse(&ly2);
-    let mei2 = import(&file2).unwrap_or_else(|e| panic!("import2 error: {e}"));
-    let exported2 = export(&mei2).unwrap_or_else(|e| panic!("export2 error: {e}"));
+    let (mei2, ext2) = import(&file2).unwrap_or_else(|e| panic!("import2 error: {e}"));
+    let exported2 = export(&mei2, &ext2).unwrap_or_else(|e| panic!("export2 error: {e}"));
     let ly_from_mei1 = serializer::serialize(&exported1);
     let ly_from_mei2 = serializer::serialize(&exported2);
     assert_eq!(
@@ -103,12 +103,12 @@ fn assert_triangle_mei_roundtrip(src: &str) {
 
 fn assert_pipeline_stable(src: &str) {
     let file1 = parse(src);
-    let mei1 = import(&file1).unwrap_or_else(|e| panic!("import error: {e}"));
-    let exported1 = export(&mei1).unwrap_or_else(|e| panic!("export error: {e}"));
+    let (mei1, ext1) = import(&file1).unwrap_or_else(|e| panic!("import error: {e}"));
+    let exported1 = export(&mei1, &ext1).unwrap_or_else(|e| panic!("export error: {e}"));
     let ly2 = serializer::serialize(&exported1);
     let file2 = parse(&ly2);
-    let mei2 = import(&file2).unwrap_or_else(|e| panic!("import2 error: {e}"));
-    let exported2 = export(&mei2).unwrap_or_else(|e| panic!("export2 error: {e}"));
+    let (mei2, ext2) = import(&file2).unwrap_or_else(|e| panic!("import2 error: {e}"));
+    let exported2 = export(&mei2, &ext2).unwrap_or_else(|e| panic!("export2 error: {e}"));
     let ly3 = serializer::serialize(&exported2);
     assert_eq!(
         ly2, ly3,
@@ -215,11 +215,11 @@ fn all_fixtures_triangle_mei_roundtrip() {
             skipped_other.push(name.to_string());
             continue;
         };
-        let Ok(mei1) = import(&file1) else {
+        let Ok((mei1, ext1)) = import(&file1) else {
             skipped_other.push(name.to_string());
             continue;
         };
-        let Ok(exported1) = export(&mei1) else {
+        let Ok(exported1) = export(&mei1, &ext1) else {
             skipped_other.push(name.to_string());
             continue;
         };
@@ -230,11 +230,11 @@ fn all_fixtures_triangle_mei_roundtrip() {
             skipped_reparse.push(name.to_string());
             continue;
         };
-        let Ok(mei2) = import(&file2) else {
+        let Ok((mei2, ext2)) = import(&file2) else {
             skipped_other.push(name.to_string());
             continue;
         };
-        let Ok(exported2) = export(&mei2) else {
+        let Ok(exported2) = export(&mei2, &ext2) else {
             skipped_other.push(name.to_string());
             continue;
         };
@@ -307,11 +307,11 @@ fn all_fixtures_pipeline_stable() {
             skipped_other.push(name.to_string());
             continue;
         };
-        let Ok(mei1) = import(&file1) else {
+        let Ok((mei1, ext1)) = import(&file1) else {
             skipped_other.push(name.to_string());
             continue;
         };
-        let Ok(exported1) = export(&mei1) else {
+        let Ok(exported1) = export(&mei1, &ext1) else {
             skipped_other.push(name.to_string());
             continue;
         };
@@ -321,11 +321,11 @@ fn all_fixtures_pipeline_stable() {
             skipped_reparse.push(name.to_string());
             continue;
         };
-        let Ok(mei2) = import(&file2) else {
+        let Ok((mei2, ext2)) = import(&file2) else {
             skipped_other.push(name.to_string());
             continue;
         };
-        let Ok(exported2) = export(&mei2) else {
+        let Ok(exported2) = export(&mei2, &ext2) else {
             skipped_other.push(name.to_string());
             continue;
         };

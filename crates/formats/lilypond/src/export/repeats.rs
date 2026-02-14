@@ -1,9 +1,10 @@
 //! Repeat and alternative wrapping for MEI→LilyPond export.
 //!
-//! Collects `<dir>` elements with `tusk:repeat,{JSON}` and `tusk:ending,{JSON}` labels
-//! from MEI measure children and wraps Music items in `Music::Repeat` with alternatives.
+//! Collects `<dir>` elements with repeat/ending info from ExtensionStore
+//! and wraps Music items in `Music::Repeat` with alternatives.
 
 use tusk_model::elements::MeasureChild;
+use tusk_model::extensions::ExtensionStore;
 
 use crate::model::Music;
 
@@ -34,14 +35,13 @@ fn repeat_type_ext_to_ly(rt: tusk_model::RepeatTypeExt) -> crate::model::RepeatT
     }
 }
 
-/// Collect repeat spans from Dir elements in measure children.
-pub(super) fn collect_repeat_spans(measure_children: &[MeasureChild]) -> Vec<RepeatSpanInfo> {
+/// Collect repeat spans from Dir elements in measure children via ext_store.
+pub(super) fn collect_repeat_spans(measure_children: &[MeasureChild], ext_store: &ExtensionStore) -> Vec<RepeatSpanInfo> {
     let mut spans = Vec::new();
     for mc in measure_children {
         if let MeasureChild::Dir(dir) = mc
-            && let Some(label) = dir.common.label.as_deref()
-            && let Some(json) = label.strip_prefix("tusk:repeat,")
-            && let Ok(info) = serde_json::from_str::<tusk_model::RepeatInfo>(json)
+            && let Some(dir_id) = dir.common.xml_id.as_deref()
+            && let Some(info) = ext_store.repeat_info(dir_id)
         {
             let start_id = dir
                 .dir_log
@@ -68,14 +68,13 @@ pub(super) fn collect_repeat_spans(measure_children: &[MeasureChild]) -> Vec<Rep
     spans
 }
 
-/// Collect ending spans from Dir elements in measure children.
-pub(super) fn collect_ending_spans(measure_children: &[MeasureChild]) -> Vec<EndingSpanInfo> {
+/// Collect ending spans from Dir elements in measure children via ext_store.
+pub(super) fn collect_ending_spans(measure_children: &[MeasureChild], ext_store: &ExtensionStore) -> Vec<EndingSpanInfo> {
     let mut spans = Vec::new();
     for mc in measure_children {
         if let MeasureChild::Dir(dir) = mc
-            && let Some(label) = dir.common.label.as_deref()
-            && let Some(json) = label.strip_prefix("tusk:ending,")
-            && let Ok(info) = serde_json::from_str::<tusk_model::EndingInfo>(json)
+            && let Some(dir_id) = dir.common.xml_id.as_deref()
+            && let Some(info) = ext_store.ending_info(dir_id)
         {
             let start_id = dir
                 .dir_log

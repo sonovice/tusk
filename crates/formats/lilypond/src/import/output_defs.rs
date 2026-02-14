@@ -10,13 +10,13 @@ use tusk_model::elements::{
     ExtMeta, ExtMetaChild, FileDesc, FileDescChild, MeiHead, MeiHeadChild, Title, TitleChild,
     TitleStmt, TitleStmtChild,
 };
+use tusk_model::ExtensionStore;
 
 use super::output_def_conv;
-use super::signatures;
 
 /// Build MeiHead from LilyPond file, populating metadata from \header and
 /// storing all blocks (header/paper/layout/midi) as typed OutputDef extensions.
-pub(super) fn build_mei_head_from_file(file: &model::LilyPondFile) -> MeiHead {
+pub(super) fn build_mei_head_from_file(file: &model::LilyPondFile, ext_store: &mut ExtensionStore) -> MeiHead {
     let mut head = MeiHead::default();
 
     // Find top-level \header
@@ -73,12 +73,11 @@ pub(super) fn build_mei_head_from_file(file: &model::LilyPondFile) -> MeiHead {
         }
     }
 
-    // Store all output defs as a single ExtMeta with JSON
+    // Store all output defs in ext_store
     if !output_defs.is_empty() {
-        let json = serde_json::to_string(&output_defs).unwrap_or_default();
-        let escaped = signatures::escape_label_value(&json);
+        let ext_id = "ly-extmeta-0".to_string();
         let mut ext = ExtMeta::default();
-        ext.common.label = Some(format!("tusk:output-defs,{escaped}"));
+        ext.common.xml_id = Some(ext_id.clone());
         // Human-readable summary
         let summary: Vec<String> = output_defs
             .iter()
@@ -86,13 +85,14 @@ pub(super) fn build_mei_head_from_file(file: &model::LilyPondFile) -> MeiHead {
             .collect();
         ext.children.push(ExtMetaChild::Text(summary.join(", ")));
         head.children.push(MeiHeadChild::ExtMeta(Box::new(ext)));
+        ext_store.insert_output_defs(ext_id, output_defs);
     }
 
     head
 }
 
-/// Build a label segment for score-level output defs from a specific score block.
-pub(super) fn build_score_blocks_label_from_block(sb: &model::ScoreBlock) -> String {
+/// Collect score-level output defs from a score block.
+pub(super) fn collect_score_block_output_defs(sb: &model::ScoreBlock) -> Vec<tusk_model::OutputDef> {
     let mut output_defs = Vec::new();
 
     for si in &sb.items {
@@ -110,11 +110,5 @@ pub(super) fn build_score_blocks_label_from_block(sb: &model::ScoreBlock) -> Str
         }
     }
 
-    if output_defs.is_empty() {
-        return String::new();
-    }
-
-    let json = serde_json::to_string(&output_defs).unwrap_or_default();
-    let escaped = signatures::escape_label_value(&json);
-    format!("tusk:score-output-defs,{escaped}")
+    output_defs
 }

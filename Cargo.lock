@@ -634,7 +634,6 @@ dependencies = [
 name = "tusk-lilypond"
 version = "0.1.0"
 dependencies = [
- "serde_json",
  "thiserror",
  "tracing",
  "tusk-format",

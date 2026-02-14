@@ -3,8 +3,9 @@
 use super::*;
 use crate::parser::Parser;
 use tusk_model::elements::{Mei, MeiChild};
+use tusk_model::ExtensionStore;
 
-fn parse_and_import(src: &str) -> Mei {
+fn parse_and_import(src: &str) -> (Mei, ExtensionStore) {
     let file = Parser::new(src).unwrap().parse().unwrap();
     import(&file).unwrap()
 }
@@ -45,54 +46,53 @@ fn collect_dirs(mei: &Mei) -> Vec<&tusk_model::elements::Dir> {
 
 #[test]
 fn import_music_function_creates_dir() {
-    let mei = parse_and_import("{ \\someFunction { c4 d e f } g4 }");
+    let (mei, ext_store) = parse_and_import("{ \\someFunction { c4 d e f } g4 }");
     let dirs = collect_dirs(&mei);
     let func_dirs: Vec<_> = dirs
         .iter()
         .filter(|d| {
             d.common
-                .label
+                .xml_id
                 .as_deref()
-                .is_some_and(|l| l.starts_with("tusk:func,"))
+                .is_some_and(|id| ext_store.function_call(id).is_some())
         })
         .collect();
     assert_eq!(func_dirs.len(), 1, "expected one function dir");
-    let label = func_dirs[0].common.label.as_deref().unwrap();
-    assert!(
-        label.contains("someFunction"),
-        "label should contain function name: {label}"
-    );
+    let id = func_dirs[0].common.xml_id.as_deref().unwrap();
+    let fc = ext_store.function_call(id).unwrap();
+    assert_eq!(fc.name, "someFunction");
 }
 
 #[test]
 fn import_music_function_with_string_arg() {
-    let mei = parse_and_import("{ \\tag \"part\" { c4 d e f } g4 }");
+    let (mei, ext_store) = parse_and_import("{ \\tag \"part\" { c4 d e f } g4 }");
     let dirs = collect_dirs(&mei);
     let func_dirs: Vec<_> = dirs
         .iter()
         .filter(|d| {
             d.common
-                .label
+                .xml_id
                 .as_deref()
-                .is_some_and(|l| l.starts_with("tusk:func,"))
+                .is_some_and(|id| ext_store.function_call(id).is_some())
         })
         .collect();
     assert_eq!(func_dirs.len(), 1);
-    let label = func_dirs[0].common.label.as_deref().unwrap();
-    assert!(label.contains("tag"), "label should contain tag: {label}");
+    let id = func_dirs[0].common.xml_id.as_deref().unwrap();
+    let fc = ext_store.function_call(id).unwrap();
+    assert_eq!(fc.name, "tag");
 }
 
 #[test]
 fn import_music_function_has_startid() {
-    let mei = parse_and_import("{ \\someFunction { c4 d } e4 }");
+    let (mei, ext_store) = parse_and_import("{ \\someFunction { c4 d } e4 }");
     let dirs = collect_dirs(&mei);
     let func_dirs: Vec<_> = dirs
         .iter()
         .filter(|d| {
             d.common
-                .label
+                .xml_id
                 .as_deref()
-                .is_some_and(|l| l.starts_with("tusk:func,"))
+                .is_some_and(|id| ext_store.function_call(id).is_some())
         })
         .collect();
     assert_eq!(func_dirs.len(), 1);
@@ -105,22 +105,20 @@ fn import_music_function_has_startid() {
 
 #[test]
 fn import_partial_function_creates_dir() {
-    let mei = parse_and_import("{ \\tag #'score \\etc c4 d e f }");
+    let (mei, ext_store) = parse_and_import("{ \\tag #'score \\etc c4 d e f }");
     let dirs = collect_dirs(&mei);
     let func_dirs: Vec<_> = dirs
         .iter()
         .filter(|d| {
             d.common
-                .label
+                .xml_id
                 .as_deref()
-                .is_some_and(|l| l.starts_with("tusk:func,"))
+                .is_some_and(|id| ext_store.function_call(id).is_some())
         })
         .collect();
     assert_eq!(func_dirs.len(), 1, "expected one function dir for partial");
-    let label = func_dirs[0].common.label.as_deref().unwrap();
-    assert!(label.contains("tag"), "label should contain tag: {label}");
-    assert!(
-        label.contains("is_partial"),
-        "label should contain is_partial: {label}"
-    );
+    let id = func_dirs[0].common.xml_id.as_deref().unwrap();
+    let fc = ext_store.function_call(id).unwrap();
+    assert_eq!(fc.name, "tag");
+    assert!(fc.is_partial, "should be partial function");
 }

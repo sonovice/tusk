@@ -1,6 +1,7 @@
 //! Grace note wrapping for LilyPond export.
 
 use tusk_model::elements::LayerChild;
+use tusk_model::extensions::ExtensionStore;
 
 use crate::model::Music;
 
@@ -14,58 +15,41 @@ pub(super) enum ExportGraceType {
 }
 
 /// Check if a LayerChild is a grace note and extract the grace type.
-fn layer_child_grace_type(child: &LayerChild) -> Option<ExportGraceType> {
+fn layer_child_grace_type(child: &LayerChild, ext_store: &ExtensionStore) -> Option<ExportGraceType> {
     match child {
         LayerChild::Note(note) => {
             note.note_log.grace.as_ref()?;
-            Some(parse_grace_label_from_note_label(
-                note.common.label.as_deref(),
-            ))
+            Some(grace_type_from_ext(note.common.xml_id.as_deref(), ext_store))
         }
         LayerChild::Chord(chord) => {
             chord.chord_log.grace.as_ref()?;
-            Some(parse_grace_label_from_note_label(
-                chord.common.label.as_deref(),
-            ))
+            Some(grace_type_from_ext(chord.common.xml_id.as_deref(), ext_store))
         }
         _ => None,
     }
 }
 
 /// Check if a BeamChild is a grace note.
-fn beam_child_grace_type(child: &tusk_model::elements::BeamChild) -> Option<ExportGraceType> {
+fn beam_child_grace_type(child: &tusk_model::elements::BeamChild, ext_store: &ExtensionStore) -> Option<ExportGraceType> {
     use tusk_model::elements::BeamChild;
     match child {
         BeamChild::Note(note) => {
             note.note_log.grace.as_ref()?;
-            Some(parse_grace_label_from_note_label(
-                note.common.label.as_deref(),
-            ))
+            Some(grace_type_from_ext(note.common.xml_id.as_deref(), ext_store))
         }
         BeamChild::Chord(chord) => {
             chord.chord_log.grace.as_ref()?;
-            Some(parse_grace_label_from_note_label(
-                chord.common.label.as_deref(),
-            ))
+            Some(grace_type_from_ext(chord.common.xml_id.as_deref(), ext_store))
         }
         _ => None,
     }
 }
 
-/// Parse grace type from a note/chord's label.
-///
-/// Label segment: `tusk:grace,{json}` using typed `GraceInfo`.
-fn parse_grace_label_from_note_label(label: Option<&str>) -> ExportGraceType {
-    let label = match label {
-        Some(l) => l,
-        None => return ExportGraceType::Grace,
-    };
-    // Find the `tusk:grace,...` segment (may be pipe-separated)
-    for segment in label.split('|') {
-        if let Some(json) = segment.strip_prefix("tusk:grace,")
-            && let Ok(info) = serde_json::from_str::<tusk_model::GraceInfo>(json)
-        {
-            return grace_info_to_export(&info);
+/// Parse grace type from ext_store by element xml:id.
+fn grace_type_from_ext(xml_id: Option<&str>, ext_store: &ExtensionStore) -> ExportGraceType {
+    if let Some(id) = xml_id {
+        if let Some(info) = ext_store.grace_info(id) {
+            return grace_info_to_export(info);
         }
     }
     ExportGraceType::Grace
@@ -87,17 +71,17 @@ fn grace_info_to_export(info: &tusk_model::GraceInfo) -> ExportGraceType {
 ///
 /// Each entry corresponds to one Music item in the output. For Beam children,
 /// each inner child produces one entry.
-pub(super) fn collect_grace_types(layer_children: &[LayerChild]) -> Vec<Option<ExportGraceType>> {
+pub(super) fn collect_grace_types(layer_children: &[LayerChild], ext_store: &ExtensionStore) -> Vec<Option<ExportGraceType>> {
     let mut types = Vec::new();
     for child in layer_children {
         match child {
             LayerChild::Beam(beam) => {
                 for bc in &beam.children {
-                    types.push(beam_child_grace_type(bc));
+                    types.push(beam_child_grace_type(bc, ext_store));
                 }
             }
             _ => {
-                types.push(layer_child_grace_type(child));
+                types.push(layer_child_grace_type(child, ext_store));
             }
         }
     }

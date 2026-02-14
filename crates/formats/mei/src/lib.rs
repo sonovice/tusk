@@ -132,13 +132,21 @@ impl tusk_format::Format for MeiFormat {
 }
 
 impl tusk_format::Importer for MeiFormat {
-    fn import_from_str(&self, input: &str) -> tusk_format::FormatResult<tusk_format::Mei> {
-        crate::import(input).map_err(tusk_format::FormatError::parse)
+    fn import_from_str(
+        &self,
+        input: &str,
+    ) -> tusk_format::FormatResult<(tusk_format::Mei, tusk_format::ExtensionStore)> {
+        let mei = crate::import(input).map_err(tusk_format::FormatError::parse)?;
+        Ok((mei, tusk_format::ExtensionStore::default()))
     }
 }
 
 impl tusk_format::Exporter for MeiFormat {
-    fn export_to_string(&self, mei: &tusk_format::Mei) -> tusk_format::FormatResult<String> {
+    fn export_to_string(
+        &self,
+        mei: &tusk_format::Mei,
+        _ext_store: &tusk_format::ExtensionStore,
+    ) -> tusk_format::FormatResult<String> {
         crate::export(mei).map_err(tusk_format::FormatError::serialize)
     }
 }

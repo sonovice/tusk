@@ -8,16 +8,16 @@ use crate::serializer;
 /// Parse LilyPond -> import to MEI -> export to LilyPond AST -> serialize.
 fn roundtrip(src: &str) -> String {
     let file = Parser::new(src).unwrap().parse().unwrap();
-    let mei = import::import(&file).unwrap();
-    let exported = export(&mei).unwrap();
+    let (mei, ext_store) = import::import(&file).unwrap();
+    let exported = export(&mei, &ext_store).unwrap();
     serializer::serialize(&exported)
 }
 
 /// Parse LilyPond -> import to MEI -> export to LilyPond AST.
 fn roundtrip_ast(src: &str) -> LilyPondFile {
     let file = Parser::new(src).unwrap().parse().unwrap();
-    let mei = import::import(&file).unwrap();
-    export(&mei).unwrap()
+    let (mei, ext_store) = import::import(&file).unwrap();
+    export(&mei, &ext_store).unwrap()
 }
 
 // ---------------------------------------------------------------------------

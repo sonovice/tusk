@@ -8,7 +8,7 @@ use tusk_model::generated::data::{
     DataClefshape, DataDuration, DataDurationCmn, DataDurationrests, DataStaffrelBasic,
 };
 
-fn parse_and_import(src: &str) -> Mei {
+fn parse_and_import(src: &str) -> (Mei, ExtensionStore) {
     let file = Parser::new(src).unwrap().parse().unwrap();
     import(&file).unwrap()
 }
@@ -126,7 +126,7 @@ fn nth_layer_children(mei: &Mei, idx: usize) -> &[LayerChild] {
 
 #[test]
 fn import_single_note() {
-    let mei = parse_and_import("{ c'4 }");
+    let (mei, _ext_store) = parse_and_import("{ c'4 }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 1);
     if let LayerChild::Note(note) = &children[0] {
@@ -143,7 +143,7 @@ fn import_single_note() {
 
 #[test]
 fn import_note_with_accidental() {
-    let mei = parse_and_import("{ cis''2 }");
+    let (mei, _ext_store) = parse_and_import("{ cis''2 }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 1);
     if let LayerChild::Note(note) = &children[0] {
@@ -161,7 +161,7 @@ fn import_note_with_accidental() {
 
 #[test]
 fn import_rest() {
-    let mei = parse_and_import("{ r4 }");
+    let (mei, _ext_store) = parse_and_import("{ r4 }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 1);
     if let LayerChild::Rest(rest) = &children[0] {
@@ -176,7 +176,7 @@ fn import_rest() {
 
 #[test]
 fn import_dotted_rest() {
-    let mei = parse_and_import("{ r2. }");
+    let (mei, _ext_store) = parse_and_import("{ r2. }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 1);
     if let LayerChild::Rest(rest) = &children[0] {
@@ -192,15 +192,15 @@ fn import_dotted_rest() {
 
 #[test]
 fn import_multi_measure_rest() {
-    let mei = parse_and_import("{ R1*4 }");
+    let (mei, ext_store) = parse_and_import("{ R1*4 }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 1);
     if let LayerChild::MRest(mrest) = &children[0] {
-        assert!(mrest.common.label.is_some());
-        let label = mrest.common.label.as_ref().unwrap();
-        assert!(label.starts_with("tusk:mrest,"));
-        assert!(label.contains("\"base\":1"));
-        assert!(label.contains("[4,1]"));
+        let mrest_id = mrest.common.xml_id.as_deref().unwrap();
+        let info = ext_store.mrest_info(mrest_id).expect("should have mrest info");
+        assert_eq!(info.base, 1, "base should be 1");
+        assert!(!info.multipliers.is_empty(), "should have multipliers");
+        assert_eq!(info.multipliers[0], (4, 1), "multiplier should be (4,1)");
     } else {
         panic!("expected MRest");
     }
@@ -208,18 +208,13 @@ fn import_multi_measure_rest() {
 
 #[test]
 fn import_pitched_rest() {
-    let mei = parse_and_import("{ c4\\rest }");
+    let (mei, ext_store) = parse_and_import("{ c4\\rest }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 1);
     if let LayerChild::Rest(rest) = &children[0] {
-        assert!(rest.common.label.is_some());
-        assert!(
-            rest.common
-                .label
-                .as_ref()
-                .unwrap()
-                .starts_with("tusk:pitched-rest,")
-        );
+        let rest_id = rest.common.xml_id.as_deref().unwrap();
+        let info = ext_store.pitched_rest(rest_id).expect("should have pitched rest info");
+        assert!(!info.pitch.is_empty(), "pitch should be set");
     } else {
         panic!("expected Rest for pitched rest");
     }
@@ -227,7 +222,7 @@ fn import_pitched_rest() {
 
 #[test]
 fn import_multiple_events() {
-    let mei = parse_and_import("{ c4 d8 r4 e16 }");
+    let (mei, _ext_store) = parse_and_import("{ c4 d8 r4 e16 }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 4);
     assert!(matches!(&children[0], LayerChild::Note(_)));
@@ -238,7 +233,7 @@ fn import_multiple_events() {
 
 #[test]
 fn import_skip_preserved() {
-    let mei = parse_and_import("{ c4 s4 d4 }");
+    let (mei, _ext_store) = parse_and_import("{ c4 s4 d4 }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 3);
     assert!(matches!(&children[0], LayerChild::Note(_)));
@@ -248,7 +243,7 @@ fn import_skip_preserved() {
 
 #[test]
 fn import_skip_with_duration_and_dots() {
-    let mei = parse_and_import("{ s4. }");
+    let (mei, _ext_store) = parse_and_import("{ s4. }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 1);
     let LayerChild::Space(space) = &children[0] else {
@@ -263,7 +258,7 @@ fn import_skip_with_duration_and_dots() {
 #[test]
 fn import_skip_in_voice() {
     // Multi-voice: skip used as spacer in second voice
-    let mei = parse_and_import("<< { c4 d4 } \\\\ { s4 e4 } >>");
+    let (mei, _ext_store) = parse_and_import("<< { c4 d4 } \\\\ { s4 e4 } >>");
     // Second voice (layer index 1) should have s4 e4
     let children = nth_layer_children(&mei, 1);
     assert_eq!(children.len(), 2);
@@ -273,21 +268,21 @@ fn import_skip_in_voice() {
 
 #[test]
 fn import_from_score_block() {
-    let mei = parse_and_import("\\score { { c4 d4 } }");
+    let (mei, _ext_store) = parse_and_import("\\score { { c4 d4 } }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 2);
 }
 
 #[test]
 fn import_nested_relative() {
-    let mei = parse_and_import("\\relative c' { c4 d e f }");
+    let (mei, _ext_store) = parse_and_import("\\relative c' { c4 d e f }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 4);
 }
 
 #[test]
 fn import_simultaneous_two_voices() {
-    let mei = parse_and_import("<< { c'4 d'4 } { e'4 f'4 } >>");
+    let (mei, _ext_store) = parse_and_import("<< { c'4 d'4 } { e'4 f'4 } >>");
     assert_eq!(layer_count(&mei), 2);
     let voice1 = nth_layer_children(&mei, 0);
     let voice2 = nth_layer_children(&mei, 1);
@@ -309,7 +304,7 @@ fn import_simultaneous_two_voices() {
 
 #[test]
 fn import_simultaneous_three_voices() {
-    let mei = parse_and_import("<< { c'4 } { e'4 } { g'4 } >>");
+    let (mei, _ext_store) = parse_and_import("<< { c'4 } { e'4 } { g'4 } >>");
     assert_eq!(layer_count(&mei), 3);
     assert_eq!(nth_layer_children(&mei, 0).len(), 1);
     assert_eq!(nth_layer_children(&mei, 1).len(), 1);
@@ -318,7 +313,7 @@ fn import_simultaneous_three_voices() {
 
 #[test]
 fn import_sequential_single_layer() {
-    let mei = parse_and_import("{ c'4 d'4 e'4 }");
+    let (mei, _ext_store) = parse_and_import("{ c'4 d'4 e'4 }");
     assert_eq!(layer_count(&mei), 1);
     assert_eq!(layer_children(&mei).len(), 3);
 }
@@ -326,7 +321,7 @@ fn import_sequential_single_layer() {
 #[test]
 fn import_nested_sequential_in_simultaneous() {
     // Outer sequential wrapping simultaneous
-    let mei = parse_and_import("{ << { c'4 } { e'4 } >> }");
+    let (mei, _ext_store) = parse_and_import("{ << { c'4 } { e'4 } >> }");
     // The outer sequential contains a simultaneous -- but find_music
     // walks into it and finds the simultaneous at the section level
     // The top-level is Sequential([Simultaneous([...])]) -- the
@@ -339,7 +334,7 @@ fn import_nested_sequential_in_simultaneous() {
 
 #[test]
 fn import_new_staff_creates_staff() {
-    let mei = parse_and_import("\\new Staff { c'4 d'4 }");
+    let (mei, _ext_store) = parse_and_import("\\new Staff { c'4 d'4 }");
     let staves = all_staves(&mei);
     assert_eq!(staves.len(), 1);
     assert_eq!(staves[0].n_integer.n.as_deref(), Some("1"));
@@ -349,7 +344,7 @@ fn import_new_staff_creates_staff() {
 
 #[test]
 fn import_staff_group_creates_multiple_staves() {
-    let mei =
+    let (mei, _ext_store) =
         parse_and_import("\\new StaffGroup << \\new Staff { c'4 d'4 } \\new Staff { e'4 f'4 } >>");
     let staves = all_staves(&mei);
     assert_eq!(staves.len(), 2);
@@ -359,7 +354,7 @@ fn import_staff_group_creates_multiple_staves() {
 
 #[test]
 fn import_staff_group_symbol() {
-    let mei = parse_and_import("\\new StaffGroup << \\new Staff { c'4 } \\new Staff { e'4 } >>");
+    let (mei, _ext_store) = parse_and_import("\\new StaffGroup << \\new Staff { c'4 } \\new Staff { e'4 } >>");
     let sd = find_score_def(&mei).unwrap();
     let sg = &sd.children[0];
     if let ScoreDefChild::StaffGrp(grp) = sg {
@@ -371,7 +366,7 @@ fn import_staff_group_symbol() {
 
 #[test]
 fn import_piano_staff_symbol() {
-    let mei = parse_and_import("\\new PianoStaff << \\new Staff { c'4 } \\new Staff { e'4 } >>");
+    let (mei, _ext_store) = parse_and_import("\\new PianoStaff << \\new Staff { c'4 } \\new Staff { e'4 } >>");
     let sd = find_score_def(&mei).unwrap();
     if let ScoreDefChild::StaffGrp(grp) = &sd.children[0] {
         assert_eq!(grp.staff_grp_vis.symbol.as_deref(), Some("brace"));
@@ -382,12 +377,13 @@ fn import_piano_staff_symbol() {
 
 #[test]
 fn import_named_staff_label() {
-    let mei = parse_and_import("\\new Staff = \"violin\" { c'4 }");
+    let (mei, ext_store) = parse_and_import("\\new Staff = \"violin\" { c'4 }");
     let sd = find_score_def(&mei).unwrap();
     if let ScoreDefChild::StaffGrp(grp) = &sd.children[0] {
         if let StaffGrpChild::StaffDef(sdef) = &grp.children[0] {
-            let label = sdef.labelled.label.as_deref().unwrap();
-            assert!(label.contains("\"name\":\"violin\""), "label: {label}");
+            let sdef_id = sdef.basic.xml_id.as_deref().unwrap();
+            let ctx = ext_store.staff_context(sdef_id).expect("should have staff context");
+            assert_eq!(ctx.name.as_deref(), Some("violin"), "name should be violin");
         } else {
             panic!("expected StaffDef");
         }
@@ -396,12 +392,12 @@ fn import_named_staff_label() {
 
 #[test]
 fn import_group_label() {
-    let mei = parse_and_import("\\new StaffGroup = \"orch\" << \\new Staff { c'4 } >>");
+    let (mei, ext_store) = parse_and_import("\\new StaffGroup = \"orch\" << \\new Staff { c'4 } >>");
     let sd = find_score_def(&mei).unwrap();
     if let ScoreDefChild::StaffGrp(grp) = &sd.children[0] {
-        let label = grp.common.label.as_deref().unwrap();
-        assert!(label.contains("tusk:group-context,"), "label: {label}");
-        assert!(label.contains("\"name\":\"orch\""), "label: {label}");
+        let grp_id = grp.common.xml_id.as_deref().unwrap();
+        let ctx = ext_store.staff_context(grp_id).expect("should have group context");
+        assert_eq!(ctx.name.as_deref(), Some("orch"), "name should be orch");
     }
 }
 
@@ -412,7 +408,7 @@ fn import_staff_count_from_fixture() {
         "/../../../tests/fixtures/lilypond/fragment_contexts.ly"
     ))
     .unwrap();
-    let mei = parse_and_import(&src);
+    let (mei, _ext_store) = parse_and_import(&src);
     let staves = all_staves(&mei);
     assert_eq!(staves.len(), 2, "fragment_contexts.ly should have 2 staves");
 }
@@ -436,7 +432,7 @@ fn first_staff_def(mei: &Mei) -> Option<&StaffDef> {
 
 #[test]
 fn import_clef_sets_staff_def() {
-    let mei = parse_and_import("{ \\clef \"treble\" c'4 }");
+    let (mei, _ext_store) = parse_and_import("{ \\clef \"treble\" c'4 }");
     let sdef = first_staff_def(&mei).unwrap();
     assert_eq!(
         sdef.staff_def_log.clef_shape,
@@ -452,7 +448,7 @@ fn import_clef_sets_staff_def() {
 
 #[test]
 fn import_bass_clef_sets_staff_def() {
-    let mei = parse_and_import("{ \\clef \"bass\" c4 }");
+    let (mei, _ext_store) = parse_and_import("{ \\clef \"bass\" c4 }");
     let sdef = first_staff_def(&mei).unwrap();
     assert_eq!(sdef.staff_def_log.clef_shape, Some(DataClefshape::F));
     assert_eq!(sdef.staff_def_log.clef_line.as_ref().map(|l| l.0), Some(4));
@@ -460,7 +456,7 @@ fn import_bass_clef_sets_staff_def() {
 
 #[test]
 fn import_alto_clef_sets_staff_def() {
-    let mei = parse_and_import("{ \\clef \"alto\" c'4 }");
+    let (mei, _ext_store) = parse_and_import("{ \\clef \"alto\" c'4 }");
     let sdef = first_staff_def(&mei).unwrap();
     assert_eq!(sdef.staff_def_log.clef_shape, Some(DataClefshape::C));
     assert_eq!(sdef.staff_def_log.clef_line.as_ref().map(|l| l.0), Some(3));
@@ -468,7 +464,7 @@ fn import_alto_clef_sets_staff_def() {
 
 #[test]
 fn import_key_sets_staff_def() {
-    let mei = parse_and_import("{ \\key d \\major c'4 }");
+    let (mei, _ext_store) = parse_and_import("{ \\key d \\major c'4 }");
     let sdef = first_staff_def(&mei).unwrap();
     // D major = 2 sharps
     assert_eq!(
@@ -479,7 +475,7 @@ fn import_key_sets_staff_def() {
 
 #[test]
 fn import_key_minor_sets_staff_def() {
-    let mei = parse_and_import("{ \\key a \\minor c'4 }");
+    let (mei, _ext_store) = parse_and_import("{ \\key a \\minor c'4 }");
     let sdef = first_staff_def(&mei).unwrap();
     // A minor = 0 sharps/flats
     assert_eq!(
@@ -490,7 +486,7 @@ fn import_key_minor_sets_staff_def() {
 
 #[test]
 fn import_key_flat_sets_staff_def() {
-    let mei = parse_and_import("{ \\key bes \\major c'4 }");
+    let (mei, _ext_store) = parse_and_import("{ \\key bes \\major c'4 }");
     let sdef = first_staff_def(&mei).unwrap();
     // Bb major = -2
     assert_eq!(
@@ -501,7 +497,7 @@ fn import_key_flat_sets_staff_def() {
 
 #[test]
 fn import_time_sets_staff_def() {
-    let mei = parse_and_import("{ \\time 3/4 c'4 }");
+    let (mei, _ext_store) = parse_and_import("{ \\time 3/4 c'4 }");
     let sdef = first_staff_def(&mei).unwrap();
     assert_eq!(sdef.staff_def_log.meter_count.as_deref(), Some("3"));
     assert_eq!(sdef.staff_def_log.meter_unit.as_deref(), Some("4"));
@@ -509,7 +505,7 @@ fn import_time_sets_staff_def() {
 
 #[test]
 fn import_time_compound_sets_staff_def() {
-    let mei = parse_and_import("{ \\time 2+3/8 c'4 }");
+    let (mei, _ext_store) = parse_and_import("{ \\time 2+3/8 c'4 }");
     let sdef = first_staff_def(&mei).unwrap();
     assert_eq!(sdef.staff_def_log.meter_count.as_deref(), Some("2+3"));
     assert_eq!(sdef.staff_def_log.meter_unit.as_deref(), Some("8"));
@@ -517,49 +513,40 @@ fn import_time_compound_sets_staff_def() {
 
 #[test]
 fn import_clef_key_time_label_stored() {
-    let mei = parse_and_import("{ \\clef \"treble\" \\key d \\major \\time 4/4 c'4 d'4 }");
+    let (mei, ext_store) = parse_and_import("{ \\clef \"treble\" \\key d \\major \\time 4/4 c'4 d'4 }");
     let sdef = first_staff_def(&mei).unwrap();
-    let label = sdef.labelled.label.as_deref().unwrap();
-    assert!(label.contains("tusk:events,"), "label: {label}");
-    assert!(
-        label.contains("\"Clef\""),
-        "label should contain Clef event: {label}"
-    );
-    assert!(
-        label.contains("\"Key\""),
-        "label should contain Key event: {label}"
-    );
-    assert!(
-        label.contains("\"Time\""),
-        "label should contain Time event: {label}"
-    );
+    let sdef_id = sdef.basic.xml_id.as_deref().unwrap();
+    let seq = ext_store.event_sequence(sdef_id).expect("should have event_sequence");
+    let has_clef = seq.events.iter().any(|e| matches!(e.event, tusk_model::ControlEvent::Clef { .. }));
+    let has_key = seq.events.iter().any(|e| matches!(e.event, tusk_model::ControlEvent::Key { .. }));
+    let has_time = seq.events.iter().any(|e| matches!(e.event, tusk_model::ControlEvent::Time { .. }));
+    assert!(has_clef, "should contain Clef event");
+    assert!(has_key, "should contain Key event");
+    assert!(has_time, "should contain Time event");
 }
 
 #[test]
 fn import_clef_change_mid_stream() {
-    let mei = parse_and_import("{ \\clef \"treble\" c'4 d'4 \\clef \"bass\" e4 f4 }");
+    let (mei, ext_store) = parse_and_import("{ \\clef \"treble\" c'4 d'4 \\clef \"bass\" e4 f4 }");
     let sdef = first_staff_def(&mei).unwrap();
     // First clef is treble
     assert_eq!(sdef.staff_def_log.clef_shape, Some(DataClefshape::G));
-    // Label has both clefs
-    let label = sdef.labelled.label.as_deref().unwrap();
-    assert!(
-        label.contains("\"Clef\""),
-        "label should contain Clef events: {label}"
-    );
-    assert!(
-        label.contains("\"treble\""),
-        "label should contain treble: {label}"
-    );
-    assert!(
-        label.contains("\"bass\""),
-        "label should contain bass: {label}"
-    );
+    // Event sequence has both clefs
+    let sdef_id = sdef.basic.xml_id.as_deref().unwrap();
+    let seq = ext_store.event_sequence(sdef_id).expect("should have event_sequence");
+    let clef_events: Vec<_> = seq.events.iter().filter(|e| matches!(e.event, tusk_model::ControlEvent::Clef { .. })).collect();
+    assert!(clef_events.len() >= 2, "should contain at least 2 Clef events");
+    // Check names
+    let clef_names: Vec<&str> = clef_events.iter().filter_map(|e| {
+        if let tusk_model::ControlEvent::Clef { name } = &e.event { Some(name.as_str()) } else { None }
+    }).collect();
+    assert!(clef_names.contains(&"treble"), "should contain treble");
+    assert!(clef_names.contains(&"bass"), "should contain bass");
 }
 
 #[test]
 fn import_transposed_clef() {
-    let mei = parse_and_import("{ \\clef \"treble_8\" c4 }");
+    let (mei, _ext_store) = parse_and_import("{ \\clef \"treble_8\" c4 }");
     let sdef = first_staff_def(&mei).unwrap();
     assert_eq!(sdef.staff_def_log.clef_shape, Some(DataClefshape::G));
     assert_eq!(sdef.staff_def_log.clef_line.as_ref().map(|l| l.0), Some(2));
@@ -572,17 +559,22 @@ fn import_transposed_clef() {
 
 #[test]
 fn import_staff_with_block_label() {
-    let mei =
+    let (mei, ext_store) =
         parse_and_import("\\new Staff \\with { \\consists \"Span_arpeggio_engraver\" } { c'4 }");
     let sd = find_score_def(&mei).unwrap();
     if let ScoreDefChild::StaffGrp(grp) = &sd.children[0] {
         if let StaffGrpChild::StaffDef(sdef) = &grp.children[0] {
-            let label = sdef.labelled.label.as_deref().unwrap();
+            let sdef_id = sdef.basic.xml_id.as_deref().unwrap();
+            let ctx = ext_store.staff_context(sdef_id).expect("should have staff context");
             assert!(
-                label.contains("\"with_block\""),
-                "label should contain with_block: {label}"
+                ctx.with_block.is_some(),
+                "should have with_block"
             );
-            assert!(label.contains("Span_arpeggio_engraver"), "label: {label}");
+            assert!(
+                ctx.with_block.as_deref().unwrap().contains("Span_arpeggio_engraver"),
+                "with_block should contain Span_arpeggio_engraver: {:?}",
+                ctx.with_block
+            );
         } else {
             panic!("expected StaffDef");
         }
@@ -594,7 +586,7 @@ fn import_staff_with_block_label() {
 #[test]
 fn import_relative_resolves_pitches() {
     // \relative c' { c d e f } -> absolute: c' d' e' f'
-    let mei = parse_and_import("\\relative c' { c4 d e f }");
+    let (mei, _ext_store) = parse_and_import("\\relative c' { c4 d e f }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 4);
 
@@ -631,7 +623,7 @@ fn import_relative_resolves_pitches() {
 #[test]
 fn import_relative_descending() {
     // \relative c' { c b a g } -> c'=4, b=3, a=3, g=3
-    let mei = parse_and_import("\\relative c' { c4 b a g }");
+    let (mei, _ext_store) = parse_and_import("\\relative c' { c4 b a g }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 4);
 
@@ -651,19 +643,21 @@ fn import_relative_descending() {
 
 #[test]
 fn import_relative_label_stored() {
-    let mei = parse_and_import("\\relative c' { c4 d e f }");
+    let (mei, ext_store) = parse_and_import("\\relative c' { c4 d e f }");
     let sdef = first_staff_def(&mei).unwrap();
-    let label = sdef.labelled.label.as_deref().unwrap();
+    let sdef_id = sdef.basic.xml_id.as_deref().unwrap();
+    let ctx = ext_store.pitch_context(sdef_id).expect("should have pitch context");
+    // PitchContext should be Relative variant
     assert!(
-        label.contains("tusk:pitch-context,"),
-        "label should contain pitch context: {label}"
+        matches!(ctx, tusk_model::PitchContext::Relative { .. }),
+        "should be Relative pitch context: {ctx:?}"
     );
 }
 
 #[test]
 fn import_transpose_applies() {
     // \transpose c d { c4 } -> c transposed up a whole step = d
-    let mei = parse_and_import("\\transpose c d { c4 }");
+    let (mei, _ext_store) = parse_and_import("\\transpose c d { c4 }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 1);
     if let LayerChild::Note(n) = &children[0] {
@@ -675,18 +669,19 @@ fn import_transpose_applies() {
 
 #[test]
 fn import_transpose_label_stored() {
-    let mei = parse_and_import("\\transpose c d { c4 }");
+    let (mei, ext_store) = parse_and_import("\\transpose c d { c4 }");
     let sdef = first_staff_def(&mei).unwrap();
-    let label = sdef.labelled.label.as_deref().unwrap();
+    let sdef_id = sdef.basic.xml_id.as_deref().unwrap();
+    let ctx = ext_store.pitch_context(sdef_id).expect("should have pitch context");
     assert!(
-        label.contains("tusk:pitch-context,"),
-        "label should contain pitch context: {label}"
+        matches!(ctx, tusk_model::PitchContext::Transpose { .. }),
+        "should be Transpose pitch context: {ctx:?}"
     );
 }
 
 #[test]
 fn import_chord_basic() {
-    let mei = parse_and_import("{ <c' e' g'>4 }");
+    let (mei, _ext_store) = parse_and_import("{ <c' e' g'>4 }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 1);
     if let LayerChild::Chord(chord) = &children[0] {
@@ -714,7 +709,7 @@ fn import_chord_basic() {
 
 #[test]
 fn import_chord_dotted() {
-    let mei = parse_and_import("{ <c' e'>2. }");
+    let (mei, _ext_store) = parse_and_import("{ <c' e'>2. }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 1);
     if let LayerChild::Chord(chord) = &children[0] {
@@ -731,7 +726,7 @@ fn import_chord_dotted() {
 
 #[test]
 fn import_chord_with_accidentals() {
-    let mei = parse_and_import("{ <cis' es' g'>4 }");
+    let (mei, _ext_store) = parse_and_import("{ <cis' es' g'>4 }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 1);
     if let LayerChild::Chord(chord) = &children[0] {
@@ -752,7 +747,7 @@ fn import_chord_with_accidentals() {
 
 #[test]
 fn import_chord_force_cautionary() {
-    let mei = parse_and_import("{ <cis'! e'?>4 }");
+    let (mei, _ext_store) = parse_and_import("{ <cis'! e'?>4 }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 1);
     if let LayerChild::Chord(chord) = &children[0] {
@@ -770,7 +765,7 @@ fn import_chord_force_cautionary() {
 
 #[test]
 fn import_chord_mixed_with_notes() {
-    let mei = parse_and_import("{ c'4 <d' f'>8 e'2 }");
+    let (mei, _ext_store) = parse_and_import("{ c'4 <d' f'>8 e'2 }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 3);
     assert!(matches!(children[0], LayerChild::Note(_)));
@@ -814,7 +809,7 @@ fn measure_slurs(mei: &Mei) -> Vec<&Slur> {
 
 #[test]
 fn import_tie_sets_note_attr() {
-    let mei = parse_and_import("{ c4~ c4 }");
+    let (mei, _ext_store) = parse_and_import("{ c4~ c4 }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 2);
     // First note: tie="i" (initial)
@@ -833,36 +828,30 @@ fn import_tie_sets_note_attr() {
 
 #[test]
 fn import_slur_creates_control_event() {
-    let mei = parse_and_import("{ d4( e4 f4) }");
+    let (mei, ext_store) = parse_and_import("{ d4( e4 f4) }");
     let slurs = measure_slurs(&mei);
     assert_eq!(slurs.len(), 1, "expected 1 slur control event");
     let slur = slurs[0];
     assert!(slur.slur_log.startid.is_some());
     assert!(slur.slur_log.endid.is_some());
     // Not a phrase
+    let slur_id = slur.common.xml_id.as_deref().unwrap_or("");
     assert!(
-        slur.common.label.is_none()
-            || !slur
-                .common
-                .label
-                .as_deref()
-                .unwrap_or("")
-                .starts_with("tusk:phrase,")
+        ext_store.phrasing_slur(slur_id).is_none(),
+        "regular slur should not be a phrasing slur"
     );
 }
 
 #[test]
 fn import_phrasing_slur_creates_labeled_control_event() {
-    let mei = parse_and_import("{ g4\\( a4 b4\\) }");
+    let (mei, ext_store) = parse_and_import("{ g4\\( a4 b4\\) }");
     let slurs = measure_slurs(&mei);
     assert_eq!(slurs.len(), 1, "expected 1 phrase control event");
     let slur = slurs[0];
+    let slur_id = slur.common.xml_id.as_deref().unwrap();
     assert!(
-        slur.common
-            .label
-            .as_deref()
-            .unwrap()
-            .starts_with("tusk:phrase,")
+        ext_store.phrasing_slur(slur_id).is_some(),
+        "should have phrasing slur in ext_store"
     );
     assert!(slur.slur_log.startid.is_some());
     assert!(slur.slur_log.endid.is_some());
@@ -870,7 +859,7 @@ fn import_phrasing_slur_creates_labeled_control_event() {
 
 #[test]
 fn import_chord_tie() {
-    let mei = parse_and_import("{ <c e g>4~ <c e g>4 }");
+    let (mei, _ext_store) = parse_and_import("{ <c e g>4~ <c e g>4 }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 2);
     // First chord: all notes have tie="i"
@@ -895,7 +884,7 @@ fn import_chord_tie() {
 
 #[test]
 fn import_combined_tie_and_slur() {
-    let mei = parse_and_import("{ c4~( d4 e4) }");
+    let (mei, _ext_store) = parse_and_import("{ c4~( d4 e4) }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 3);
     // First note has tie="i"
@@ -915,7 +904,7 @@ fn import_combined_tie_and_slur() {
 
 #[test]
 fn import_beam_creates_beam_element() {
-    let mei = parse_and_import("{ c8[ d e f] }");
+    let (mei, _ext_store) = parse_and_import("{ c8[ d e f] }");
     let children = layer_children(&mei);
     assert_eq!(
         children.len(),
@@ -932,7 +921,7 @@ fn import_beam_creates_beam_element() {
 
 #[test]
 fn import_multiple_beams() {
-    let mei = parse_and_import("{ c8[ d] e8[ f] }");
+    let (mei, _ext_store) = parse_and_import("{ c8[ d] e8[ f] }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 2, "expected 2 beam elements");
     for child in children {
@@ -946,7 +935,7 @@ fn import_multiple_beams() {
 
 #[test]
 fn import_beam_with_unbeamed_notes() {
-    let mei = parse_and_import("{ c4 d8[ e f] g4 }");
+    let (mei, _ext_store) = parse_and_import("{ c4 d8[ e f] g4 }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 3, "expected note + beam + note");
     assert!(matches!(children[0], LayerChild::Note(_)));
@@ -956,22 +945,19 @@ fn import_beam_with_unbeamed_notes() {
 
 #[test]
 fn import_autobeam_in_event_label() {
-    let mei = parse_and_import("{ \\autoBeamOff c8 d \\autoBeamOn e8 }");
+    let (mei, ext_store) = parse_and_import("{ \\autoBeamOff c8 d \\autoBeamOn e8 }");
     let sd = first_staff_def(&mei).unwrap();
-    let label = sd.labelled.label.as_deref().unwrap_or("");
-    assert!(
-        label.contains("AutoBeamOff"),
-        "label should contain AutoBeamOff: {label}"
-    );
-    assert!(
-        label.contains("AutoBeamOn"),
-        "label should contain AutoBeamOn: {label}"
-    );
+    let sdef_id = sd.basic.xml_id.as_deref().unwrap();
+    let seq = ext_store.event_sequence(sdef_id).expect("should have event_sequence");
+    let has_off = seq.events.iter().any(|e| matches!(e.event, tusk_model::ControlEvent::AutoBeamOff));
+    let has_on = seq.events.iter().any(|e| matches!(e.event, tusk_model::ControlEvent::AutoBeamOn));
+    assert!(has_off, "should contain AutoBeamOff");
+    assert!(has_on, "should contain AutoBeamOn");
 }
 
 #[test]
 fn import_beam_preserves_note_content() {
-    let mei = parse_and_import("{ cis'8[ d' ees' f'] }");
+    let (mei, _ext_store) = parse_and_import("{ cis'8[ d' ees' f'] }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 1);
     if let LayerChild::Beam(beam) = &children[0] {
@@ -1056,7 +1042,7 @@ fn measure_hairpins(mei: &Mei) -> Vec<&Hairpin> {
 
 #[test]
 fn import_dynamic_creates_dynam() {
-    let mei = parse_and_import("{ c4\\f d4\\p }");
+    let (mei, _ext_store) = parse_and_import("{ c4\\f d4\\p }");
     let dynams = measure_dynams(&mei);
     assert_eq!(dynams.len(), 2, "expected 2 dynam control events");
     // First dynamic: f
@@ -1072,7 +1058,7 @@ fn import_dynamic_creates_dynam() {
 
 #[test]
 fn import_crescendo_hairpin() {
-    let mei = parse_and_import("{ c4\\< d4 e4\\! }");
+    let (mei, _ext_store) = parse_and_import("{ c4\\< d4 e4\\! }");
     let hairpins = measure_hairpins(&mei);
     assert_eq!(hairpins.len(), 1, "expected 1 hairpin");
     let hp = hairpins[0];
@@ -1084,7 +1070,7 @@ fn import_crescendo_hairpin() {
 
 #[test]
 fn import_decrescendo_hairpin() {
-    let mei = parse_and_import("{ c4\\> d4 e4\\! }");
+    let (mei, _ext_store) = parse_and_import("{ c4\\> d4 e4\\! }");
     let hairpins = measure_hairpins(&mei);
     assert_eq!(hairpins.len(), 1, "expected 1 hairpin");
     assert_eq!(hairpins[0].hairpin_log.form.as_deref(), Some("dim"));
@@ -1092,7 +1078,7 @@ fn import_decrescendo_hairpin() {
 
 #[test]
 fn import_dynamic_and_hairpin_combined() {
-    let mei = parse_and_import("{ c4\\f\\< d4 e4\\!\\ff }");
+    let (mei, _ext_store) = parse_and_import("{ c4\\f\\< d4 e4\\!\\ff }");
     let dynams = measure_dynams(&mei);
     let hairpins = measure_hairpins(&mei);
     assert_eq!(dynams.len(), 2, "expected 2 dynamics (f and ff)");
@@ -1105,7 +1091,7 @@ fn import_dynamic_and_hairpin_combined() {
 
 #[test]
 fn import_hairpin_on_chord() {
-    let mei = parse_and_import("{ <c e g>4\\< <d f a>4\\! }");
+    let (mei, _ext_store) = parse_and_import("{ <c e g>4\\< <d f a>4\\! }");
     let hairpins = measure_hairpins(&mei);
     assert_eq!(hairpins.len(), 1);
     assert_eq!(hairpins[0].hairpin_log.form.as_deref(), Some("cres"));
@@ -1169,8 +1155,8 @@ fn get_verse_wordpos(note: &tusk_model::elements::Note, verse_n: &str) -> Option
     None
 }
 
-/// Extract syl @label from a note's verse for a given verse number.
-fn get_verse_syl_label(note: &tusk_model::elements::Note, verse_n: &str) -> Option<String> {
+/// Extract syl xml:id from a note's verse for a given verse number.
+fn get_verse_syl_id(note: &tusk_model::elements::Note, verse_n: &str) -> Option<String> {
     use tusk_model::elements::{NoteChild, VerseChild};
     for nc in &note.children {
         if let NoteChild::Verse(verse) = nc
@@ -1178,7 +1164,7 @@ fn get_verse_syl_label(note: &tusk_model::elements::Note, verse_n: &str) -> Opti
         {
             for vc in &verse.children {
                 if let VerseChild::Syl(syl) = vc {
-                    return syl.common.label.clone();
+                    return syl.common.xml_id.clone();
                 }
             }
         }
@@ -1188,7 +1174,7 @@ fn get_verse_syl_label(note: &tusk_model::elements::Note, verse_n: &str) -> Opti
 
 #[test]
 fn import_addlyrics_basic() {
-    let mei = parse_and_import("{ c'4 d'4 e'4 f'4 } \\addlyrics { one two three four }");
+    let (mei, _ext_store) = parse_and_import("{ c'4 d'4 e'4 f'4 } \\addlyrics { one two three four }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 4);
     // Check verse text on each note
@@ -1208,7 +1194,7 @@ fn import_addlyrics_basic() {
 
 #[test]
 fn import_addlyrics_hyphens() {
-    let mei = parse_and_import("{ c'4 d'4 e'4 } \\addlyrics { hel -- lo world }");
+    let (mei, _ext_store) = parse_and_import("{ c'4 d'4 e'4 } \\addlyrics { hel -- lo world }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 3);
     if let LayerChild::Note(n) = &children[0] {
@@ -1230,14 +1216,16 @@ fn import_addlyrics_hyphens() {
 
 #[test]
 fn import_addlyrics_extender() {
-    let mei = parse_and_import("{ c'4 d'4 } \\addlyrics { hold __ rest }");
+    let (mei, ext_store) = parse_and_import("{ c'4 d'4 } \\addlyrics { hold __ rest }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 2);
     if let LayerChild::Note(n) = &children[0] {
         assert_eq!(get_verse_text(n, "1").as_deref(), Some("hold"));
-        assert_eq!(
-            get_verse_syl_label(n, "1").as_deref(),
-            Some("tusk:extender,null")
+        // Extender data now in ext_store keyed by syl's xml:id
+        let syl_id = get_verse_syl_id(n, "1").expect("syl should have xml:id");
+        assert!(
+            ext_store.lyric_extender(&syl_id).is_some(),
+            "should have lyric extender in ext_store for syl {syl_id}"
         );
     }
     if let LayerChild::Note(n) = &children[1] {
@@ -1247,15 +1235,15 @@ fn import_addlyrics_extender() {
 
 #[test]
 fn import_addlyrics_label_on_staffdef() {
-    let mei = parse_and_import("{ c'4 d'4 } \\addlyrics { do re }");
+    let (mei, ext_store) = parse_and_import("{ c'4 d'4 } \\addlyrics { do re }");
     let sd = find_score_def(&mei).unwrap();
-    // Should have lyrics label on staffDef
+    // Should have lyrics info in ext_store for staffDef
     let sdef = find_staff_def(sd);
     assert!(sdef.is_some());
-    let label = sdef.unwrap().labelled.label.as_deref().unwrap_or("");
+    let sdef_id = sdef.unwrap().basic.xml_id.as_deref().unwrap();
     assert!(
-        label.contains("tusk:lyrics-info,"),
-        "label should contain lyrics info: {label}"
+        ext_store.lyrics_info(sdef_id).is_some(),
+        "should have lyrics info in ext_store for staffDef {sdef_id}"
     );
 }
 
@@ -1281,7 +1269,7 @@ fn import_lyricsto_basic() {
     \new Lyrics \lyricsto "melody" { do re }
   >>
 }"#;
-    let mei = parse_and_import(src);
+    let (mei, _ext_store) = parse_and_import(src);
     let children = layer_children(&mei);
     assert_eq!(children.len(), 2);
     if let LayerChild::Note(n) = &children[0] {
@@ -1296,24 +1284,21 @@ fn import_lyricsto_basic() {
 
 #[test]
 fn import_fixed_label_stored() {
-    let mei = parse_and_import("\\fixed c' { c4 d e f }");
+    let (mei, ext_store) = parse_and_import("\\fixed c' { c4 d e f }");
     let sdef = first_staff_def(&mei).unwrap();
-    let label = sdef.labelled.label.as_deref().unwrap();
-    assert!(
-        label.contains("tusk:pitch-context,"),
-        "label should contain pitch context: {label}"
-    );
+    let sdef_id = sdef.basic.xml_id.as_deref().unwrap();
+    let ctx = ext_store.pitch_context(sdef_id).expect("should have pitch context");
     // Verify it's stored as Fixed, not Relative
     assert!(
-        label.contains("\"Fixed\""),
-        "label should contain Fixed variant: {label}"
+        matches!(ctx, tusk_model::PitchContext::Fixed { .. }),
+        "should be Fixed pitch context: {ctx:?}"
     );
 }
 
 #[test]
 fn import_fixed_resolves_pitches() {
     // \fixed c' { c d e f } -> absolute: c' d' e' f' (all octave 4)
-    let mei = parse_and_import("\\fixed c' { c4 d e f }");
+    let (mei, _ext_store) = parse_and_import("\\fixed c' { c4 d e f }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 4);
 
@@ -1334,7 +1319,7 @@ fn import_fixed_resolves_pitches() {
 #[test]
 fn import_fixed_with_octave_marks() {
     // \fixed c' { c' c, } -> c'' (octave 5) and c (octave 3)
-    let mei = parse_and_import("\\fixed c' { c'4 c, }");
+    let (mei, _ext_store) = parse_and_import("\\fixed c' { c'4 c, }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 2);
 
@@ -1363,7 +1348,7 @@ fn import_fixed_with_octave_marks() {
 #[test]
 fn import_fixed_with_accidentals() {
     // \fixed c' { cis4 bes } -> cis' (octave 4, sharp) and bes' (octave 4, flat)
-    let mei = parse_and_import("\\fixed c' { cis4 bes }");
+    let (mei, _ext_store) = parse_and_import("\\fixed c' { cis4 bes }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 2);
 
@@ -1388,7 +1373,7 @@ fn import_fixed_no_sequential_dependency() {
     // Unlike \relative, \fixed does NOT update the reference pitch after each note.
     // \fixed c' { c g c g } -> all at octave 4 (c' g' c' g')
     // In \relative c' { c g c g } -> c'=4, g=3 (closest g below c), c=4 (up from g), g=3
-    let mei = parse_and_import("\\fixed c' { c4 g c g }");
+    let (mei, _ext_store) = parse_and_import("\\fixed c' { c4 g c g }");
     let children = layer_children(&mei);
     assert_eq!(children.len(), 4);
 

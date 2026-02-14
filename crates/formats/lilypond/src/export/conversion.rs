@@ -1,6 +1,7 @@
 //! MEI -> LilyPond pitch/duration/event conversion for export.
 
 use tusk_model::elements::ChordChild;
+use tusk_model::extensions::ExtensionStore;
 use tusk_model::generated::data::{DataAccidentalGesturalBasic, DataDurationCmn};
 
 use crate::model::note::{ChordEvent, ChordRepetitionEvent, PostEvent};
@@ -132,10 +133,10 @@ fn extract_pitch_from_note(note: &tusk_model::elements::Note) -> Pitch {
 
 /// Convert an MEI Chord to a LilyPond ChordEvent or ChordRepetitionEvent.
 ///
-/// If the chord has a `tusk:chord-rep,` label, it originated from a `q`
+/// If the chord has a chord_repetition in ext_store, it originated from a `q`
 /// (chord repetition) and is emitted as `Music::ChordRepetition` for lossless
 /// roundtrip.
-pub(super) fn convert_mei_chord(chord: &tusk_model::elements::Chord) -> Music {
+pub(super) fn convert_mei_chord(chord: &tusk_model::elements::Chord, ext_store: &ExtensionStore) -> Music {
     let duration = extract_chord_duration(chord);
 
     // Chord tie: if any child note has @tie="i" or "m", the chord has a tie
@@ -148,14 +149,14 @@ pub(super) fn convert_mei_chord(chord: &tusk_model::elements::Chord) -> Music {
         post_events.push(PostEvent::Tie);
     }
 
-    // Restore tweak post-events from label
-    restore_tweak_post_events(chord.common.label.as_deref(), &mut post_events);
+    // Restore tweak post-events from ext_store
+    restore_tweak_post_events_from_ext(chord.common.xml_id.as_deref(), &mut post_events, ext_store);
 
     // Emit \tweak id for non-auto-generated xml:ids
     emit_id_tweak_if_needed(chord.common.xml_id.as_deref(), &mut post_events);
 
-    // Check for chord repetition label (typed JSON)
-    if has_label_segment(chord.common.label.as_deref(), "tusk:chord-rep,") {
+    // Check for chord repetition in ext_store
+    if chord.common.xml_id.as_deref().is_some_and(|id| ext_store.chord_repetition(id).is_some()) {
         return Music::ChordRepetition(ChordRepetitionEvent {
             duration,
             post_events,
@@ -199,9 +200,9 @@ fn extract_chord_duration(chord: &tusk_model::elements::Chord) -> Option<Duratio
 }
 
 /// Convert an MEI Note to a LilyPond NoteEvent (or DrumNote/DrumChord if labeled).
-pub(super) fn convert_mei_note(note: &tusk_model::elements::Note) -> Music {
-    // Check for drum label first
-    if let Some(drum_music) = try_convert_drum_label(note) {
+pub(super) fn convert_mei_note(note: &tusk_model::elements::Note, ext_store: &ExtensionStore) -> Music {
+    // Check for drum event in ext_store first
+    if let Some(drum_music) = try_convert_drum_ext(note, ext_store) {
         return drum_music;
     }
 
@@ -209,15 +210,15 @@ pub(super) fn convert_mei_note(note: &tusk_model::elements::Note) -> Music {
     let duration = extract_note_duration(note);
     let mut post_events = Vec::new();
 
-    // @tie="i" or "m" → PostEvent::Tie (start or continuation)
+    // @tie="i" or "m" -> PostEvent::Tie (start or continuation)
     if let Some(ref tie) = note.note_anl.tie
         && (tie.0 == "i" || tie.0 == "m")
     {
         post_events.push(PostEvent::Tie);
     }
 
-    // Restore tweak post-events from label
-    restore_tweak_post_events(note.common.label.as_deref(), &mut post_events);
+    // Restore tweak post-events from ext_store
+    restore_tweak_post_events_from_ext(note.common.xml_id.as_deref(), &mut post_events, ext_store);
 
     // Emit \tweak id for non-auto-generated xml:ids
     emit_id_tweak_if_needed(note.common.xml_id.as_deref(), &mut post_events);
@@ -230,10 +231,10 @@ pub(super) fn convert_mei_note(note: &tusk_model::elements::Note) -> Music {
     })
 }
 
-/// Try to convert a note with a `tusk:drum,` label back to drum mode music.
-fn try_convert_drum_label(note: &tusk_model::elements::Note) -> Option<Music> {
-    let json = extract_label_segment(note.common.label.as_deref(), "tusk:drum,")?;
-    let de: tusk_model::DrumEvent = serde_json::from_str(json).ok()?;
+/// Try to convert a note with a drum event in ext_store back to drum mode music.
+fn try_convert_drum_ext(note: &tusk_model::elements::Note, ext_store: &ExtensionStore) -> Option<Music> {
+    let id = note.common.xml_id.as_deref()?;
+    let de = ext_store.drum_event(id)?;
     parse_drum_event_str(&de.serialized)
 }
 
@@ -264,10 +265,10 @@ fn parse_drum_event_str(s: &str) -> Option<Music> {
 }
 
 /// Convert an MEI Rest to a LilyPond RestEvent or pitched rest.
-pub(super) fn convert_mei_rest(rest: &tusk_model::elements::Rest) -> Music {
-    // Check for pitched rest label (typed JSON)
-    if let Some(json) = extract_label_segment(rest.common.label.as_deref(), "tusk:pitched-rest,")
-        && let Ok(pr) = serde_json::from_str::<tusk_model::PitchedRest>(json)
+pub(super) fn convert_mei_rest(rest: &tusk_model::elements::Rest, ext_store: &ExtensionStore) -> Music {
+    // Check for pitched rest in ext_store
+    if let Some(id) = rest.common.xml_id.as_deref()
+        && let Some(pr) = ext_store.pitched_rest(id)
         && let Some(mut note_event) = parse_pitched_rest_label(&pr.pitch, rest)
     {
         emit_id_tweak_if_needed(rest.common.xml_id.as_deref(), &mut note_event.post_events);
@@ -322,17 +323,16 @@ fn parse_pitched_rest_label(
 }
 
 /// Convert an MEI MRest to a LilyPond MultiMeasureRestEvent.
-pub(super) fn convert_mei_mrest(mrest: &tusk_model::elements::MRest) -> Music {
-    // Restore duration from typed JSON label
-    let duration =
-        extract_label_segment(mrest.common.label.as_deref(), "tusk:mrest,").and_then(|json| {
-            let info: tusk_model::MultiMeasureRestInfo = serde_json::from_str(json).ok()?;
-            Some(Duration {
-                base: info.base,
-                dots: info.dots,
-                multipliers: info.multipliers,
-            })
-        });
+pub(super) fn convert_mei_mrest(mrest: &tusk_model::elements::MRest, ext_store: &ExtensionStore) -> Music {
+    // Restore duration from ext_store
+    let duration = mrest.common.xml_id.as_deref().and_then(|id| {
+        let info = ext_store.mrest_info(id)?;
+        Some(Duration {
+            base: info.base,
+            dots: info.dots,
+            multipliers: info.multipliers.clone(),
+        })
+    });
 
     let mut post_events = Vec::new();
     emit_id_tweak_if_needed(mrest.common.xml_id.as_deref(), &mut post_events);
@@ -408,33 +408,19 @@ fn emit_id_tweak_if_needed(xml_id: Option<&str>, post_events: &mut Vec<PostEvent
     });
 }
 
-/// Restore tweak post-events from a label string.
-///
-/// Scans pipe-separated label segments for `tusk:tweak,{json}` and
-/// re-parses them into `PostEvent::Tweak` entries.
-fn restore_tweak_post_events(label: Option<&str>, post_events: &mut Vec<PostEvent>) {
-    let label = match label {
-        Some(l) => l,
+/// Restore tweak post-events from ext_store.
+fn restore_tweak_post_events_from_ext(xml_id: Option<&str>, post_events: &mut Vec<PostEvent>, ext_store: &ExtensionStore) {
+    let id = match xml_id {
+        Some(id) => id,
         None => return,
     };
-    for segment in label.split('|') {
-        if let Some(json) = segment.strip_prefix("tusk:tweak,")
-            && let Ok(serialized) = serde_json::from_str::<String>(json)
-            && let Some(tweak) = parse_tweak_str(&serialized)
-        {
-            post_events.push(tweak);
+    if let Some(tweaks) = ext_store.tweak_infos(id) {
+        for tweak_info in tweaks {
+            if let Some(tweak) = parse_tweak_str(&tweak_info.path) {
+                post_events.push(tweak);
+            }
         }
     }
-}
-
-/// Check if a label contains a segment with the given prefix.
-fn has_label_segment(label: Option<&str>, prefix: &str) -> bool {
-    label.is_some_and(|l| l.split('|').any(|seg| seg.starts_with(prefix)))
-}
-
-/// Find and extract a label segment with the given prefix, returning the rest after the prefix.
-fn extract_label_segment<'a>(label: Option<&'a str>, prefix: &str) -> Option<&'a str> {
-    label.and_then(|l| l.split('|').find_map(|seg| seg.strip_prefix(prefix)))
 }
 
 /// Parse a serialized tweak string (e.g. `\tweak color #red`) back into a PostEvent::Tweak.

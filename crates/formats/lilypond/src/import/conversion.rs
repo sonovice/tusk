@@ -6,6 +6,7 @@ use tusk_model::generated::data::{
     DataAccidentalWrittenBasic, DataAugmentdot, DataDuration, DataDurationCmn, DataDurationrests,
     DataOctave, DataPitchname,
 };
+use tusk_model::ExtensionStore;
 
 use crate::model::{self, Duration, NoteEvent, RestEvent, SkipEvent};
 
@@ -226,17 +227,16 @@ pub(super) fn convert_skip(skip: &SkipEvent, id: u32) -> Space {
     mei_space
 }
 
-/// Convert a pitched rest (note with \rest) to an MEI Rest with label.
-pub(super) fn convert_pitched_rest(note: &NoteEvent, id: u32) -> Rest {
+/// Convert a pitched rest (note with \rest) to an MEI Rest.
+pub(super) fn convert_pitched_rest(note: &NoteEvent, id: u32, ext_store: &mut ExtensionStore) -> Rest {
     let mut mei_rest = Rest::default();
-    mei_rest.common.xml_id = Some(format!("ly-rest-{id}"));
+    let eid = format!("ly-rest-{id}");
+    mei_rest.common.xml_id = Some(eid.clone());
 
-    // Store pitch position as typed JSON label for roundtrip
     let pr = tusk_model::PitchedRest {
         pitch: format!("{}{}", note.pitch.to_note_name(), note.pitch.octave_marks()),
     };
-    let json = serde_json::to_string(&pr).unwrap_or_default();
-    mei_rest.common.label = Some(format!("tusk:pitched-rest,{json}"));
+    ext_store.insert_pitched_rest(eid, pr);
 
     if let Some(ref dur) = note.duration {
         apply_duration_to_rest(dur, &mut mei_rest);
@@ -249,15 +249,13 @@ pub(super) fn convert_pitched_rest(note: &NoteEvent, id: u32) -> Rest {
 ///
 /// Drum notes are stored as unpitched MEI notes with `@label` carrying
 /// typed JSON for lossless roundtrip. Duration is applied normally.
-pub(super) fn convert_drum_note(dn: &crate::model::note::DrumNoteEvent, id: u32) -> Note {
+pub(super) fn convert_drum_note(dn: &crate::model::note::DrumNoteEvent, id: u32, ext_store: &mut ExtensionStore) -> Note {
     let mut mei_note = Note::default();
-    mei_note.common.xml_id = Some(format!("ly-note-{id}"));
+    let eid = format!("ly-note-{id}");
+    mei_note.common.xml_id = Some(eid.clone());
 
-    // Serialize the drum event as typed JSON label
     let serialized = crate::serializer::serialize_drum_note_event(dn);
-    let de = tusk_model::DrumEvent { serialized };
-    let json = super::utils::escape_json_pipe(&serde_json::to_string(&de).unwrap_or_default());
-    mei_note.common.label = Some(format!("tusk:drum,{json}"));
+    ext_store.insert_drum_event(eid, tusk_model::DrumEvent { serialized });
 
     // Duration
     if let Some(ref dur) = dn.duration {
@@ -271,15 +269,13 @@ pub(super) fn convert_drum_note(dn: &crate::model::note::DrumNoteEvent, id: u32)
 ///
 /// Drum chords (simultaneous drum hits) are stored as a single MEI note with
 /// `@label` carrying typed JSON for lossless roundtrip.
-pub(super) fn convert_drum_chord(dc: &crate::model::note::DrumChordEvent, id: u32) -> Note {
+pub(super) fn convert_drum_chord(dc: &crate::model::note::DrumChordEvent, id: u32, ext_store: &mut ExtensionStore) -> Note {
     let mut mei_note = Note::default();
-    mei_note.common.xml_id = Some(format!("ly-note-{id}"));
+    let eid = format!("ly-note-{id}");
+    mei_note.common.xml_id = Some(eid.clone());
 
-    // Serialize the drum chord event as typed JSON label
     let serialized = crate::serializer::serialize_drum_chord_event(dc);
-    let de = tusk_model::DrumEvent { serialized };
-    let json = super::utils::escape_json_pipe(&serde_json::to_string(&de).unwrap_or_default());
-    mei_note.common.label = Some(format!("tusk:drum,{json}"));
+    ext_store.insert_drum_event(eid, tusk_model::DrumEvent { serialized });
 
     // Duration
     if let Some(ref dur) = dc.duration {
@@ -290,19 +286,18 @@ pub(super) fn convert_drum_chord(dc: &crate::model::note::DrumChordEvent, id: u3
 }
 
 /// Convert a LilyPond MultiMeasureRestEvent to an MEI MRest.
-pub(super) fn convert_mrest(rest: &model::MultiMeasureRestEvent, id: u32) -> MRest {
+pub(super) fn convert_mrest(rest: &model::MultiMeasureRestEvent, id: u32, ext_store: &mut ExtensionStore) -> MRest {
     let mut mei_mrest = MRest::default();
-    mei_mrest.common.xml_id = Some(format!("ly-mrest-{id}"));
+    let eid = format!("ly-mrest-{id}");
+    mei_mrest.common.xml_id = Some(eid.clone());
 
-    // Store full duration info as typed JSON label for lossless roundtrip
     if let Some(ref dur) = rest.duration {
         let info = tusk_model::MultiMeasureRestInfo {
             base: dur.base,
             dots: dur.dots,
             multipliers: dur.multipliers.clone(),
         };
-        let json = serde_json::to_string(&info).unwrap_or_default();
-        mei_mrest.common.label = Some(format!("tusk:mrest,{json}"));
+        ext_store.insert_mrest_info(eid, info);
     }
 
     mei_mrest

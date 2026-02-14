@@ -4,8 +4,9 @@
 use super::*;
 use crate::parser::Parser;
 use tusk_model::elements::{Mei, MeiChild, ScoreChild, SectionChild, Staff, StaffChild};
+use tusk_model::extensions::ExtensionStore;
 
-fn parse_and_import(src: &str) -> Mei {
+fn parse_and_import(src: &str) -> (Mei, ExtensionStore) {
     let file = Parser::new(src).unwrap().parse().unwrap();
     import(&file).unwrap()
 }
@@ -92,7 +93,7 @@ macro_rules! fixture_import_test {
                 Ok(Ok(f)) => f,
                 _ => return, // fixture doesn't parse — skip
             };
-            let result = import(&file);
+            let result = import(&file).map(|(mei, _)| mei);
             // NoMusic is acceptable (markup-only files, etc.)
             match &result {
                 Err(ImportError::NoMusic) => return,
@@ -174,7 +175,7 @@ fixture_import_test!(fixture_comprehensive, "fragment_import_comprehensive.ly");
 
 #[test]
 fn tweak_id_sets_xml_id_on_note() {
-    let mei = parse_and_import(r#"{ c4\tweak id #"my-note" d4 }"#);
+    let (mei, _ext_store) = parse_and_import(r#"{ c4\tweak id #"my-note" d4 }"#);
     let children = first_layer_children(&mei);
     let mut found = false;
     for child in children {
@@ -188,14 +189,15 @@ fn tweak_id_sets_xml_id_on_note() {
 }
 
 #[test]
-fn tweak_id_preserved_in_label_for_roundtrip() {
-    let mei = parse_and_import(r#"{ c4\tweak id #"note-1" }"#);
+fn tweak_id_preserved_in_ext_store_for_roundtrip() {
+    let (mei, ext_store) = parse_and_import(r#"{ c4\tweak id #"note-1" }"#);
     let children = first_layer_children(&mei);
     if let tusk_model::elements::LayerChild::Note(n) = &children[0] {
-        let label = n.common.label.as_deref().unwrap_or("");
+        let id = n.common.xml_id.as_deref().expect("note should have xml:id");
+        let tweaks = ext_store.tweak_infos(id);
         assert!(
-            label.contains("tusk:tweak,"),
-            "label should contain tweak: {label}"
+            tweaks.is_some(),
+            "note should have tweak info in ext_store"
         );
     } else {
         panic!("expected Note");
@@ -204,7 +206,7 @@ fn tweak_id_preserved_in_label_for_roundtrip() {
 
 #[test]
 fn tweak_non_id_does_not_set_xml_id() {
-    let mei = parse_and_import(r#"{ c4\tweak color #red }"#);
+    let (mei, _ext_store) = parse_and_import(r#"{ c4\tweak color #red }"#);
     let children = first_layer_children(&mei);
     if let tusk_model::elements::LayerChild::Note(n) = &children[0] {
         // xml:id should be auto-generated, not "red"
@@ -217,11 +219,11 @@ fn tweak_non_id_does_not_set_xml_id() {
 }
 
 // ---------------------------------------------------------------------------
-// Cross-staff: \change Staff stores label
+// Cross-staff: \change Staff stores context change
 // ---------------------------------------------------------------------------
 
 #[test]
-fn context_change_produces_label_on_notes() {
+fn context_change_produces_ext_store_entry_on_notes() {
     let src = r#"
     <<
       \new Staff = "up" {
@@ -231,14 +233,14 @@ fn context_change_produces_label_on_notes() {
       \new Staff = "down" { s1 }
     >>
     "#;
-    let mei = parse_and_import(src);
+    let (mei, ext_store) = parse_and_import(src);
     let children = first_layer_children(&mei);
     for child in children {
         if let tusk_model::elements::LayerChild::Note(n) = child {
-            let label = n.common.label.as_deref().unwrap_or("");
+            let id = n.common.xml_id.as_deref().unwrap_or("");
             assert!(
-                label.contains("tusk:context-change,"),
-                "note should have cross-staff label: {label}"
+                ext_store.context_change(id).is_some(),
+                "note should have context change in ext_store"
             );
         }
     }
@@ -248,8 +250,8 @@ fn context_change_produces_label_on_notes() {
 fn context_change_roundtrips_via_export() {
     let src = r#"{ \change Staff = "other" c4 d4 }"#;
     let file = Parser::new(src).unwrap().parse().unwrap();
-    let mei = import(&file).unwrap();
-    let ly_out = crate::export::export(&mei).unwrap();
+    let (mei, ext_store) = import(&file).unwrap();
+    let ly_out = crate::export::export(&mei, &ext_store).unwrap();
     let serialized = crate::serializer::serialize(&ly_out);
     assert!(
         serialized.contains(r#"\change Staff = "other""#),
@@ -264,7 +266,7 @@ fn context_change_roundtrips_via_export() {
 #[test]
 fn nested_tuplets_produce_multiple_tuplet_spans() {
     let src = r#"{ \tuplet 3/2 { c8 \tuplet 5/4 { d16 e f g a } b8 } }"#;
-    let mei = parse_and_import(src);
+    let (mei, _ext_store) = parse_and_import(src);
     let mc = measure_children(&mei);
     let tuplet_count = mc
         .iter()
@@ -281,16 +283,16 @@ fn nested_repeats_produce_multiple_dirs() {
             e4 f
         }
     }"#;
-    let mei = parse_and_import(src);
+    let (mei, ext_store) = parse_and_import(src);
     let mc = measure_children(&mei);
     let repeat_dirs: Vec<_> = mc
         .iter()
         .filter_map(|c| {
             if let tusk_model::elements::MeasureChild::Dir(d) = c
                 && d.common
-                    .label
+                    .xml_id
                     .as_deref()
-                    .is_some_and(|l| l.starts_with("tusk:repeat"))
+                    .is_some_and(|id| ext_store.repeat_info(id).is_some())
             {
                 return Some(d);
             }
@@ -303,7 +305,7 @@ fn nested_repeats_produce_multiple_dirs() {
 #[test]
 fn multiple_voices_create_multiple_layers() {
     let src = r#"\new Staff << { c4 d e f } \\ { a,4 b c d } >>"#;
-    let mei = parse_and_import(src);
+    let (mei, _ext_store) = parse_and_import(src);
     let staff = first_staff(&mei).expect("should have staff");
     let layer_count = staff
         .children
@@ -318,18 +320,18 @@ fn multiple_voices_create_multiple_layers() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn property_override_stored_in_label() {
+fn property_override_stored_in_ext_store() {
     let src = r#"{ \override NoteHead.color = #red c4 }"#;
-    let mei = parse_and_import(src);
+    let (mei, ext_store) = parse_and_import(src);
     let mc = measure_children(&mei);
     let prop_dirs: Vec<_> = mc
         .iter()
         .filter_map(|c| {
             if let tusk_model::elements::MeasureChild::Dir(d) = c
                 && d.common
-                    .label
+                    .xml_id
                     .as_deref()
-                    .is_some_and(|l| l.starts_with("tusk:prop"))
+                    .is_some_and(|id| ext_store.property_op_info(id).is_some())
             {
                 return Some(d);
             }
@@ -337,26 +339,28 @@ fn property_override_stored_in_label() {
         })
         .collect();
     assert_eq!(prop_dirs.len(), 1, "should have 1 property dir");
-    let label = prop_dirs[0].common.label.as_deref().unwrap();
+    let id = prop_dirs[0].common.xml_id.as_deref().unwrap();
+    let info = ext_store.property_op_info(id).unwrap();
     assert!(
-        label.contains("override"),
-        "property label should contain override: {label}"
+        info.serialized.contains("override"),
+        "property info should contain override: {}",
+        info.serialized
     );
 }
 
 #[test]
-fn music_function_stored_in_label() {
+fn music_function_stored_in_ext_store() {
     let src = r#"{ \tag "part" c4 }"#;
-    let mei = parse_and_import(src);
+    let (mei, ext_store) = parse_and_import(src);
     let mc = measure_children(&mei);
     let func_dirs: Vec<_> = mc
         .iter()
         .filter_map(|c| {
             if let tusk_model::elements::MeasureChild::Dir(d) = c
                 && d.common
-                    .label
+                    .xml_id
                     .as_deref()
-                    .is_some_and(|l| l.starts_with("tusk:func"))
+                    .is_some_and(|id| ext_store.function_call(id).is_some())
             {
                 return Some(d);
             }
@@ -369,17 +373,17 @@ fn music_function_stored_in_label() {
 #[test]
 fn grace_notes_have_grace_attribute() {
     let src = r#"{ \grace { e16 } d4 }"#;
-    let mei = parse_and_import(src);
+    let (mei, ext_store) = parse_and_import(src);
     let children = first_layer_children(&mei);
     if let tusk_model::elements::LayerChild::Note(n) = &children[0] {
         assert!(
             n.note_log.grace.is_some(),
             "grace note should have @grace attribute"
         );
-        let label = n.common.label.as_deref().unwrap_or("");
+        let id = n.common.xml_id.as_deref().expect("note should have xml:id");
         assert!(
-            label.contains("tusk:grace,"),
-            "grace note should have grace label: {label}"
+            ext_store.grace_info(id).is_some(),
+            "grace note should have grace info in ext_store"
         );
     } else {
         panic!("expected Note as first child");
@@ -392,7 +396,7 @@ fn figured_bass_creates_fb_elements() {
         \new Staff { c4 d e f }
         \figures { \< 6 \>4 \< 4 3 \>4 \< _ \>4 \< 6 \>4 }
     >>"#;
-    let mei = parse_and_import(src);
+    let (mei, _ext_store) = parse_and_import(src);
     let mc = measure_children(&mei);
     let fb_count = mc
         .iter()
@@ -407,7 +411,7 @@ fn chord_mode_creates_harm_elements() {
         \new ChordNames \chordmode { c4 g:7 }
         \new Staff { c'4 b }
     >>"#;
-    let mei = parse_and_import(src);
+    let (mei, _ext_store) = parse_and_import(src);
     let mc = measure_children(&mei);
     let harm_count = mc
         .iter()
@@ -425,7 +429,7 @@ fn header_metadata_imported_to_mei_head() {
     }
     { c4 d e f }
     "#;
-    let mei = parse_and_import(src);
+    let (mei, _ext_store) = parse_and_import(src);
     let has_head = mei
         .children
         .iter()
@@ -461,7 +465,7 @@ fn all_fixtures_import_without_panic() {
                 continue;
             }
         };
-        match import(&file) {
+        match import(&file).map(|(mei, _)| mei) {
             Ok(_) => tested += 1,
             Err(ImportError::NoMusic) => {
                 no_music += 1;
@@ -483,7 +487,7 @@ fn comprehensive_fixture_imports_successfully() {
     let src =
         include_str!("../../../../../tests/fixtures/lilypond/fragment_import_comprehensive.ly");
     let file = Parser::new(src).unwrap().parse().unwrap();
-    let mei = import(&file).unwrap();
+    let (mei, _) = import(&file).unwrap();
 
     let has_music = mei.children.iter().any(|c| matches!(c, MeiChild::Music(_)));
     assert!(has_music, "should have Music element");

@@ -2,6 +2,7 @@
 
 use tusk_model::PitchContext as ExtPitchContext;
 use tusk_model::elements::{ScoreDefChild, StaffGrpChild};
+use tusk_model::extensions::ExtensionStore;
 
 use crate::model::pitch::Pitch;
 use crate::model::{Music, NoteEvent};
@@ -23,8 +24,8 @@ pub(super) enum PitchCtx {
     Transpose { from: Pitch, to: Pitch },
 }
 
-/// Extract pitch context from all staffDefs.
-pub(super) fn extract_pitch_contexts(score: &tusk_model::elements::Score) -> Vec<Option<PitchCtx>> {
+/// Extract pitch context from all staffDefs via ext_store.
+pub(super) fn extract_pitch_contexts(score: &tusk_model::elements::Score, ext_store: &ExtensionStore) -> Vec<Option<PitchCtx>> {
     let mut result = Vec::new();
     for child in &score.children {
         if let tusk_model::elements::ScoreChild::ScoreDef(score_def) = child {
@@ -32,7 +33,11 @@ pub(super) fn extract_pitch_contexts(score: &tusk_model::elements::Score) -> Vec
                 if let ScoreDefChild::StaffGrp(grp) = sd_child {
                     for grp_child in &grp.children {
                         if let StaffGrpChild::StaffDef(sdef) = grp_child {
-                            result.push(parse_pitch_context_json(sdef));
+                            let ctx = sdef.basic.xml_id.as_deref().and_then(|id| {
+                                let ext = ext_store.pitch_context(id)?;
+                                Some(ext_pitch_context_to_pitch_ctx(ext.clone()))
+                            });
+                            result.push(ctx);
                         }
                     }
                 }
@@ -40,20 +45,6 @@ pub(super) fn extract_pitch_contexts(score: &tusk_model::elements::Score) -> Vec
         }
     }
     result
-}
-
-/// Parse the `tusk:pitch-context,{json}` segment from a staffDef label.
-fn parse_pitch_context_json(staff_def: &tusk_model::elements::StaffDef) -> Option<PitchCtx> {
-    let label = staff_def.labelled.label.as_deref()?;
-
-    for segment in label.split('|') {
-        if let Some(json) = segment.strip_prefix("tusk:pitch-context,")
-            && let Ok(ext) = serde_json::from_str::<ExtPitchContext>(json)
-        {
-            return Some(ext_pitch_context_to_pitch_ctx(ext));
-        }
-    }
-    None
 }
 
 /// Convert a typed ExtPitchContext to the export PitchCtx.

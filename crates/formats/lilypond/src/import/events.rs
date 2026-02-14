@@ -4,6 +4,7 @@
 //! relative pitches and transpositions to absolute values.
 
 use tusk_model::generated::data::DataGrace;
+use tusk_model::ExtensionStore;
 
 use crate::model::{self, Music, NoteEvent, PostEvent, RestEvent};
 
@@ -422,20 +423,16 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
     }
 }
 
-/// Build a grace label string from a `GraceType`.
-///
-/// Format: `tusk:grace,{json}` using typed `GraceInfo`.
-pub(super) fn grace_type_label(gt: &GraceType) -> String {
-    let info = match gt {
+/// Convert a GraceType to GraceInfo for ext_store.
+fn grace_type_to_info(gt: &GraceType) -> tusk_model::GraceInfo {
+    match gt {
         GraceType::Grace => tusk_model::GraceInfo::Grace,
         GraceType::Acciaccatura => tusk_model::GraceInfo::Acciaccatura,
         GraceType::Appoggiatura => tusk_model::GraceInfo::Appoggiatura,
         GraceType::AfterGrace { fraction } => tusk_model::GraceInfo::AfterGrace {
             fraction: *fraction,
         },
-    };
-    let json = super::utils::escape_json_pipe(&serde_json::to_string(&info).unwrap_or_default());
-    format!("tusk:grace,{json}")
+    }
 }
 
 /// Map a `GraceType` to the corresponding MEI `DataGrace` value.
@@ -448,29 +445,19 @@ fn grace_type_to_data_grace(gt: &GraceType) -> DataGrace {
     }
 }
 
-/// Set `@grace` and label on an MEI note for a grace context.
-pub(super) fn apply_grace_to_note(note: &mut tusk_model::elements::Note, gt: &GraceType) {
+/// Set `@grace` on an MEI note and store grace info in ext_store.
+pub(super) fn apply_grace_to_note(note: &mut tusk_model::elements::Note, gt: &GraceType, ext_store: &mut ExtensionStore) {
     note.note_log.grace = Some(grace_type_to_data_grace(gt));
-    let label = grace_type_label(gt);
-    match &mut note.common.label {
-        Some(existing) => {
-            existing.push('|');
-            existing.push_str(&label);
-        }
-        None => note.common.label = Some(label),
+    if let Some(ref id) = note.common.xml_id {
+        ext_store.insert_grace_info(id.clone(), grace_type_to_info(gt));
     }
 }
 
-/// Set `@grace` and label on an MEI chord for a grace context.
-pub(super) fn apply_grace_to_chord(chord: &mut tusk_model::elements::Chord, gt: &GraceType) {
+/// Set `@grace` on an MEI chord and store grace info in ext_store.
+pub(super) fn apply_grace_to_chord(chord: &mut tusk_model::elements::Chord, gt: &GraceType, ext_store: &mut ExtensionStore) {
     chord.chord_log.grace = Some(grace_type_to_data_grace(gt));
-    let label = grace_type_label(gt);
-    match &mut chord.common.label {
-        Some(existing) => {
-            existing.push('|');
-            existing.push_str(&label);
-        }
-        None => chord.common.label = Some(label),
+    if let Some(ref id) = chord.common.xml_id {
+        ext_store.insert_grace_info(id.clone(), grace_type_to_info(gt));
     }
 }
 

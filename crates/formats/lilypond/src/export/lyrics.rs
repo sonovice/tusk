@@ -5,6 +5,7 @@
 
 use tusk_model::elements::{LayerChild, NoteChild, SylChild, VerseChild};
 use tusk_model::{LyricsInfo as ExtLyricsInfo, LyricsStyle};
+use tusk_model::extensions::ExtensionStore;
 
 use crate::model::Music;
 use crate::model::note::{LyricEvent, PostEvent};
@@ -26,18 +27,14 @@ pub(super) enum LyricsExportStyle {
     LyricMode,
 }
 
-/// Parse lyrics export info from a typed JSON label segment.
-///
-/// Label format: `tusk:lyrics-info,{json}`
-pub(super) fn parse_lyrics_info_json(segment: &str) -> Option<LyricsExportInfo> {
-    let json = segment.strip_prefix("tusk:lyrics-info,")?;
-    let ext: ExtLyricsInfo = serde_json::from_str(json).ok()?;
+/// Convert a typed ExtLyricsInfo to LyricsExportInfo.
+pub(super) fn ext_lyrics_info_to_export(ext: &ExtLyricsInfo) -> Option<LyricsExportInfo> {
     let style = match ext.style {
         LyricsStyle::AddLyrics => LyricsExportStyle::AddLyrics {
             count: ext.count.unwrap_or(1),
         },
         LyricsStyle::LyricsTo => LyricsExportStyle::LyricsTo {
-            voice_id: ext.voice_id.unwrap_or_default(),
+            voice_id: ext.voice_id.clone().unwrap_or_default(),
         },
         LyricsStyle::LyricMode => LyricsExportStyle::LyricMode,
     };
@@ -47,19 +44,19 @@ pub(super) fn parse_lyrics_info_json(segment: &str) -> Option<LyricsExportInfo> 
 /// Extract lyric events from notes in a layer, for a given verse number.
 ///
 /// Returns a list of `Music::Lyric` events, one per note, with hyphens
-/// and extenders reconstructed from `@wordpos`, `@con`, and labels.
-pub(super) fn extract_lyrics_from_layer(layer_children: &[LayerChild], verse_n: u32) -> Vec<Music> {
+/// and extenders reconstructed from `@wordpos`, `@con`, and ext_store.
+pub(super) fn extract_lyrics_from_layer(layer_children: &[LayerChild], verse_n: u32, ext_store: &ExtensionStore) -> Vec<Music> {
     let mut lyrics = Vec::new();
-    extract_lyrics_from_children(layer_children, verse_n, &mut lyrics);
+    extract_lyrics_from_children(layer_children, verse_n, &mut lyrics, ext_store);
     lyrics
 }
 
-fn extract_lyrics_from_children(children: &[LayerChild], verse_n: u32, lyrics: &mut Vec<Music>) {
+fn extract_lyrics_from_children(children: &[LayerChild], verse_n: u32, lyrics: &mut Vec<Music>, ext_store: &ExtensionStore) {
     let verse_n_str = verse_n.to_string();
     for child in children {
         match child {
             LayerChild::Note(note) => {
-                if let Some(lyric) = extract_lyric_from_note_children(&note.children, &verse_n_str)
+                if let Some(lyric) = extract_lyric_from_note_children(&note.children, &verse_n_str, ext_store)
                 {
                     lyrics.push(Music::Lyric(lyric));
                 }
@@ -67,7 +64,7 @@ fn extract_lyrics_from_children(children: &[LayerChild], verse_n: u32, lyrics: &
             LayerChild::Chord(chord) => {
                 if let Some(tusk_model::elements::ChordChild::Note(note)) = chord.children.first()
                     && let Some(lyric) =
-                        extract_lyric_from_note_children(&note.children, &verse_n_str)
+                        extract_lyric_from_note_children(&note.children, &verse_n_str, ext_store)
                 {
                     lyrics.push(Music::Lyric(lyric));
                 }
@@ -77,7 +74,7 @@ fn extract_lyrics_from_children(children: &[LayerChild], verse_n: u32, lyrics: &
                     match bc {
                         tusk_model::elements::BeamChild::Note(note) => {
                             if let Some(lyric) =
-                                extract_lyric_from_note_children(&note.children, &verse_n_str)
+                                extract_lyric_from_note_children(&note.children, &verse_n_str, ext_store)
                             {
                                 lyrics.push(Music::Lyric(lyric));
                             }
@@ -86,7 +83,7 @@ fn extract_lyrics_from_children(children: &[LayerChild], verse_n: u32, lyrics: &
                             if let Some(tusk_model::elements::ChordChild::Note(note)) =
                                 chord.children.first()
                                 && let Some(lyric) =
-                                    extract_lyric_from_note_children(&note.children, &verse_n_str)
+                                    extract_lyric_from_note_children(&note.children, &verse_n_str, ext_store)
                             {
                                 lyrics.push(Music::Lyric(lyric));
                             }
@@ -104,19 +101,20 @@ fn extract_lyrics_from_children(children: &[LayerChild], verse_n: u32, lyrics: &
 fn extract_lyric_from_note_children(
     children: &[NoteChild],
     verse_n_str: &str,
+    ext_store: &ExtensionStore,
 ) -> Option<LyricEvent> {
     for nc in children {
         if let NoteChild::Verse(verse) = nc
             && verse.common.n.as_ref().is_some_and(|n| n.0 == verse_n_str)
         {
-            return verse_to_lyric_event(verse);
+            return verse_to_lyric_event(verse, ext_store);
         }
     }
     None
 }
 
 /// Convert a Verse element to a LyricEvent.
-fn verse_to_lyric_event(verse: &tusk_model::elements::Verse) -> Option<LyricEvent> {
+fn verse_to_lyric_event(verse: &tusk_model::elements::Verse, ext_store: &ExtensionStore) -> Option<LyricEvent> {
     // Get the first Syl child
     let syl = verse.children.iter().find_map(|vc| {
         if let VerseChild::Syl(syl) = vc {
@@ -148,12 +146,12 @@ fn verse_to_lyric_event(verse: &tusk_model::elements::Verse) -> Option<LyricEven
         post_events.push(PostEvent::LyricHyphen);
     }
 
-    // Extender: check for typed JSON label
+    // Extender: check ext_store by syl xml:id
     if syl
         .common
-        .label
+        .xml_id
         .as_deref()
-        .is_some_and(|l| l.split('|').any(|seg| seg.starts_with("tusk:extender,")))
+        .is_some_and(|id| ext_store.lyric_extender(id).is_some())
     {
         post_events.push(PostEvent::LyricExtender);
     }
@@ -173,12 +171,13 @@ pub(super) fn wrap_music_with_lyrics(
     staff_music: Music,
     layer_children: &[LayerChild],
     info: &LyricsExportInfo,
+    ext_store: &ExtensionStore,
 ) -> Music {
     match &info.style {
         LyricsExportStyle::AddLyrics { count } => {
             let mut all_lyrics = Vec::new();
             for verse_n in 1..=*count {
-                let lyric_items = extract_lyrics_from_layer(layer_children, verse_n as u32);
+                let lyric_items = extract_lyrics_from_layer(layer_children, verse_n as u32, ext_store);
                 if !lyric_items.is_empty() {
                     let lyric_body = Music::LyricMode {
                         body: Box::new(Music::Sequential(lyric_items)),
@@ -196,7 +195,7 @@ pub(super) fn wrap_music_with_lyrics(
             }
         }
         LyricsExportStyle::LyricsTo { voice_id } => {
-            let lyric_items = extract_lyrics_from_layer(layer_children, 1);
+            let lyric_items = extract_lyrics_from_layer(layer_children, 1, ext_store);
             if lyric_items.is_empty() {
                 staff_music
             } else {
@@ -207,21 +206,14 @@ pub(super) fn wrap_music_with_lyrics(
                     voice_id: voice_id.clone(),
                     lyrics: Box::new(lyric_body),
                 };
-                // Return the staff music as-is; lyrics_to will be added as sibling
-                // The caller handles adding to simultaneous
-                // Actually, we need to return the lyrics_to separately
-                // For now, wrap in simultaneous with the staff music
-                // This will be handled at a higher level
                 Music::Simultaneous(vec![staff_music, lyrics_to])
             }
         }
         LyricsExportStyle::LyricMode => {
-            // Standalone lyric mode — not wrapped
-            let lyric_items = extract_lyrics_from_layer(layer_children, 1);
+            let lyric_items = extract_lyrics_from_layer(layer_children, 1, ext_store);
             if lyric_items.is_empty() {
                 staff_music
             } else {
-                // Just return music followed by lyrics in a sequential block
                 Music::AddLyrics {
                     music: Box::new(staff_music),
                     lyrics: vec![Music::LyricMode {

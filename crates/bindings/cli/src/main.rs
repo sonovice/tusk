@@ -67,12 +67,12 @@ fn main() -> Result<()> {
         .with_context(|| format!("Could not detect format of output file: {:?}", cli.output))?;
 
     // Convert: input → MEI → output.
-    let mei = importer
+    let (mei, ext_store) = importer
         .import_from_str(&input_content)
         .with_context(|| format!("Failed to import {} file", importer.name()))?;
 
     let output_content = exporter
-        .export_to_string(&mei)
+        .export_to_string(&mei, &ext_store)
         .with_context(|| format!("Failed to export to {}", exporter.name()))?;
 
     // Write output file.

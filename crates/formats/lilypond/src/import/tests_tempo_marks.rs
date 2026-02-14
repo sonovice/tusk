@@ -3,8 +3,9 @@
 use super::*;
 use crate::parser::Parser;
 use tusk_model::elements::{Mei, MeiChild, ScoreChild, SectionChild};
+use tusk_model::extensions::{ControlEvent, ExtensionStore};
 
-fn parse_and_import(src: &str) -> Mei {
+fn parse_and_import(src: &str) -> (Mei, ExtensionStore) {
     let file = Parser::new(src).unwrap().parse().unwrap();
     import(&file).unwrap()
 }
@@ -73,8 +74,8 @@ fn measure_dirs(mei: &Mei) -> Vec<&tusk_model::elements::Dir> {
     dirs
 }
 
-/// Walk MEI to find the staffDef label.
-fn staff_def_label(mei: &Mei) -> Option<String> {
+/// Walk MEI to find the staffDef xml:id.
+fn staff_def_id(mei: &Mei) -> Option<String> {
     for child in &mei.children {
         if let MeiChild::Music(music) = child {
             for mc in &music.children {
@@ -93,7 +94,7 @@ fn staff_def_label(mei: &Mei) -> Option<String> {
                                                 sdef,
                                             ) = gc
                                             {
-                                                return sdef.labelled.label.clone();
+                                                return sdef.basic.xml_id.clone();
                                             }
                                         }
                                     }
@@ -114,7 +115,7 @@ fn staff_def_label(mei: &Mei) -> Option<String> {
 
 #[test]
 fn import_tempo_creates_mei_tempo() {
-    let mei = parse_and_import(r#"{ \tempo "Allegro" 4 = 120 c'4 }"#);
+    let (mei, _ext_store) = parse_and_import(r#"{ \tempo "Allegro" 4 = 120 c'4 }"#);
     let tempos = measure_tempos(&mei);
     assert_eq!(tempos.len(), 1, "should create one <tempo>");
 
@@ -129,7 +130,7 @@ fn import_tempo_creates_mei_tempo() {
 
 #[test]
 fn import_tempo_metronome_only() {
-    let mei = parse_and_import(r#"{ \tempo 2 = 60 c'4 }"#);
+    let (mei, _ext_store) = parse_and_import(r#"{ \tempo 2 = 60 c'4 }"#);
     let tempos = measure_tempos(&mei);
     assert_eq!(tempos.len(), 1);
 
@@ -139,7 +140,7 @@ fn import_tempo_metronome_only() {
 
 #[test]
 fn import_tempo_text_only() {
-    let mei = parse_and_import(r#"{ \tempo "Andante" c'4 }"#);
+    let (mei, _ext_store) = parse_and_import(r#"{ \tempo "Andante" c'4 }"#);
     let tempos = measure_tempos(&mei);
     assert_eq!(tempos.len(), 1);
 
@@ -152,7 +153,7 @@ fn import_tempo_text_only() {
 
 #[test]
 fn import_tempo_range() {
-    let mei = parse_and_import(r#"{ \tempo "Vivace" 4. = 132-144 c'4 }"#);
+    let (mei, _ext_store) = parse_and_import(r#"{ \tempo "Vivace" 4. = 132-144 c'4 }"#);
     let tempos = measure_tempos(&mei);
     assert_eq!(tempos.len(), 1);
 
@@ -169,15 +170,15 @@ fn import_tempo_range() {
 
 #[test]
 fn import_mark_creates_dir() {
-    let mei = parse_and_import(r#"{ \mark \default c'4 }"#);
+    let (mei, ext_store) = parse_and_import(r#"{ \mark \default c'4 }"#);
     let dirs = measure_dirs(&mei);
     let mark_dirs: Vec<_> = dirs
         .iter()
         .filter(|d| {
             d.common
-                .label
+                .xml_id
                 .as_deref()
-                .is_some_and(|l| l.starts_with("tusk:mark,"))
+                .is_some_and(|id| ext_store.mark_info(id).is_some())
         })
         .collect();
     assert_eq!(mark_dirs.len(), 1, "should create one mark Dir");
@@ -185,15 +186,15 @@ fn import_mark_creates_dir() {
 
 #[test]
 fn import_mark_string() {
-    let mei = parse_and_import(r#"{ \mark "A" c'4 }"#);
+    let (mei, ext_store) = parse_and_import(r#"{ \mark "A" c'4 }"#);
     let dirs = measure_dirs(&mei);
     let mark_dirs: Vec<_> = dirs
         .iter()
         .filter(|d| {
             d.common
-                .label
+                .xml_id
                 .as_deref()
-                .is_some_and(|l| l.starts_with("tusk:mark,"))
+                .is_some_and(|id| ext_store.mark_info(id).is_some())
         })
         .collect();
     assert_eq!(mark_dirs.len(), 1);
@@ -201,52 +202,64 @@ fn import_mark_string() {
 
 #[test]
 fn import_textmark_creates_dir() {
-    let mei = parse_and_import(r#"{ \textMark "Fine" c'4 }"#);
+    let (mei, ext_store) = parse_and_import(r#"{ \textMark "Fine" c'4 }"#);
     let dirs = measure_dirs(&mei);
     let textmark_dirs: Vec<_> = dirs
         .iter()
         .filter(|d| {
             d.common
-                .label
+                .xml_id
                 .as_deref()
-                .is_some_and(|l| l.starts_with("tusk:textmark,"))
+                .is_some_and(|id| ext_store.textmark_info(id).is_some())
         })
         .collect();
     assert_eq!(textmark_dirs.len(), 1, "should create one textMark Dir");
 }
 
 // ---------------------------------------------------------------------------
-// Event sequence label tests
+// Event sequence tests
 // ---------------------------------------------------------------------------
 
 #[test]
 fn import_tempo_in_event_sequence() {
-    let mei = parse_and_import(r#"{ \tempo 4 = 100 c'4 d'4 }"#);
-    let label = staff_def_label(&mei).expect("should have staffDef label");
-    assert!(
-        label.contains("\"Tempo\""),
-        "event sequence should contain Tempo: {label}"
-    );
+    let (mei, ext_store) = parse_and_import(r#"{ \tempo 4 = 100 c'4 d'4 }"#);
+    let sd_id = staff_def_id(&mei).expect("should have staffDef id");
+    let es = ext_store
+        .event_sequence(&sd_id)
+        .expect("should have event sequence");
+    let has_tempo = es
+        .events
+        .iter()
+        .any(|e| matches!(e.event, ControlEvent::Tempo { .. }));
+    assert!(has_tempo, "event sequence should contain Tempo");
 }
 
 #[test]
 fn import_mark_in_event_sequence() {
-    let mei = parse_and_import(r#"{ \mark \default c'4 d'4 }"#);
-    let label = staff_def_label(&mei).expect("should have staffDef label");
-    assert!(
-        label.contains("\"Mark\""),
-        "event sequence should contain Mark: {label}"
-    );
+    let (mei, ext_store) = parse_and_import(r#"{ \mark \default c'4 d'4 }"#);
+    let sd_id = staff_def_id(&mei).expect("should have staffDef id");
+    let es = ext_store
+        .event_sequence(&sd_id)
+        .expect("should have event sequence");
+    let has_mark = es
+        .events
+        .iter()
+        .any(|e| matches!(e.event, ControlEvent::Mark { .. }));
+    assert!(has_mark, "event sequence should contain Mark");
 }
 
 #[test]
 fn import_textmark_in_event_sequence() {
-    let mei = parse_and_import(r#"{ \textMark "Fine" c'4 d'4 }"#);
-    let label = staff_def_label(&mei).expect("should have staffDef label");
-    assert!(
-        label.contains("\"TextMark\""),
-        "event sequence should contain TextMark: {label}"
-    );
+    let (mei, ext_store) = parse_and_import(r#"{ \textMark "Fine" c'4 d'4 }"#);
+    let sd_id = staff_def_id(&mei).expect("should have staffDef id");
+    let es = ext_store
+        .event_sequence(&sd_id)
+        .expect("should have event sequence");
+    let has_textmark = es
+        .events
+        .iter()
+        .any(|e| matches!(e.event, ControlEvent::TextMark { .. }));
+    assert!(has_textmark, "event sequence should contain TextMark");
 }
 
 // ---------------------------------------------------------------------------
@@ -260,7 +273,7 @@ fn import_fixture_tempo_marks() {
         "/../../../tests/fixtures/lilypond/fragment_tempo_marks.ly"
     ))
     .unwrap();
-    let mei = parse_and_import(&src);
+    let (mei, ext_store) = parse_and_import(&src);
 
     // Should have multiple tempo control events
     let tempos = measure_tempos(&mei);
@@ -270,15 +283,14 @@ fn import_fixture_tempo_marks() {
         tempos.len()
     );
 
-    // Should have mark/textMark dirs
+    // Should have mark/textMark dirs (via ext_store)
     let dirs = measure_dirs(&mei);
     let mark_dirs: Vec<_> = dirs
         .iter()
         .filter(|d| {
-            d.common
-                .label
-                .as_deref()
-                .is_some_and(|l| l.starts_with("tusk:mark,") || l.starts_with("tusk:textmark,"))
+            d.common.xml_id.as_deref().is_some_and(|id| {
+                ext_store.mark_info(id).is_some() || ext_store.textmark_info(id).is_some()
+            })
         })
         .collect();
     assert!(
@@ -288,17 +300,26 @@ fn import_fixture_tempo_marks() {
     );
 
     // Event sequence should have all entries
-    let label = staff_def_label(&mei).expect("should have staffDef label");
+    let sd_id = staff_def_id(&mei).expect("should have staffDef id");
+    let es = ext_store
+        .event_sequence(&sd_id)
+        .expect("should have event sequence");
+    let has_tempo = es
+        .events
+        .iter()
+        .any(|e| matches!(e.event, ControlEvent::Tempo { .. }));
+    let has_mark = es
+        .events
+        .iter()
+        .any(|e| matches!(e.event, ControlEvent::Mark { .. }));
+    let has_textmark = es
+        .events
+        .iter()
+        .any(|e| matches!(e.event, ControlEvent::TextMark { .. }));
+    assert!(has_tempo, "event sequence should contain Tempo entries");
+    assert!(has_mark, "event sequence should contain Mark entries");
     assert!(
-        label.contains("\"Tempo\""),
-        "event sequence should contain Tempo entries: {label}"
-    );
-    assert!(
-        label.contains("\"Mark\""),
-        "event sequence should contain Mark entries: {label}"
-    );
-    assert!(
-        label.contains("\"TextMark\""),
-        "event sequence should contain TextMark entries: {label}"
+        has_textmark,
+        "event sequence should contain TextMark entries"
     );
 }

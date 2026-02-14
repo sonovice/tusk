@@ -3,30 +3,36 @@
 use crate::import::import;
 use crate::parser::Parser;
 use tusk_model::elements::{MeiChild, MeiHeadChild};
+use tusk_model::extensions::ExtensionStore;
 
 fn parse(src: &str) -> crate::model::LilyPondFile {
     Parser::new(src).unwrap().parse().unwrap()
 }
 
-/// Collect all ExtMeta labels from MeiHead.
-fn ext_meta_labels(mei: &tusk_model::elements::Mei) -> Vec<String> {
-    let mut labels = Vec::new();
+fn parse_and_import(src: &str) -> (tusk_model::elements::Mei, ExtensionStore) {
+    let file = parse(src);
+    import(&file).unwrap()
+}
+
+/// Collect all ExtMeta xml:ids from MeiHead.
+fn ext_meta_ids(mei: &tusk_model::elements::Mei) -> Vec<String> {
+    let mut ids = Vec::new();
     for child in &mei.children {
         if let MeiChild::MeiHead(head) = child {
             for hc in &head.children {
                 if let MeiHeadChild::ExtMeta(ext) = hc
-                    && let Some(label) = &ext.common.label
+                    && let Some(id) = &ext.common.xml_id
                 {
-                    labels.push(label.clone());
+                    ids.push(id.clone());
                 }
             }
         }
     }
-    labels
+    ids
 }
 
-/// Get the ScoreDef label from MEI.
-fn score_def_label(mei: &tusk_model::elements::Mei) -> String {
+/// Get the ScoreDef xml:id from MEI.
+fn score_def_id(mei: &tusk_model::elements::Mei) -> Option<String> {
     for child in &mei.children {
         if let MeiChild::Music(music) = child {
             let body = match music.children.first() {
@@ -43,18 +49,18 @@ fn score_def_label(mei: &tusk_model::elements::Mei) -> String {
             };
             for sc in &score.children {
                 if let tusk_model::elements::ScoreChild::ScoreDef(sd) = sc {
-                    return sd.common.label.clone().unwrap_or_default();
+                    return sd.common.xml_id.clone();
                 }
             }
         }
     }
-    String::new()
+    None
 }
 
 #[test]
 fn header_title_populates_mei_title() {
     let file = parse("\\header { title = \"My Title\" }\n\\score { { c4 } }");
-    let mei = import(&file).unwrap();
+    let (mei, _) = import(&file).unwrap();
 
     for child in &mei.children {
         if let MeiChild::MeiHead(head) = child {
@@ -81,47 +87,47 @@ fn header_title_populates_mei_title() {
 
 #[test]
 fn header_stored_as_typed_output_def() {
-    let file = parse("\\header { title = \"Test\" composer = \"Bach\" }\n\\score { { c4 } }");
-    let mei = import(&file).unwrap();
+    let (mei, ext_store) =
+        parse_and_import("\\header { title = \"Test\" composer = \"Bach\" }\n\\score { { c4 } }");
 
-    let labels = ext_meta_labels(&mei);
-    let output_defs_label = labels
-        .iter()
-        .find(|l| l.starts_with("tusk:output-defs,"))
-        .expect("output-defs ExtMeta not found");
-    // JSON should contain Header kind with title and composer assignments
-    assert!(
-        output_defs_label.contains("Header"),
-        "got: {output_defs_label}"
-    );
-    assert!(
-        output_defs_label.contains("title"),
-        "got: {output_defs_label}"
-    );
-    assert!(
-        output_defs_label.contains("composer"),
-        "got: {output_defs_label}"
-    );
+    let ids = ext_meta_ids(&mei);
+    assert!(!ids.is_empty(), "should have ExtMeta with xml:id");
+    let defs = ext_store
+        .output_defs(&ids[0])
+        .expect("output-defs should exist in ext_store");
+    // Should contain a Header kind with title and composer
+    let has_header = defs.iter().any(|d| d.kind == tusk_model::OutputDefKind::Header);
+    assert!(has_header, "should contain Header output def");
+    let header = defs.iter().find(|d| d.kind == tusk_model::OutputDefKind::Header).unwrap();
+    let has_title = header.assignments.iter().any(|a| a.name == "title");
+    let has_composer = header.assignments.iter().any(|a| a.name == "composer");
+    assert!(has_title, "should contain title assignment");
+    assert!(has_composer, "should contain composer assignment");
 }
 
 #[test]
 fn output_defs_ext_meta_has_summary_text() {
-    let file = parse("\\header { title = \"Test\" }\n\\score { { c4 } }");
-    let mei = import(&file).unwrap();
+    let (mei, ext_store) =
+        parse_and_import("\\header { title = \"Test\" }\n\\score { { c4 } }");
 
+    let ids = ext_meta_ids(&mei);
+    assert!(!ids.is_empty(), "should have ExtMeta");
+    let defs = ext_store
+        .output_defs(&ids[0])
+        .expect("output-defs should exist");
+
+    // ExtMeta should still have a summary text child
     for child in &mei.children {
         if let MeiChild::MeiHead(head) = child {
             for hc in &head.children {
                 if let MeiHeadChild::ExtMeta(ext) = hc
-                    && ext
-                        .common
-                        .label
-                        .as_deref()
-                        .is_some_and(|l| l.starts_with("tusk:output-defs,"))
+                    && ext.common.xml_id.as_deref() == Some(&ids[0])
                 {
                     assert!(!ext.children.is_empty());
                     let tusk_model::elements::ExtMetaChild::Text(t) = &ext.children[0];
                     assert!(t.contains("Header"), "summary should list kind, got: {t}");
+                    // Also verify defs are valid
+                    assert!(!defs.is_empty());
                     return;
                 }
             }
@@ -132,97 +138,89 @@ fn output_defs_ext_meta_has_summary_text() {
 
 #[test]
 fn paper_stored_as_typed_output_def() {
-    let file = parse("\\paper { indent = 0 }\n\\score { { c4 } }");
-    let mei = import(&file).unwrap();
+    let (mei, ext_store) =
+        parse_and_import("\\paper { indent = 0 }\n\\score { { c4 } }");
 
-    let labels = ext_meta_labels(&mei);
-    let output_defs_label = labels
-        .iter()
-        .find(|l| l.starts_with("tusk:output-defs,"))
-        .expect("output-defs ExtMeta not found");
-    assert!(
-        output_defs_label.contains("Paper"),
-        "got: {output_defs_label}"
-    );
-    assert!(
-        output_defs_label.contains("indent"),
-        "got: {output_defs_label}"
-    );
+    let ids = ext_meta_ids(&mei);
+    assert!(!ids.is_empty(), "should have ExtMeta");
+    let defs = ext_store
+        .output_defs(&ids[0])
+        .expect("output-defs should exist");
+    let has_paper = defs.iter().any(|d| d.kind == tusk_model::OutputDefKind::Paper);
+    assert!(has_paper, "should contain Paper output def");
+    let paper = defs.iter().find(|d| d.kind == tusk_model::OutputDefKind::Paper).unwrap();
+    let has_indent = paper.assignments.iter().any(|a| a.name == "indent");
+    assert!(has_indent, "should contain indent assignment");
 }
 
 #[test]
 fn layout_stored_as_typed_output_def() {
-    let file = parse("\\layout { ragged-right = ##t }\n\\score { { c4 } }");
-    let mei = import(&file).unwrap();
+    let (mei, ext_store) =
+        parse_and_import("\\layout { ragged-right = ##t }\n\\score { { c4 } }");
 
-    let labels = ext_meta_labels(&mei);
-    assert!(
-        labels.iter().any(|l| l.starts_with("tusk:output-defs,")),
-        "output-defs ExtMeta not found"
-    );
+    let ids = ext_meta_ids(&mei);
+    assert!(!ids.is_empty(), "should have ExtMeta");
+    let defs = ext_store
+        .output_defs(&ids[0])
+        .expect("output-defs should exist");
+    let has_layout = defs.iter().any(|d| d.kind == tusk_model::OutputDefKind::Layout);
+    assert!(has_layout, "should contain Layout output def");
 }
 
 #[test]
 fn midi_stored_as_typed_output_def() {
-    let file = parse("\\midi { }\n\\score { { c4 } }");
-    let mei = import(&file).unwrap();
+    let (mei, ext_store) =
+        parse_and_import("\\midi { }\n\\score { { c4 } }");
 
-    let labels = ext_meta_labels(&mei);
-    assert!(
-        labels.iter().any(|l| l.starts_with("tusk:output-defs,")),
-        "output-defs ExtMeta not found"
-    );
+    let ids = ext_meta_ids(&mei);
+    assert!(!ids.is_empty(), "should have ExtMeta");
+    let defs = ext_store
+        .output_defs(&ids[0])
+        .expect("output-defs should exist");
+    let has_midi = defs.iter().any(|d| d.kind == tusk_model::OutputDefKind::Midi);
+    assert!(has_midi, "should contain Midi output def");
 }
 
 #[test]
 fn score_level_header_in_score_def_label() {
-    let file = parse("\\score { { c4 } \\header { piece = \"Intro\" } }");
-    let mei = import(&file).unwrap();
-    let label = score_def_label(&mei);
-    assert!(
-        label.contains("tusk:score-output-defs,"),
-        "score-output-defs label missing, got: {label}"
-    );
-    assert!(
-        label.contains("Header"),
-        "should contain Header kind, got: {label}"
-    );
+    let (mei, ext_store) =
+        parse_and_import("\\score { { c4 } \\header { piece = \"Intro\" } }");
+    let sd_id = score_def_id(&mei).expect("ScoreDef should have xml:id");
+    let defs = ext_store
+        .output_defs(&sd_id)
+        .expect("score-output-defs should exist");
+    let has_header = defs.iter().any(|d| d.kind == tusk_model::OutputDefKind::Header);
+    assert!(has_header, "should contain Header kind");
 }
 
 #[test]
 fn score_level_layout_in_score_def_label() {
-    let file = parse("\\score { { c4 } \\layout { ragged-right = ##t } }");
-    let mei = import(&file).unwrap();
-    let label = score_def_label(&mei);
-    assert!(
-        label.contains("tusk:score-output-defs,"),
-        "score-output-defs label missing, got: {label}"
-    );
-    assert!(
-        label.contains("Layout"),
-        "should contain Layout kind, got: {label}"
-    );
+    let (mei, ext_store) =
+        parse_and_import("\\score { { c4 } \\layout { ragged-right = ##t } }");
+    let sd_id = score_def_id(&mei).expect("ScoreDef should have xml:id");
+    let defs = ext_store
+        .output_defs(&sd_id)
+        .expect("score-output-defs should exist");
+    let has_layout = defs.iter().any(|d| d.kind == tusk_model::OutputDefKind::Layout);
+    assert!(has_layout, "should contain Layout kind");
 }
 
 #[test]
 fn score_level_midi_in_score_def_label() {
-    let file = parse("\\score { { c4 } \\midi { } }");
-    let mei = import(&file).unwrap();
-    let label = score_def_label(&mei);
-    assert!(
-        label.contains("tusk:score-output-defs,"),
-        "score-output-defs label missing, got: {label}"
-    );
-    assert!(
-        label.contains("Midi"),
-        "should contain Midi kind, got: {label}"
-    );
+    let (mei, ext_store) =
+        parse_and_import("\\score { { c4 } \\midi { } }");
+    let sd_id = score_def_id(&mei).expect("ScoreDef should have xml:id");
+    let defs = ext_store
+        .output_defs(&sd_id)
+        .expect("score-output-defs should exist");
+    let has_midi = defs.iter().any(|d| d.kind == tusk_model::OutputDefKind::Midi);
+    assert!(has_midi, "should contain Midi kind");
 }
 
 #[test]
 fn no_header_gives_empty_title_stmt() {
     let file = parse("\\score { { c4 } }");
-    let mei = import(&file).unwrap();
+    let (mei, _) = import(&file).unwrap();
 
     for child in &mei.children {
         if let MeiChild::MeiHead(head) = child {
@@ -244,88 +242,87 @@ fn no_header_gives_empty_title_stmt() {
 #[test]
 fn layout_with_context_stored() {
     let src = "\\layout {\n  \\context {\n    \\Score\n    \\remove \"Bar_number_engraver\"\n  }\n}\n\\score { { c4 } }";
-    let file = parse(src);
-    let mei = import(&file).unwrap();
+    let (mei, ext_store) = parse_and_import(src);
 
-    let labels = ext_meta_labels(&mei);
-    let output_defs_label = labels
-        .iter()
-        .find(|l| l.starts_with("tusk:output-defs,"))
-        .expect("output-defs ExtMeta not found");
-    // JSON should contain Layout kind with context block info
+    let ids = ext_meta_ids(&mei);
+    assert!(!ids.is_empty(), "should have ExtMeta");
+    let defs = ext_store
+        .output_defs(&ids[0])
+        .expect("output-defs should exist");
+    let has_layout = defs.iter().any(|d| d.kind == tusk_model::OutputDefKind::Layout);
+    assert!(has_layout, "should contain Layout");
+    let layout = defs.iter().find(|d| d.kind == tusk_model::OutputDefKind::Layout).unwrap();
+    // Layout should have context blocks
     assert!(
-        output_defs_label.contains("Layout"),
-        "should contain Layout, got: {output_defs_label}"
-    );
-    assert!(
-        output_defs_label.contains("Score") || output_defs_label.contains("context"),
-        "should contain context info, got: {output_defs_label}"
+        !layout.context_blocks.is_empty(),
+        "layout should have context blocks"
     );
 }
 
 #[test]
 fn labels_use_tusk_prefix() {
-    let file = parse(
+    let (mei, ext_store) = parse_and_import(
         "\\header { title = \"Test\" }\n\\paper { indent = 0 }\n\\layout { }\n\\midi { }\n\\score { { c4 } \\header { piece = \"P\" } \\layout { } \\midi { } }",
     );
-    let mei = import(&file).unwrap();
 
-    // ExtMeta labels must use tusk: prefix
-    let labels = ext_meta_labels(&mei);
-    assert!(!labels.is_empty(), "expected at least one ExtMeta label");
-    for label in &labels {
-        assert!(
-            label.starts_with("tusk:"),
-            "expected tusk: prefix, got: {label}"
-        );
-    }
+    // ExtMeta should exist and have output defs in ext_store
+    let ids = ext_meta_ids(&mei);
+    assert!(!ids.is_empty(), "expected at least one ExtMeta with id");
+    let defs = ext_store
+        .output_defs(&ids[0])
+        .expect("top-level output defs should exist");
+    assert!(!defs.is_empty());
 
-    // ScoreDef label segments must use tusk: prefix
-    let sd_label = score_def_label(&mei);
-    for segment in sd_label.split('|') {
-        if !segment.is_empty() {
-            assert!(
-                segment.starts_with("tusk:"),
-                "expected tusk: prefix in ScoreDef label segment, got: {segment}"
-            );
-        }
-    }
+    // ScoreDef should have output defs in ext_store
+    let sd_id = score_def_id(&mei).expect("ScoreDef should have xml:id");
+    let score_defs = ext_store
+        .output_defs(&sd_id)
+        .expect("score-level output defs should exist");
+    assert!(!score_defs.is_empty());
 }
 
 #[test]
 fn layout_with_context_def_keywords_stored() {
     let src = "\\layout {\n  \\context {\n    \\Staff\n    \\accepts \"CueVoice\"\n    \\denies \"Voice\"\n    \\alias \"RhythmicStaff\"\n    \\defaultchild \"Voice\"\n    \\description \"Custom staff\"\n    \\name \"MyStaff\"\n  }\n}\n\\score { { c4 } }";
-    let file = parse(src);
-    let mei = import(&file).unwrap();
+    let (mei, ext_store) = parse_and_import(src);
 
-    let labels = ext_meta_labels(&mei);
-    let output_defs_label = labels
+    let ids = ext_meta_ids(&mei);
+    assert!(!ids.is_empty(), "should have ExtMeta");
+    let defs = ext_store
+        .output_defs(&ids[0])
+        .expect("output-defs should exist");
+    let layout = defs
         .iter()
-        .find(|l| l.starts_with("tusk:output-defs,"))
-        .expect("output-defs ExtMeta not found");
-    // All context-def keywords should be in the JSON
+        .find(|d| d.kind == tusk_model::OutputDefKind::Layout)
+        .expect("should have Layout");
+    // All context-def keywords should be in context blocks
+    let all_items: Vec<_> = layout
+        .context_blocks
+        .iter()
+        .flat_map(|cb| &cb.items)
+        .collect();
     assert!(
-        output_defs_label.contains("Accepts"),
-        "got: {output_defs_label}"
+        all_items.iter().any(|i| matches!(i, tusk_model::ExtContextModItem::Accepts(_))),
+        "should contain Accepts"
     );
     assert!(
-        output_defs_label.contains("Denies"),
-        "got: {output_defs_label}"
+        all_items.iter().any(|i| matches!(i, tusk_model::ExtContextModItem::Denies(_))),
+        "should contain Denies"
     );
     assert!(
-        output_defs_label.contains("Alias"),
-        "got: {output_defs_label}"
+        all_items.iter().any(|i| matches!(i, tusk_model::ExtContextModItem::Alias(_))),
+        "should contain Alias"
     );
     assert!(
-        output_defs_label.contains("DefaultChild"),
-        "got: {output_defs_label}"
+        all_items.iter().any(|i| matches!(i, tusk_model::ExtContextModItem::DefaultChild(_))),
+        "should contain DefaultChild"
     );
     assert!(
-        output_defs_label.contains("Description"),
-        "got: {output_defs_label}"
+        all_items.iter().any(|i| matches!(i, tusk_model::ExtContextModItem::Description(_))),
+        "should contain Description"
     );
     assert!(
-        output_defs_label.contains("Name"),
-        "got: {output_defs_label}"
+        all_items.iter().any(|i| matches!(i, tusk_model::ExtContextModItem::Name(_))),
+        "should contain Name"
     );
 }

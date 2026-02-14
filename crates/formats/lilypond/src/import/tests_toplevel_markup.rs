@@ -1,14 +1,15 @@
 use super::*;
 use crate::parser::Parser;
 use tusk_model::elements::{Mei, MeiChild, ScoreChild};
+use tusk_model::ExtensionStore;
 
-fn parse_and_import(src: &str) -> Mei {
+fn parse_and_import(src: &str) -> (Mei, ExtensionStore) {
     let file = Parser::new(src).unwrap().parse().unwrap();
     import(&file).unwrap()
 }
 
-/// Find the scoreDef label.
-fn score_def_label(mei: &Mei) -> Option<String> {
+/// Find the scoreDef xml:id.
+fn score_def_id(mei: &Mei) -> Option<String> {
     for child in &mei.children {
         if let MeiChild::Music(music) = child {
             for mc in &music.children {
@@ -19,22 +20,12 @@ fn score_def_label(mei: &Mei) -> Option<String> {
                         let tusk_model::elements::MdivChild::Score(score) = dc;
                         for sc in &score.children {
                             if let ScoreChild::ScoreDef(sd) = sc {
-                                return sd.common.label.clone();
+                                return sd.common.xml_id.clone();
                             }
                         }
                     }
                 }
             }
-        }
-    }
-    None
-}
-
-/// Extract the `tusk:toplevel-markup,{json}` segment from a label.
-fn extract_toplevel_markup_json(label: &str) -> Option<&str> {
-    for segment in label.split('|') {
-        if let Some(json) = segment.strip_prefix("tusk:toplevel-markup,") {
-            return Some(json);
         }
     }
     None
@@ -48,10 +39,11 @@ fn extract_toplevel_markup_json(label: &str) -> Option<&str> {
 fn import_toplevel_markup_stored() {
     let src = r#"\markup { "Title Page" }
 \score { \new Staff { c'4 } }"#;
-    let mei = parse_and_import(src);
-    let label = score_def_label(&mei).expect("scoreDef should have label");
-    let json = extract_toplevel_markup_json(&label).expect("should have toplevel-markup segment");
-    let markups: Vec<ToplevelMarkup> = serde_json::from_str(json).unwrap();
+    let (mei, ext_store) = parse_and_import(src);
+    let sd_id = score_def_id(&mei).expect("scoreDef should have xml:id");
+    let markups = ext_store
+        .toplevel_markups(&sd_id)
+        .expect("should have toplevel markups in ext_store");
     assert_eq!(markups.len(), 1);
     assert_eq!(markups[0].position, 0);
     assert!(matches!(markups[0].kind, ToplevelMarkupKind::Markup(_)));
@@ -64,10 +56,11 @@ fn import_toplevel_markup_stored() {
 fn import_toplevel_markuplist_stored() {
     let src = r#"\markuplist { "First" "Second" }
 \score { \new Staff { c'4 } }"#;
-    let mei = parse_and_import(src);
-    let label = score_def_label(&mei).expect("scoreDef should have label");
-    let json = extract_toplevel_markup_json(&label).expect("should have toplevel-markup segment");
-    let markups: Vec<ToplevelMarkup> = serde_json::from_str(json).unwrap();
+    let (mei, ext_store) = parse_and_import(src);
+    let sd_id = score_def_id(&mei).expect("scoreDef should have xml:id");
+    let markups = ext_store
+        .toplevel_markups(&sd_id)
+        .expect("should have toplevel markups in ext_store");
     assert_eq!(markups.len(), 1);
     assert_eq!(markups[0].position, 0);
     assert!(
@@ -81,10 +74,11 @@ fn import_toplevel_markup_ordering_preserved() {
     let src = r#"\markup { "Before" }
 \score { \new Staff { c'4 } }
 \markup { "After" }"#;
-    let mei = parse_and_import(src);
-    let label = score_def_label(&mei).expect("scoreDef should have label");
-    let json = extract_toplevel_markup_json(&label).expect("should have toplevel-markup segment");
-    let markups: Vec<ToplevelMarkup> = serde_json::from_str(json).unwrap();
+    let (mei, ext_store) = parse_and_import(src);
+    let sd_id = score_def_id(&mei).expect("scoreDef should have xml:id");
+    let markups = ext_store
+        .toplevel_markups(&sd_id)
+        .expect("should have toplevel markups in ext_store");
     assert_eq!(markups.len(), 2, "two top-level markups");
     // First markup at position 0 (before score)
     assert_eq!(markups[0].position, 0);
@@ -97,10 +91,11 @@ fn import_mixed_markup_and_markuplist() {
     let src = r#"\markup { "Title" }
 \markuplist { "A" "B" }
 \score { \new Staff { c'4 } }"#;
-    let mei = parse_and_import(src);
-    let label = score_def_label(&mei).expect("scoreDef should have label");
-    let json = extract_toplevel_markup_json(&label).expect("should have toplevel-markup segment");
-    let markups: Vec<ToplevelMarkup> = serde_json::from_str(json).unwrap();
+    let (mei, ext_store) = parse_and_import(src);
+    let sd_id = score_def_id(&mei).expect("scoreDef should have xml:id");
+    let markups = ext_store
+        .toplevel_markups(&sd_id)
+        .expect("should have toplevel markups in ext_store");
     assert_eq!(markups.len(), 2);
     assert!(matches!(markups[0].kind, ToplevelMarkupKind::Markup(_)));
     assert!(matches!(markups[1].kind, ToplevelMarkupKind::MarkupList(_)));
@@ -111,13 +106,11 @@ fn import_mixed_markup_and_markuplist() {
 #[test]
 fn import_no_toplevel_markup_no_label_segment() {
     let src = r#"\score { \new Staff { c'4 } }"#;
-    let mei = parse_and_import(src);
-    let label = score_def_label(&mei);
-    // Either no label at all, or no toplevel-markup segment
-    if let Some(ref l) = label {
-        assert!(
-            extract_toplevel_markup_json(l).is_none(),
-            "should not have toplevel-markup segment"
-        );
-    }
+    let (mei, ext_store) = parse_and_import(src);
+    let sd_id = score_def_id(&mei).unwrap_or_default();
+    // No toplevel markups in ext_store
+    assert!(
+        ext_store.toplevel_markups(&sd_id).is_none(),
+        "should not have toplevel markups in ext_store"
+    );
 }

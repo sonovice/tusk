@@ -3,8 +3,9 @@
 use super::*;
 use crate::parser::Parser;
 use tusk_model::elements::{Mei, MeiChild, ScoreChild, SectionChild};
+use tusk_model::ExtensionStore;
 
-fn parse_and_import(src: &str) -> Mei {
+fn parse_and_import(src: &str) -> (Mei, ExtensionStore) {
     let file = Parser::new(src).unwrap().parse().unwrap();
     import(&file).unwrap()
 }
@@ -52,44 +53,47 @@ fn layer_notes(mei: &Mei) -> Vec<&tusk_model::elements::Note> {
 
 #[test]
 fn import_drummode_creates_notes() {
-    let mei = parse_and_import("\\drummode { bd4 sn4 hh4 }");
+    let (mei, _ext_store) = parse_and_import("\\drummode { bd4 sn4 hh4 }");
     let notes = layer_notes(&mei);
     assert_eq!(notes.len(), 3, "should create 3 notes from drum events");
 }
 
 #[test]
 fn drum_note_has_label() {
-    let mei = parse_and_import("\\drummode { bd4 }");
+    let (mei, ext_store) = parse_and_import("\\drummode { bd4 }");
     let notes = layer_notes(&mei);
     assert_eq!(notes.len(), 1);
-    let label = notes[0].common.label.as_deref().unwrap();
+    let id = notes[0].common.xml_id.as_deref().unwrap();
+    let drum = ext_store.drum_event(id).expect("should have drum event");
     assert!(
-        label.starts_with("tusk:drum,"),
-        "label should have drum prefix: {label}"
-    );
-    assert!(
-        label.contains("bd"),
-        "label should contain drum type: {label}"
+        drum.serialized.contains("bd"),
+        "drum event should contain bd: {}",
+        drum.serialized
     );
 }
 
 #[test]
 fn drum_chord_has_label() {
-    let mei = parse_and_import("\\drummode { <bd sn>4 }");
+    let (mei, ext_store) = parse_and_import("\\drummode { <bd sn>4 }");
     let notes = layer_notes(&mei);
     assert_eq!(notes.len(), 1);
-    let label = notes[0].common.label.as_deref().unwrap();
+    let id = notes[0].common.xml_id.as_deref().unwrap();
+    let drum = ext_store.drum_event(id).expect("should have drum event");
     assert!(
-        label.starts_with("tusk:drum,"),
-        "label should have drum prefix: {label}"
+        drum.serialized.contains("bd"),
+        "drum event should contain bd: {}",
+        drum.serialized
     );
-    assert!(label.contains("bd"), "label should contain bd: {label}");
-    assert!(label.contains("sn"), "label should contain sn: {label}");
+    assert!(
+        drum.serialized.contains("sn"),
+        "drum event should contain sn: {}",
+        drum.serialized
+    );
 }
 
 #[test]
 fn drum_note_has_xml_id() {
-    let mei = parse_and_import("\\drummode { bd4 }");
+    let (mei, _ext_store) = parse_and_import("\\drummode { bd4 }");
     let notes = layer_notes(&mei);
     assert!(
         notes[0].common.xml_id.is_some(),
@@ -108,7 +112,7 @@ fn drum_note_has_xml_id() {
 
 #[test]
 fn drum_note_has_duration() {
-    let mei = parse_and_import("\\drummode { bd8 }");
+    let (mei, _ext_store) = parse_and_import("\\drummode { bd8 }");
     let notes = layer_notes(&mei);
     assert!(
         notes[0].note_log.dur.is_some(),
@@ -118,10 +122,10 @@ fn drum_note_has_duration() {
 
 #[test]
 fn import_drum_staff_context() {
-    let mei = parse_and_import("\\new DrumStaff \\drummode { bd4 sn4 }");
+    let (mei, ext_store) = parse_and_import("\\new DrumStaff \\drummode { bd4 sn4 }");
     let notes = layer_notes(&mei);
     assert_eq!(notes.len(), 2);
-    // Should have DrumStaff context in staffDef label
+    // Should have DrumStaff context in ext_store via staffDef xml:id
     for child in &mei.children {
         if let MeiChild::Music(music) = child {
             for mc in &music.children {
@@ -136,10 +140,13 @@ fn import_drum_staff_context() {
                                     if let ScoreDefChild::StaffGrp(grp) = sdc {
                                         for gc in &grp.children {
                                             if let StaffGrpChild::StaffDef(sdef) = gc {
-                                                let label = sdef.labelled.label.as_deref().unwrap();
-                                                assert!(
-                                                    label.contains("DrumStaff"),
-                                                    "staffDef label should contain DrumStaff: {label}"
+                                                let id = sdef.basic.xml_id.as_deref().unwrap();
+                                                let ctx = ext_store
+                                                    .staff_context(id)
+                                                    .expect("should have staff context");
+                                                assert_eq!(
+                                                    ctx.context_type, "DrumStaff",
+                                                    "staff context should be DrumStaff"
                                                 );
                                             }
                                         }

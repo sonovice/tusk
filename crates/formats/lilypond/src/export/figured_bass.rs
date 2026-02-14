@@ -3,8 +3,8 @@
 //! Extracts figure events from MEI `<fb>` control events and
 //! reconstructs `\new FiguredBass \figuremode { ... }` context structure.
 
-use tusk_model::StaffContext;
 use tusk_model::elements::{MeasureChild, ScoreChild, ScoreDefChild, SectionChild};
+use tusk_model::extensions::ExtensionStore;
 
 use crate::model::Music;
 
@@ -14,11 +14,8 @@ pub(super) struct FiguredBassMeta {
     pub(super) with_block_str: Option<String>,
 }
 
-/// Collect figure events from Fb control events in the score.
-///
-/// Returns a list of `Music::Figure` items extracted from
-/// `<fb>` elements with `tusk:figure,{JSON}` labels.
-pub(super) fn collect_figure_mode_fbs(score: &tusk_model::elements::Score) -> Vec<Music> {
+/// Collect figure events from Fb control events in the score via ext_store.
+pub(super) fn collect_figure_mode_fbs(score: &tusk_model::elements::Score, ext_store: &ExtensionStore) -> Vec<Music> {
     let mut events = Vec::new();
     for child in &score.children {
         if let ScoreChild::Section(section) = child {
@@ -26,7 +23,7 @@ pub(super) fn collect_figure_mode_fbs(score: &tusk_model::elements::Score) -> Ve
                 if let SectionChild::Measure(measure) = sc {
                     for mc in &measure.children {
                         if let MeasureChild::Fb(fb) = mc
-                            && let Some(fe) = parse_figure_event_from_fb(fb)
+                            && let Some(fe) = parse_figure_event_from_ext(fb, ext_store)
                         {
                             events.push(Music::Figure(fe));
                         }
@@ -38,13 +35,13 @@ pub(super) fn collect_figure_mode_fbs(score: &tusk_model::elements::Score) -> Ve
     events
 }
 
-/// Parse a FigureEvent from an Fb element's typed JSON label.
-fn parse_figure_event_from_fb(
+/// Parse a FigureEvent from an Fb element via ext_store.
+fn parse_figure_event_from_ext(
     fb: &tusk_model::elements::Fb,
+    ext_store: &ExtensionStore,
 ) -> Option<crate::model::note::FigureEvent> {
-    let label = fb.common.label.as_deref()?;
-    let json = label.strip_prefix("tusk:figure,")?;
-    let info: tusk_model::FiguredBassInfo = serde_json::from_str(json).ok()?;
+    let id = fb.common.xml_id.as_deref()?;
+    let info = ext_store.figured_bass_info(id)?;
     parse_figure_event_str(&info.serialized)
 }
 
@@ -72,23 +69,23 @@ fn parse_figure_event_str(s: &str) -> Option<crate::model::note::FigureEvent> {
     None
 }
 
-/// Extract FiguredBass context metadata from the staffGrp label.
+/// Extract FiguredBass context metadata from the staffGrp via ext_store.
+///
+/// The import stores figured-bass context under key `"{grp_id}-figuredbass"`.
 pub(super) fn extract_figured_bass_meta(
     score: &tusk_model::elements::Score,
+    ext_store: &ExtensionStore,
 ) -> Option<FiguredBassMeta> {
     for child in &score.children {
         if let ScoreChild::ScoreDef(score_def) = child {
             for sd_child in &score_def.children {
-                if let ScoreDefChild::StaffGrp(grp) = sd_child
-                    && let Some(label) = &grp.common.label
-                {
-                    for segment in label.split('|') {
-                        if let Some(json) = segment.strip_prefix("tusk:figured-bass-context,")
-                            && let Ok(ctx) = serde_json::from_str::<StaffContext>(json)
-                        {
+                if let ScoreDefChild::StaffGrp(grp) = sd_child {
+                    if let Some(id) = grp.common.xml_id.as_deref() {
+                        let fb_key = format!("{id}-figuredbass");
+                        if let Some(ctx) = ext_store.staff_context(&fb_key) {
                             return Some(FiguredBassMeta {
-                                name: ctx.name,
-                                with_block_str: ctx.with_block,
+                                name: ctx.name.clone(),
+                                with_block_str: ctx.with_block.clone(),
                             });
                         }
                     }

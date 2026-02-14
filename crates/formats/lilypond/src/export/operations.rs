@@ -1,12 +1,13 @@
 //! Property operation and music function call roundtrip for LilyPond export.
 //!
-//! Collects `<dir>` control events with `tusk:prop,{JSON}` and `tusk:func,{JSON}` labels
-//! from MEI measures, parses them back into LilyPond AST nodes, and injects them
+//! Collects `<dir>` control events with property op / function call info from ExtensionStore,
+//! parses them back into LilyPond AST nodes, and injects them
 //! into the items list before their referenced notes.
 
 use std::collections::HashMap;
 
 use tusk_model::elements::MeasureChild;
+use tusk_model::extensions::ExtensionStore;
 
 use crate::model::Music;
 
@@ -20,17 +21,16 @@ pub(super) struct PropertyOpInfo {
     pub(super) music: Music,
 }
 
-/// Collect property operations from measure `<dir>` elements with `tusk:prop,{JSON}` labels.
-pub(super) fn collect_property_ops(measure_children: &[MeasureChild]) -> Vec<PropertyOpInfo> {
+/// Collect property operations from measure `<dir>` elements via ext_store.
+pub(super) fn collect_property_ops(measure_children: &[MeasureChild], ext_store: &ExtensionStore) -> Vec<PropertyOpInfo> {
     let mut ops = Vec::new();
     for mc in measure_children {
         if let MeasureChild::Dir(dir) = mc {
-            let label = match dir.common.label.as_deref() {
-                Some(l) => l,
+            let dir_id = match dir.common.xml_id.as_deref() {
+                Some(id) => id,
                 None => continue,
             };
-            if let Some(json) = label.strip_prefix("tusk:prop,")
-                && let Ok(info) = serde_json::from_str::<tusk_model::PropertyOpInfo>(json)
+            if let Some(info) = ext_store.property_op_info(dir_id)
                 && let Some(music) = parse_property_op_str(&info.serialized)
             {
                 let start_id = dir
@@ -90,25 +90,23 @@ pub(super) struct FunctionOpInfo {
     pub(super) music: Music,
 }
 
-/// Collect music function calls from measure `<dir>` elements with `tusk:func,{JSON}` labels.
-pub(super) fn collect_function_ops(measure_children: &[MeasureChild]) -> Vec<FunctionOpInfo> {
+/// Collect music function calls from measure `<dir>` elements via ext_store.
+pub(super) fn collect_function_ops(measure_children: &[MeasureChild], ext_store: &ExtensionStore) -> Vec<FunctionOpInfo> {
     let mut ops = Vec::new();
     for mc in measure_children {
         if let MeasureChild::Dir(dir) = mc {
-            let label = match dir.common.label.as_deref() {
-                Some(l) => l,
+            let dir_id = match dir.common.xml_id.as_deref() {
+                Some(id) => id,
                 None => continue,
             };
-            if let Some(json) = label.strip_prefix("tusk:func,")
-                && let Ok(fc) = serde_json::from_str::<tusk_model::FunctionCall>(json)
-            {
+            if let Some(fc) = ext_store.function_call(dir_id) {
                 let start_id = dir
                     .dir_log
                     .startid
                     .as_ref()
                     .map(|u| u.0.trim_start_matches('#').to_string())
                     .unwrap_or_default();
-                let music = function_call_to_music(&fc);
+                let music = function_call_to_music(fc);
                 ops.push(FunctionOpInfo { start_id, music });
             }
         }
@@ -283,18 +281,16 @@ pub(super) struct SchemeMusicOp {
     pub(super) music: Music,
 }
 
-/// Collect Scheme music expressions from measure `<dir>` elements with `tusk:scheme-music,{JSON}` labels.
-pub(super) fn collect_scheme_music_ops(measure_children: &[MeasureChild]) -> Vec<SchemeMusicOp> {
+/// Collect Scheme music expressions from measure `<dir>` elements via ext_store.
+pub(super) fn collect_scheme_music_ops(measure_children: &[MeasureChild], ext_store: &ExtensionStore) -> Vec<SchemeMusicOp> {
     let mut ops = Vec::new();
     for mc in measure_children {
         if let MeasureChild::Dir(dir) = mc {
-            let label = match dir.common.label.as_deref() {
-                Some(l) => l,
+            let dir_id = match dir.common.xml_id.as_deref() {
+                Some(id) => id,
                 None => continue,
             };
-            if let Some(json) = label.strip_prefix("tusk:scheme-music,")
-                && let Ok(info) = serde_json::from_str::<tusk_model::SchemeMusicInfo>(json)
-            {
+            if let Some(info) = ext_store.scheme_music_info(dir_id) {
                 let start_id = dir
                     .dir_log
                     .startid
@@ -305,7 +301,7 @@ pub(super) fn collect_scheme_music_ops(measure_children: &[MeasureChild]) -> Vec
                 let expr = if let Some(e) = parse_scheme_str(&info.serialized) {
                     e
                 } else {
-                    crate::model::SchemeExpr::Raw(info.serialized)
+                    crate::model::SchemeExpr::Raw(info.serialized.clone())
                 };
                 let music = Music::SchemeMusic(expr);
                 ops.push(SchemeMusicOp { start_id, music });

@@ -44,7 +44,8 @@ use thiserror::Error;
 use tusk_model::elements::{
     LayerChild, MeasureChild, Mei, MeiChild, ScoreChild, ScoreDefChild, SectionChild, StaffGrpChild,
 };
-use tusk_model::{StaffContext, ToplevelMarkup, ToplevelMarkupKind, VariableAssignments};
+use tusk_model::extensions::ExtensionStore;
+use tusk_model::{ToplevelMarkup, ToplevelMarkupKind};
 
 use crate::model::Duration;
 use crate::model::note::{Direction, PostEvent, ScriptAbbreviation};
@@ -69,25 +70,25 @@ pub enum ExportError {
 }
 
 /// Convert an MEI document to a LilyPond AST.
-pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
+pub fn export(mei: &Mei, ext_store: &ExtensionStore) -> Result<LilyPondFile, ExportError> {
     // Check for book-structured multi-mdiv layout
-    if let Some(entries) = book::find_book_entries(mei) {
-        return export_book(mei, &entries);
+    if let Some(entries) = book::find_book_entries(mei, ext_store) {
+        return export_book(mei, &entries, ext_store);
     }
 
     // Single-score path (backward compatible)
     let score = find_score(mei).ok_or(ExportError::NoMusic)?;
-    let score_block = export_single_score(score);
+    let score_block = export_single_score(score, ext_store);
 
     // Build non-markup top-level items in natural order
     let mut non_markup_items = Vec::new();
 
-    let assignments = extract_assignments(score);
+    let assignments = extract_assignments(score, ext_store);
     for a in assignments {
         non_markup_items.push(ToplevelExpression::Assignment(a));
     }
 
-    let (top_header, top_paper, top_layout, top_midi) = output_defs::extract_toplevel_blocks(mei);
+    let (top_header, top_paper, top_layout, top_midi) = output_defs::extract_toplevel_blocks(mei, ext_store);
     if let Some(hb) = top_header {
         non_markup_items.push(ToplevelExpression::Header(hb));
     }
@@ -104,7 +105,7 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
     non_markup_items.push(ToplevelExpression::Score(score_block));
 
     // Merge with top-level markups at their original positions
-    let markup_items = extract_toplevel_markups(score);
+    let markup_items = extract_toplevel_markups(score, ext_store);
     let items = merge_items_with_markups(non_markup_items, markup_items);
 
     Ok(LilyPondFile {
@@ -116,22 +117,22 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
 }
 
 /// Export a book-structured MEI (multiple mdivs with BookStructure labels).
-fn export_book(mei: &Mei, entries: &[book::MdivEntry<'_>]) -> Result<LilyPondFile, ExportError> {
+fn export_book(mei: &Mei, entries: &[book::MdivEntry<'_>], ext_store: &ExtensionStore) -> Result<LilyPondFile, ExportError> {
     let mut non_markup_items = Vec::new();
 
     // Extract top-level assignments from first score's scoreDef
     let markup_items = if let Some(first) = entries.first() {
-        let assignments = extract_assignments(first.score);
+        let assignments = extract_assignments(first.score, ext_store);
         for a in assignments {
             non_markup_items.push(ToplevelExpression::Assignment(a));
         }
-        extract_toplevel_markups(first.score)
+        extract_toplevel_markups(first.score, ext_store)
     } else {
         Vec::new()
     };
 
     // Extract top-level blocks from MeiHead ExtMeta
-    let (top_header, top_paper, top_layout, top_midi) = output_defs::extract_toplevel_blocks(mei);
+    let (top_header, top_paper, top_layout, top_midi) = output_defs::extract_toplevel_blocks(mei, ext_store);
     if let Some(hb) = top_header {
         non_markup_items.push(ToplevelExpression::Header(hb));
     }
@@ -146,7 +147,7 @@ fn export_book(mei: &Mei, entries: &[book::MdivEntry<'_>]) -> Result<LilyPondFil
     }
 
     // Reconstruct book/bookpart hierarchy
-    let book_items = book::reconstruct_books(entries, &export_single_score);
+    let book_items = book::reconstruct_books(entries, &|score| export_single_score(score, ext_store));
     non_markup_items.extend(book_items);
 
     // Merge with top-level markups at their original positions
@@ -161,12 +162,12 @@ fn export_book(mei: &Mei, entries: &[book::MdivEntry<'_>]) -> Result<LilyPondFil
 }
 
 /// Export a single MEI Score to a LilyPond ScoreBlock.
-fn export_single_score(score: &tusk_model::elements::Score) -> ScoreBlock {
-    let group_meta = extract_group_meta(score);
-    let staff_metas = extract_staff_metas(score);
-    let event_sequences = extract_event_sequences(score);
-    let pitch_contexts = extract_pitch_contexts(score);
-    let lyrics_infos = extract_lyrics_infos(score);
+fn export_single_score(score: &tusk_model::elements::Score, ext_store: &ExtensionStore) -> ScoreBlock {
+    let group_meta = extract_group_meta(score, ext_store);
+    let staff_metas = extract_staff_metas(score, ext_store);
+    let event_sequences = extract_event_sequences(score, ext_store);
+    let pitch_contexts = extract_pitch_contexts(score, ext_store);
+    let lyrics_infos = extract_lyrics_infos(score, ext_store);
 
     let mut staff_music: Vec<Vec<Vec<Music>>> = Vec::new();
     let mut staff_layer_children: Vec<Vec<&[LayerChild]>> = Vec::new();
@@ -175,19 +176,19 @@ fn export_single_score(score: &tusk_model::elements::Score) -> ScoreBlock {
         if let ScoreChild::Section(section) = child {
             for section_child in &section.children {
                 if let SectionChild::Measure(measure) = section_child {
-                    let mut post_event_map = collect_slur_post_events(&measure.children);
+                    let mut post_event_map = collect_slur_post_events(&measure.children, ext_store);
                     collect_dynam_post_events(&measure.children, &mut post_event_map);
                     collect_hairpin_post_events(&measure.children, &mut post_event_map);
-                    collect_artic_post_events(&measure.children, &mut post_event_map);
-                    collect_ornament_post_events(&measure.children, &mut post_event_map);
-                    collect_text_script_post_events(&measure.children, &mut post_event_map);
+                    collect_artic_post_events(&measure.children, &mut post_event_map, ext_store);
+                    collect_ornament_post_events(&measure.children, &mut post_event_map, ext_store);
+                    collect_text_script_post_events(&measure.children, &mut post_event_map, ext_store);
 
-                    let property_ops = collect_property_ops(&measure.children);
-                    let function_ops = collect_function_ops(&measure.children);
-                    let scheme_music_ops = collect_scheme_music_ops(&measure.children);
-                    let tuplet_spans = collect_tuplet_spans(&measure.children);
-                    let repeat_spans = collect_repeat_spans(&measure.children);
-                    let ending_spans = collect_ending_spans(&measure.children);
+                    let property_ops = collect_property_ops(&measure.children, ext_store);
+                    let function_ops = collect_function_ops(&measure.children, ext_store);
+                    let scheme_music_ops = collect_scheme_music_ops(&measure.children, ext_store);
+                    let tuplet_spans = collect_tuplet_spans(&measure.children, ext_store);
+                    let repeat_spans = collect_repeat_spans(&measure.children, ext_store);
+                    let ending_spans = collect_ending_spans(&measure.children, ext_store);
 
                     let mut staff_idx = 0usize;
                     for mc in &measure.children {
@@ -197,12 +198,12 @@ fn export_single_score(score: &tusk_model::elements::Score) -> ScoreBlock {
                             for sc in &staff.children {
                                 let tusk_model::elements::StaffChild::Layer(layer) = sc;
                                 raw_layers.push(&layer.children);
-                                let grace_types = collect_grace_types(&layer.children);
+                                let grace_types = collect_grace_types(&layer.children, ext_store);
                                 let mut items = Vec::new();
                                 let mut item_ids = Vec::new();
                                 for lc in &layer.children {
                                     let start = items.len();
-                                    convert_layer_child_to_items(lc, &post_event_map, &mut items);
+                                    convert_layer_child_to_items(lc, &post_event_map, &mut items, ext_store);
                                     collect_layer_child_ids(lc, &mut item_ids, items.len() - start);
                                 }
                                 inject_property_ops(&mut items, &item_ids, &property_ops);
@@ -233,10 +234,10 @@ fn export_single_score(score: &tusk_model::elements::Score) -> ScoreBlock {
         }
     }
 
-    let chord_mode_events = collect_chord_mode_harms(score);
-    let chord_names_meta = extract_chord_names_meta(score);
-    let figure_mode_events = collect_figure_mode_fbs(score);
-    let figured_bass_meta = extract_figured_bass_meta(score);
+    let chord_mode_events = collect_chord_mode_harms(score, ext_store);
+    let chord_names_meta = extract_chord_names_meta(score, ext_store);
+    let figure_mode_events = collect_figure_mode_fbs(score, ext_store);
+    let figured_bass_meta = extract_figured_bass_meta(score, ext_store);
 
     apply_pitch_contexts(&mut staff_music, &pitch_contexts);
 
@@ -250,31 +251,30 @@ fn export_single_score(score: &tusk_model::elements::Score) -> ScoreBlock {
         &chord_names_meta,
         &figure_mode_events,
         &figured_bass_meta,
+        ext_store,
     );
 
     let mut score_items = vec![ScoreItem::Music(music)];
-    let score_blocks = output_defs::extract_score_blocks(score);
+    let score_blocks = output_defs::extract_score_blocks(score, ext_store);
     score_items.extend(score_blocks);
 
     ScoreBlock { items: score_items }
 }
 
-/// Extract stored variable assignments from scoreDef label.
+/// Extract stored variable assignments from scoreDef.
 ///
-/// Reads typed `tusk:vars,{json}` segments from the scoreDef's `@label` attribute,
-/// then re-parses the serialized assignment values through the LilyPond parser.
-fn extract_assignments(score: &tusk_model::elements::Score) -> Vec<crate::model::Assignment> {
+/// Looks up typed `VariableAssignments` in the extension store by the
+/// scoreDef's xml:id, then re-parses the serialized assignment values
+/// through the LilyPond parser.
+fn extract_assignments(score: &tusk_model::elements::Score, ext_store: &ExtensionStore) -> Vec<crate::model::Assignment> {
     for child in &score.children {
-        if let ScoreChild::ScoreDef(score_def) = child
-            && let Some(label) = &score_def.common.label
-        {
-            for segment in label.split('|') {
-                if let Some(json) = segment.strip_prefix("tusk:vars,")
-                    && let Ok(vars) = serde_json::from_str::<VariableAssignments>(json)
-                {
+        if let ScoreChild::ScoreDef(score_def) = child {
+            if let Some(id) = score_def.common.xml_id.as_deref() {
+                if let Some(vars) = ext_store.variable_assignments(id) {
                     return vars
                         .assignments
-                        .into_iter()
+                        .iter()
+                        .cloned()
                         .filter_map(ext_assignment_to_model)
                         .collect();
                 }
@@ -284,14 +284,16 @@ fn extract_assignments(score: &tusk_model::elements::Score) -> Vec<crate::model:
     Vec::new()
 }
 
-/// Extract stored top-level markup/markuplist entries from scoreDef label.
+/// Extract stored top-level markup/markuplist entries from scoreDef.
 ///
-/// Reads `tusk:toplevel-markup,{json}` segments from the scoreDef's `@label`,
-/// then re-parses each serialized form through the LilyPond parser.
+/// Looks up typed `Vec<ToplevelMarkup>` in the extension store by the
+/// scoreDef's xml:id, then re-parses each serialized form through the
+/// LilyPond parser.
 fn extract_toplevel_markups(
     score: &tusk_model::elements::Score,
+    ext_store: &ExtensionStore,
 ) -> Vec<(usize, ToplevelExpression)> {
-    let markups = extract_raw_toplevel_markups(score);
+    let markups = extract_raw_toplevel_markups(score, ext_store);
     let mut result = Vec::new();
     for m in markups {
         if let Some(expr) = toplevel_markup_to_expr(&m) {
@@ -301,17 +303,13 @@ fn extract_toplevel_markups(
     result
 }
 
-/// Read raw ToplevelMarkup vec from scoreDef label.
-fn extract_raw_toplevel_markups(score: &tusk_model::elements::Score) -> Vec<ToplevelMarkup> {
+/// Read raw ToplevelMarkup vec from ext_store via scoreDef xml:id.
+fn extract_raw_toplevel_markups(score: &tusk_model::elements::Score, ext_store: &ExtensionStore) -> Vec<ToplevelMarkup> {
     for child in &score.children {
-        if let ScoreChild::ScoreDef(score_def) = child
-            && let Some(label) = &score_def.common.label
-        {
-            for segment in label.split('|') {
-                if let Some(json) = segment.strip_prefix("tusk:toplevel-markup,")
-                    && let Ok(markups) = serde_json::from_str::<Vec<ToplevelMarkup>>(json)
-                {
-                    return markups;
+        if let ScoreChild::ScoreDef(score_def) = child {
+            if let Some(id) = score_def.common.xml_id.as_deref() {
+                if let Some(markups) = ext_store.toplevel_markups(id) {
+                    return markups.clone();
                 }
             }
         }
@@ -454,9 +452,10 @@ fn ext_assignment_to_model(ea: tusk_model::ExtAssignment) -> Option<crate::model
     })
 }
 
-/// Extract lyrics export info from all staffDef labels.
+/// Extract lyrics export info from all staffDefs via ext_store.
 fn extract_lyrics_infos(
     score: &tusk_model::elements::Score,
+    ext_store: &ExtensionStore,
 ) -> Vec<Option<lyrics::LyricsExportInfo>> {
     let mut infos = Vec::new();
     for child in &score.children {
@@ -465,8 +464,9 @@ fn extract_lyrics_infos(
                 if let ScoreDefChild::StaffGrp(grp) = sd_child {
                     for grp_child in &grp.children {
                         if let StaffGrpChild::StaffDef(sdef) = grp_child {
-                            let info = sdef.labelled.label.as_deref().and_then(|label| {
-                                label.split('|').find_map(lyrics::parse_lyrics_info_json)
+                            let info = sdef.basic.xml_id.as_deref().and_then(|id| {
+                                let ext = ext_store.lyrics_info(id)?;
+                                lyrics::ext_lyrics_info_to_export(ext)
                             });
                             infos.push(info);
                         }
@@ -498,24 +498,20 @@ struct StaffMeta {
     has_explicit_context: bool,
 }
 
-/// Extract group metadata from scoreDef's staffGrp.
-fn extract_group_meta(score: &tusk_model::elements::Score) -> Option<GroupMeta> {
+/// Extract group metadata from scoreDef's staffGrp via ext_store.
+fn extract_group_meta(score: &tusk_model::elements::Score, ext_store: &ExtensionStore) -> Option<GroupMeta> {
     for child in &score.children {
         if let ScoreChild::ScoreDef(score_def) = child {
             for sd_child in &score_def.children {
                 if let ScoreDefChild::StaffGrp(grp) = sd_child {
-                    // Check label for typed JSON group context
-                    if let Some(label) = &grp.common.label {
-                        for segment in label.split('|') {
-                            if let Some(json) = segment.strip_prefix("tusk:group-context,")
-                                && let Ok(ctx) = serde_json::from_str::<StaffContext>(json)
-                            {
-                                return Some(GroupMeta {
-                                    context_type: ctx.context_type,
-                                    name: ctx.name,
-                                    with_block_str: ctx.with_block,
-                                });
-                            }
+                    // Check ext_store for typed group context
+                    if let Some(id) = grp.common.xml_id.as_deref() {
+                        if let Some(ctx) = ext_store.staff_context(id) {
+                            return Some(GroupMeta {
+                                context_type: ctx.context_type.clone(),
+                                name: ctx.name.clone(),
+                                with_block_str: ctx.with_block.clone(),
+                            });
                         }
                     }
                     // Fallback: infer from symbol
@@ -538,8 +534,8 @@ fn extract_group_meta(score: &tusk_model::elements::Score) -> Option<GroupMeta> 
     None
 }
 
-/// Extract staff metadata from scoreDef's staffDef labels.
-fn extract_staff_metas(score: &tusk_model::elements::Score) -> Vec<StaffMeta> {
+/// Extract staff metadata from scoreDef's staffDefs via ext_store.
+fn extract_staff_metas(score: &tusk_model::elements::Score, ext_store: &ExtensionStore) -> Vec<StaffMeta> {
     let mut metas = Vec::new();
     for child in &score.children {
         if let ScoreChild::ScoreDef(score_def) = child {
@@ -547,7 +543,7 @@ fn extract_staff_metas(score: &tusk_model::elements::Score) -> Vec<StaffMeta> {
                 if let ScoreDefChild::StaffGrp(grp) = sd_child {
                     for grp_child in &grp.children {
                         if let StaffGrpChild::StaffDef(sdef) = grp_child {
-                            let meta = extract_staff_meta_from_label(sdef);
+                            let meta = extract_staff_meta_from_ext(sdef, ext_store);
                             metas.push(meta);
                         }
                     }
@@ -558,20 +554,16 @@ fn extract_staff_metas(score: &tusk_model::elements::Score) -> Vec<StaffMeta> {
     metas
 }
 
-/// Extract a single staff's metadata from its label.
-fn extract_staff_meta_from_label(sdef: &tusk_model::elements::StaffDef) -> StaffMeta {
-    if let Some(label) = &sdef.labelled.label {
-        for segment in label.split('|') {
-            if let Some(json) = segment.strip_prefix("tusk:staff-context,")
-                && let Ok(ctx) = serde_json::from_str::<StaffContext>(json)
-            {
-                return StaffMeta {
-                    context_type: ctx.context_type,
-                    name: ctx.name,
-                    with_block_str: ctx.with_block,
-                    has_explicit_context: ctx.keyword.is_some(),
-                };
-            }
+/// Extract a single staff's metadata from ext_store.
+fn extract_staff_meta_from_ext(sdef: &tusk_model::elements::StaffDef, ext_store: &ExtensionStore) -> StaffMeta {
+    if let Some(id) = sdef.basic.xml_id.as_deref() {
+        if let Some(ctx) = ext_store.staff_context(id) {
+            return StaffMeta {
+                context_type: ctx.context_type.clone(),
+                name: ctx.name.clone(),
+                with_block_str: ctx.with_block.clone(),
+                has_explicit_context: ctx.keyword.is_some(),
+            };
         }
     }
     StaffMeta {
@@ -612,6 +604,7 @@ fn build_music_with_contexts(
     chord_names_meta: &Option<ChordNamesMeta>,
     figure_mode_events: &[Music],
     figured_bass_meta: &Option<FiguredBassMeta>,
+    ext_store: &ExtensionStore,
 ) -> Music {
     let num_staves = staff_music.len();
     let has_chords = !chord_mode_events.is_empty();
@@ -634,7 +627,7 @@ fn build_music_with_contexts(
         if let Some(Some(info)) = lyrics_infos.first()
             && let Some(raw) = staff_layer_children.first().and_then(|v| v.first())
         {
-            music = lyrics::wrap_music_with_lyrics(music, raw, info);
+            music = lyrics::wrap_music_with_lyrics(music, raw, info, ext_store);
         }
         return music;
     }
@@ -710,7 +703,7 @@ fn build_music_with_contexts(
         if let Some(Some(info)) = lyrics_infos.get(i)
             && let Some(raw) = staff_layer_children.get(i).and_then(|v| v.first())
         {
-            inner = lyrics::wrap_music_with_lyrics(inner, raw, info);
+            inner = lyrics::wrap_music_with_lyrics(inner, raw, info, ext_store);
         }
         let meta = staff_metas.get(i);
 
@@ -802,7 +795,7 @@ struct TupletSpanInfo {
 }
 
 /// Collect TupletSpan control events from measure children.
-fn collect_tuplet_spans(measure_children: &[MeasureChild]) -> Vec<TupletSpanInfo> {
+fn collect_tuplet_spans(measure_children: &[MeasureChild], ext_store: &ExtensionStore) -> Vec<TupletSpanInfo> {
     let mut spans = Vec::new();
     for mc in measure_children {
         if let MeasureChild::TupletSpan(ts) = mc {
@@ -831,12 +824,16 @@ fn collect_tuplet_spans(measure_children: &[MeasureChild]) -> Vec<TupletSpanInfo
                 .and_then(|n| n.parse().ok())
                 .unwrap_or(2);
 
-            // Parse span_duration from label if present
-            let span_duration = ts
-                .common
-                .label
-                .as_deref()
-                .and_then(parse_tuplet_span_duration);
+            // Look up span_duration from ext_store
+            let span_duration = ts.common.xml_id.as_deref().and_then(|id| {
+                let info = ext_store.tuplet_info(id)?;
+                let dur_info = info.span_duration.as_ref()?;
+                Some(Duration {
+                    base: dur_info.base,
+                    dots: dur_info.dots,
+                    multipliers: dur_info.multipliers.clone(),
+                })
+            });
 
             spans.push(TupletSpanInfo {
                 start_id,
@@ -848,20 +845,6 @@ fn collect_tuplet_spans(measure_children: &[MeasureChild]) -> Vec<TupletSpanInfo
         }
     }
     spans
-}
-
-/// Parse span duration from a tuplet label.
-///
-/// Label format: `tusk:tuplet,{JSON}` with TupletInfo struct.
-fn parse_tuplet_span_duration(label: &str) -> Option<Duration> {
-    let json = label.strip_prefix("tusk:tuplet,")?;
-    let info: tusk_model::TupletInfo = serde_json::from_str(json).ok()?;
-    let dur_info = info.span_duration?;
-    Some(Duration {
-        base: dur_info.base,
-        dots: dur_info.dots,
-        multipliers: dur_info.multipliers,
-    })
 }
 
 /// Collect xml:ids from a LayerChild in the same order as convert_layer_child_to_items
@@ -995,12 +978,13 @@ fn convert_layer_child_to_items(
     child: &LayerChild,
     slur_map: &HashMap<String, Vec<PostEvent>>,
     items: &mut Vec<Music>,
+    ext_store: &ExtensionStore,
 ) {
     match child {
         LayerChild::Beam(beam) => {
             let count = beam.children.len();
             for (i, bc) in beam.children.iter().enumerate() {
-                if let Some(mut m) = convert_beam_child(bc) {
+                if let Some(mut m) = convert_beam_child(bc, ext_store) {
                     // Apply slur post-events by xml:id
                     if let Some(id) = beam_child_xml_id(bc)
                         && let Some(events) = slur_map.get(id)
@@ -1019,11 +1003,11 @@ fn convert_layer_child_to_items(
             }
         }
         _ => {
-            // Inject \change before notes with tusk:context-change label
-            if let Some(change) = extract_context_change_from_label(child) {
+            // Inject \change before notes with context-change ext
+            if let Some(change) = extract_context_change(child, ext_store) {
                 items.push(change);
             }
-            if let Some(mut m) = convert_layer_child(child) {
+            if let Some(mut m) = convert_layer_child(child, ext_store) {
                 if let Some(id) = layer_child_xml_id(child)
                     && let Some(events) = slur_map.get(id)
                 {
@@ -1035,57 +1019,48 @@ fn convert_layer_child_to_items(
     }
 }
 
-/// Extract a `\change` context change from a LayerChild's label.
-///
-/// Looks for `tusk:context-change,{json}` label segment and returns a
-/// `Music::ContextChange` if found.
-fn extract_context_change_from_label(child: &LayerChild) -> Option<Music> {
-    let label = match child {
-        LayerChild::Note(n) => n.common.label.as_deref()?,
-        LayerChild::Rest(r) => r.common.label.as_deref()?,
-        LayerChild::Chord(c) => c.common.label.as_deref()?,
+/// Extract a `\change` context change from a LayerChild via ext_store.
+fn extract_context_change(child: &LayerChild, ext_store: &ExtensionStore) -> Option<Music> {
+    let id = match child {
+        LayerChild::Note(n) => n.common.xml_id.as_deref()?,
+        LayerChild::Rest(r) => r.common.xml_id.as_deref()?,
+        LayerChild::Chord(c) => c.common.xml_id.as_deref()?,
         _ => return None,
     };
-    for segment in label.split('|') {
-        if let Some(json) = segment.strip_prefix("tusk:context-change,")
-            && let Ok(cc) = serde_json::from_str::<tusk_model::ContextChange>(json)
-        {
-            return Some(Music::ContextChange {
-                context_type: cc.context_type,
-                name: cc.name,
-            });
-        }
-    }
-    None
+    let cc = ext_store.context_change(id)?;
+    Some(Music::ContextChange {
+        context_type: cc.context_type.clone(),
+        name: cc.name.clone(),
+    })
 }
 
 /// Convert a single MEI LayerChild to a LilyPond Music expression.
-fn convert_layer_child(child: &LayerChild) -> Option<Music> {
+fn convert_layer_child(child: &LayerChild, ext_store: &ExtensionStore) -> Option<Music> {
     match child {
-        LayerChild::Note(note) => Some(convert_mei_note(note)),
-        LayerChild::Rest(rest) => Some(convert_mei_rest(rest)),
-        LayerChild::MRest(mrest) => Some(convert_mei_mrest(mrest)),
-        LayerChild::Chord(chord) => Some(convert_mei_chord(chord)),
-        LayerChild::BTrem(btrem) => Some(convert_mei_btrem(btrem)),
+        LayerChild::Note(note) => Some(convert_mei_note(note, ext_store)),
+        LayerChild::Rest(rest) => Some(convert_mei_rest(rest, ext_store)),
+        LayerChild::MRest(mrest) => Some(convert_mei_mrest(mrest, ext_store)),
+        LayerChild::Chord(chord) => Some(convert_mei_chord(chord, ext_store)),
+        LayerChild::BTrem(btrem) => Some(convert_mei_btrem(btrem, ext_store)),
         LayerChild::Space(space) => Some(convert_mei_space(space)),
         _ => None,
     }
 }
 
 /// Convert a BeamChild to a LilyPond Music expression.
-fn convert_beam_child(child: &tusk_model::elements::BeamChild) -> Option<Music> {
+fn convert_beam_child(child: &tusk_model::elements::BeamChild, ext_store: &ExtensionStore) -> Option<Music> {
     use tusk_model::elements::BeamChild;
     match child {
-        BeamChild::Note(note) => Some(convert_mei_note(note)),
-        BeamChild::Rest(rest) => Some(convert_mei_rest(rest)),
-        BeamChild::Chord(chord) => Some(convert_mei_chord(chord)),
+        BeamChild::Note(note) => Some(convert_mei_note(note, ext_store)),
+        BeamChild::Rest(rest) => Some(convert_mei_rest(rest, ext_store)),
+        BeamChild::Chord(chord) => Some(convert_mei_chord(chord, ext_store)),
         BeamChild::Beam(beam) => {
             // Nested beams: flatten recursively (nested beams just continue the beam)
             // This shouldn't produce beam markers for the inner beam since
             // LilyPond uses a flat [ ... ] without nesting
             let mut nested = Vec::new();
             for bc in &beam.children {
-                if let Some(m) = convert_beam_child(bc) {
+                if let Some(m) = convert_beam_child(bc, ext_store) {
                     nested.push(m);
                 }
             }
@@ -1134,17 +1109,17 @@ fn beam_child_xml_id(child: &tusk_model::elements::BeamChild) -> Option<&str> {
 }
 
 /// Collect slur/phrase control events from measure children into a map of
-/// note xml:id → PostEvent list.
-fn collect_slur_post_events(measure_children: &[MeasureChild]) -> HashMap<String, Vec<PostEvent>> {
+/// note xml:id -> PostEvent list.
+fn collect_slur_post_events(measure_children: &[MeasureChild], ext_store: &ExtensionStore) -> HashMap<String, Vec<PostEvent>> {
     let mut map: HashMap<String, Vec<PostEvent>> = HashMap::new();
 
     for mc in measure_children {
         if let MeasureChild::Slur(slur) = mc {
             let is_phrase = slur
                 .common
-                .label
+                .xml_id
                 .as_deref()
-                .is_some_and(|l| l.starts_with("tusk:phrase,"));
+                .is_some_and(|id| ext_store.phrasing_slur(id).is_some());
 
             if let Some(ref startid) = slur.slur_log.startid {
                 let id = startid.0.trim_start_matches('#').to_string();
@@ -1231,15 +1206,16 @@ fn collect_hairpin_post_events(
 }
 
 /// Collect articulation/fingering/string-number control events from `<dir>` elements
-/// with `tusk:artic,{JSON}` labels.
+/// via ext_store.
 fn collect_artic_post_events(
     measure_children: &[MeasureChild],
     map: &mut HashMap<String, Vec<PostEvent>>,
+    ext_store: &ExtensionStore,
 ) {
     for mc in measure_children {
         if let MeasureChild::Dir(dir) = mc {
-            let label = match dir.common.label.as_deref() {
-                Some(l) => l,
+            let dir_id = match dir.common.xml_id.as_deref() {
+                Some(id) => id,
                 None => continue,
             };
             let startid = match dir.dir_log.startid.as_ref() {
@@ -1247,9 +1223,8 @@ fn collect_artic_post_events(
                 None => continue,
             };
 
-            if let Some(json) = label.strip_prefix("tusk:artic,")
-                && let Ok(info) = serde_json::from_str::<tusk_model::ArticulationInfo>(json)
-                && let Some(pe) = artic_info_to_post_event(&info)
+            if let Some(info) = ext_store.articulation_info(dir_id)
+                && let Some(pe) = artic_info_to_post_event(info)
             {
                 map.entry(startid).or_default().push(pe);
             }
@@ -1291,15 +1266,16 @@ fn artic_info_to_post_event(info: &tusk_model::ArticulationInfo) -> Option<PostE
     }
 }
 
-/// Collect text script post-events from `<dir>` elements with `tusk:text-script,{JSON}` labels.
+/// Collect text script post-events from `<dir>` elements via ext_store.
 fn collect_text_script_post_events(
     measure_children: &[MeasureChild],
     map: &mut HashMap<String, Vec<PostEvent>>,
+    ext_store: &ExtensionStore,
 ) {
     for mc in measure_children {
         if let MeasureChild::Dir(dir) = mc {
-            let label = match dir.common.label.as_deref() {
-                Some(l) => l,
+            let dir_id = match dir.common.xml_id.as_deref() {
+                Some(id) => id,
                 None => continue,
             };
             let startid = match dir.dir_log.startid.as_ref() {
@@ -1307,9 +1283,8 @@ fn collect_text_script_post_events(
                 None => continue,
             };
 
-            if let Some(json) = label.strip_prefix("tusk:text-script,")
-                && let Ok(info) = serde_json::from_str::<tusk_model::TextScriptInfo>(json)
-                && let Some(pe) = text_script_info_to_post_event(&info)
+            if let Some(info) = ext_store.text_script_info(dir_id)
+                && let Some(pe) = text_script_info_to_post_event(info)
             {
                 map.entry(startid).or_default().push(pe);
             }
@@ -1349,10 +1324,11 @@ fn parse_text_script_text(s: &str) -> Option<crate::model::markup::Markup> {
 }
 
 /// Collect ornament control events (trill, mordent, turn, fermata, ornam) from
-/// measure children into the post-event map.
+/// measure children into the post-event map via ext_store.
 fn collect_ornament_post_events(
     measure_children: &[MeasureChild],
     map: &mut HashMap<String, Vec<PostEvent>>,
+    ext_store: &ExtensionStore,
 ) {
     for mc in measure_children {
         match mc {
@@ -1360,7 +1336,7 @@ fn collect_ornament_post_events(
                 if let Some(ref startid) = trill.trill_log.startid {
                     let id = startid.0.trim_start_matches('#').to_string();
                     let (name, direction) =
-                        parse_ornament_label(trill.common.label.as_deref(), "trill");
+                        parse_ornament_from_ext(trill.common.xml_id.as_deref(), "trill", ext_store);
                     map.entry(id)
                         .or_default()
                         .push(PostEvent::NamedArticulation { direction, name });
@@ -1374,7 +1350,7 @@ fn collect_ornament_post_events(
                         _ => "mordent",
                     };
                     let (name, direction) =
-                        parse_ornament_label(mordent.common.label.as_deref(), fallback);
+                        parse_ornament_from_ext(mordent.common.xml_id.as_deref(), fallback, ext_store);
                     map.entry(id)
                         .or_default()
                         .push(PostEvent::NamedArticulation { direction, name });
@@ -1388,7 +1364,7 @@ fn collect_ornament_post_events(
                         _ => "turn",
                     };
                     let (name, direction) =
-                        parse_ornament_label(turn.common.label.as_deref(), fallback);
+                        parse_ornament_from_ext(turn.common.xml_id.as_deref(), fallback, ext_store);
                     map.entry(id)
                         .or_default()
                         .push(PostEvent::NamedArticulation { direction, name });
@@ -1398,7 +1374,7 @@ fn collect_ornament_post_events(
                 if let Some(ref startid) = fermata.fermata_log.startid {
                     let id = startid.0.trim_start_matches('#').to_string();
                     let (name, direction) =
-                        parse_ornament_label(fermata.common.label.as_deref(), "fermata");
+                        parse_ornament_from_ext(fermata.common.xml_id.as_deref(), "fermata", ext_store);
                     map.entry(id)
                         .or_default()
                         .push(PostEvent::NamedArticulation { direction, name });
@@ -1416,7 +1392,7 @@ fn collect_ornament_post_events(
                         })
                         .unwrap_or_else(|| "ornam".to_string());
                     let (name, direction) =
-                        parse_ornament_label(ornam.common.label.as_deref(), &fallback_name);
+                        parse_ornament_from_ext(ornam.common.xml_id.as_deref(), &fallback_name, ext_store);
                     map.entry(id)
                         .or_default()
                         .push(PostEvent::NamedArticulation { direction, name });
@@ -1427,13 +1403,13 @@ fn collect_ornament_post_events(
     }
 }
 
-/// Parse name and direction from a typed ornament label.
-fn parse_ornament_label(label: Option<&str>, fallback_name: &str) -> (String, Direction) {
-    if let Some(json) = label.and_then(|l| l.strip_prefix("tusk:ornament,"))
-        && let Ok(info) = serde_json::from_str::<tusk_model::OrnamentInfo>(json)
-    {
-        let dir = direction_ext_to_ly(info.direction);
-        return (info.name, dir);
+/// Parse name and direction from ext_store ornament info.
+fn parse_ornament_from_ext(xml_id: Option<&str>, fallback_name: &str, ext_store: &ExtensionStore) -> (String, Direction) {
+    if let Some(id) = xml_id {
+        if let Some(info) = ext_store.ornament_info(id) {
+            let dir = direction_ext_to_ly(info.direction);
+            return (info.name.clone(), dir);
+        }
     }
     (fallback_name.to_string(), Direction::Neutral)
 }
@@ -1450,15 +1426,14 @@ fn direction_ext_to_ly(dir: Option<tusk_model::DirectionExt>) -> Direction {
 /// Convert an MEI BTrem (bowed tremolo) to a LilyPond Music expression.
 ///
 /// Extracts the inner note/chord and adds a `PostEvent::Tremolo` with the
-/// subdivision value restored from the label.
-fn convert_mei_btrem(btrem: &tusk_model::elements::BTrem) -> Music {
-    // Restore subdivision value from typed JSON label
+/// subdivision value restored from ext_store.
+fn convert_mei_btrem(btrem: &tusk_model::elements::BTrem, ext_store: &ExtensionStore) -> Music {
+    // Restore subdivision value from ext_store
     let value = btrem
         .common
-        .label
+        .xml_id
         .as_deref()
-        .and_then(|l| l.strip_prefix("tusk:tremolo,"))
-        .and_then(|json| serde_json::from_str::<tusk_model::TremoloInfo>(json).ok())
+        .and_then(|id| ext_store.tremolo_info(id))
         .map(|info| info.value)
         .unwrap_or_else(|| {
             // Fallback: compute from @num (slash count)
@@ -1480,8 +1455,8 @@ fn convert_mei_btrem(btrem: &tusk_model::elements::BTrem) -> Music {
         .children
         .first()
         .map(|child| match child {
-            tusk_model::elements::BTremChild::Note(n) => convert_mei_note(n),
-            tusk_model::elements::BTremChild::Chord(c) => convert_mei_chord(c),
+            tusk_model::elements::BTremChild::Note(n) => convert_mei_note(n, ext_store),
+            tusk_model::elements::BTremChild::Chord(c) => convert_mei_chord(c, ext_store),
         })
         .unwrap_or_else(|| {
             Music::Rest(crate::model::RestEvent {

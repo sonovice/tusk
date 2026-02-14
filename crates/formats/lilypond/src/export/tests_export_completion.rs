@@ -8,8 +8,8 @@ use crate::serializer;
 /// Parse LilyPond -> import to MEI -> export to LilyPond AST -> serialize.
 fn roundtrip(src: &str) -> String {
     let file = Parser::new(src).unwrap().parse().unwrap();
-    let mei = import::import(&file).unwrap();
-    let exported = export(&mei).unwrap();
+    let (mei, ext_store) = import::import(&file).unwrap();
+    let exported = export(&mei, &ext_store).unwrap();
     serializer::serialize(&exported)
 }
 
@@ -42,14 +42,14 @@ fn all_fixtures_export_without_panic() {
                 continue;
             }
         };
-        let mei = match import::import(&file) {
+        let (mei, ext_store) = match import::import(&file) {
             Ok(m) => m,
             Err(_) => {
                 skipped += 1;
                 continue;
             }
         };
-        let exported = export(&mei);
+        let exported = export(&mei, &ext_store);
         assert!(
             exported.is_ok(),
             "export failed for {}: {:?}",
@@ -178,7 +178,8 @@ fn export_mei_with_custom_xml_id_emits_tweak() {
     mei.children.push(MeiChild::Music(Box::new(music)));
 
     // Export
-    let exported = export(&mei).unwrap();
+    let ext_store = tusk_model::ExtensionStore::default();
+    let exported = export(&mei, &ext_store).unwrap();
     let output = serializer::serialize(&exported);
 
     assert!(
@@ -259,7 +260,8 @@ fn export_mei_with_autogen_xml_id_no_tweak() {
     mei.children.push(MeiChild::Music(Box::new(music)));
 
     // Export
-    let exported = export(&mei).unwrap();
+    let ext_store = tusk_model::ExtensionStore::default();
+    let exported = export(&mei, &ext_store).unwrap();
     let output = serializer::serialize(&exported);
 
     assert!(
@@ -279,15 +281,15 @@ fn roundtrip_mei_to_ly_to_mei_preserves_custom_ids() {
 
     // Parse → import to MEI
     let file = Parser::new(src).unwrap().parse().unwrap();
-    let mei = import::import(&file).unwrap();
+    let (mei, ext_store) = import::import(&file).unwrap();
 
     // Export back to LilyPond
-    let exported = export(&mei).unwrap();
+    let exported = export(&mei, &ext_store).unwrap();
     let output = serializer::serialize(&exported);
 
     // Re-parse → re-import to MEI
     let file2 = Parser::new(&output).unwrap().parse().unwrap();
-    let mei2 = import::import(&file2).unwrap();
+    let (mei2, _ext_store2) = import::import(&file2).unwrap();
 
     // Extract note xml:ids from both MEI docs
     let ids1 = extract_note_xml_ids(&mei);

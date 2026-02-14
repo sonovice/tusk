@@ -297,19 +297,27 @@ impl tusk_format::Format for MusicXmlFormat {
 }
 
 impl tusk_format::Importer for MusicXmlFormat {
-    fn import_from_str(&self, input: &str) -> tusk_format::FormatResult<tusk_format::Mei> {
+    fn import_from_str(
+        &self,
+        input: &str,
+    ) -> tusk_format::FormatResult<(tusk_format::Mei, tusk_format::ExtensionStore)> {
         let score = crate::parse_score_partwise(input)
             .or_else(|_| crate::parse_score_timewise(input))
             .map_err(tusk_format::FormatError::parse)?;
-        let (mei, _ext_store) =
+        let (mei, ext_store) =
             crate::import(&score).map_err(tusk_format::FormatError::conversion)?;
-        Ok(mei)
+        Ok((mei, ext_store))
     }
 }
 
 impl tusk_format::Exporter for MusicXmlFormat {
-    fn export_to_string(&self, mei: &tusk_format::Mei) -> tusk_format::FormatResult<String> {
-        let score = crate::export(mei).map_err(tusk_format::FormatError::conversion)?;
+    fn export_to_string(
+        &self,
+        mei: &tusk_format::Mei,
+        ext_store: &tusk_format::ExtensionStore,
+    ) -> tusk_format::FormatResult<String> {
+        let score =
+            crate::export_with_ext(mei, ext_store).map_err(tusk_format::FormatError::conversion)?;
         crate::serialize(&score).map_err(tusk_format::FormatError::serialize)
     }
 }

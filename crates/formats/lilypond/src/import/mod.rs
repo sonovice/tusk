@@ -45,6 +45,7 @@ use tusk_model::elements::{
     Body, BodyChild, Layer, LayerChild, Mdiv, MdivChild, Measure, MeasureChild, Mei, MeiChild,
     Score, ScoreChild, Section, SectionChild, Staff, StaffChild,
 };
+use tusk_model::ExtensionStore;
 // Re-exported for test modules that use `use super::*`
 #[cfg(test)]
 #[allow(unused_imports)]
@@ -81,11 +82,13 @@ pub enum ImportError {
 ///
 /// Runs structural validation before conversion; returns
 /// [`ImportError::Validation`] if the AST has problems.
-pub fn import(file: &model::LilyPondFile) -> Result<Mei, ImportError> {
+pub fn import(file: &model::LilyPondFile) -> Result<(Mei, ExtensionStore), ImportError> {
     // Validate structure before import
     if let Err(errors) = crate::validator::validate(file) {
         return Err(ImportError::Validation(errors));
     }
+
+    let mut ext_store = ExtensionStore::default();
 
     // Collect top-level assignments for variable resolution
     let assignments = collect_assignments(file);
@@ -95,7 +98,7 @@ pub fn import(file: &model::LilyPondFile) -> Result<Mei, ImportError> {
     mei.mei_version.meiversion = Some("6.0-dev".to_string());
 
     // Build meiHead with metadata from \header and output-def blocks
-    let mei_head = output_defs::build_mei_head_from_file(file);
+    let mei_head = output_defs::build_mei_head_from_file(file, &mut ext_store);
     mei.children.push(MeiChild::MeiHead(Box::new(mei_head)));
 
     // Collect top-level markups
@@ -109,17 +112,17 @@ pub fn import(file: &model::LilyPondFile) -> Result<Mei, ImportError> {
 
     let mei_music = if has_book && !entries.is_empty() {
         // Book-structured: one mdiv per score entry
-        build_music_multi(&entries, &assignments, &var_map, &toplevel_markups)?
+        build_music_multi(&entries, &assignments, &var_map, &toplevel_markups, &mut ext_store)?
     } else {
         // Non-book: use find_music for backward-compatible behavior
         let raw_music = find_music(file).ok_or(ImportError::NoMusic)?;
         let music = resolve_identifiers(raw_music, &var_map);
         let score_block = entries.first().map(|e| e.score_block);
-        build_music_single(music, score_block, &assignments, &toplevel_markups)?
+        build_music_single(music, score_block, &assignments, &toplevel_markups, &mut ext_store)?
     };
     mei.children.push(MeiChild::Music(Box::new(mei_music)));
 
-    Ok(mei)
+    Ok((mei, ext_store))
 }
 
 /// A score entry extracted from a book/bookpart/top-level structure.
@@ -319,6 +322,7 @@ fn build_music_multi(
     assignments: &[Assignment],
     var_map: &std::collections::HashMap<String, Music>,
     toplevel_markups: &[ToplevelMarkup],
+    ext_store: &mut ExtensionStore,
 ) -> Result<tusk_model::elements::Music, ImportError> {
     let mut body = Body::default();
 
@@ -327,15 +331,15 @@ fn build_music_multi(
         // Only store toplevel markups on the first score
         let markups = if i == 0 { toplevel_markups } else { &[] };
         let mei_score =
-            build_score_from_music(resolved, Some(entry.score_block), assignments, markups)?;
+            build_score_from_music(resolved, Some(entry.score_block), assignments, markups, ext_store)?;
 
         let mut mdiv = Mdiv::default();
         mdiv.common.n = Some(DataWord((i + 1).to_string()));
 
         if let Some(ref bs) = entry.book_structure {
-            let json = serde_json::to_string(bs).unwrap_or_default();
-            let escaped = signatures::escape_label_value(&json);
-            mdiv.common.label = Some(format!("tusk:book-structure,{escaped}"));
+            let mdiv_id = format!("ly-mdiv-{i}");
+            mdiv.common.xml_id = Some(mdiv_id.clone());
+            ext_store.insert_book_structure(mdiv_id, bs.clone());
         }
 
         mdiv.children.push(MdivChild::Score(Box::new(mei_score)));
@@ -355,8 +359,9 @@ fn build_music_single(
     score_block: Option<&model::ScoreBlock>,
     assignments: &[Assignment],
     toplevel_markups: &[ToplevelMarkup],
+    ext_store: &mut ExtensionStore,
 ) -> Result<tusk_model::elements::Music, ImportError> {
-    let score = build_score_from_music(ly_music, score_block, assignments, toplevel_markups)?;
+    let score = build_score_from_music(ly_music, score_block, assignments, toplevel_markups, ext_store)?;
 
     let mut mdiv = Mdiv::default();
     mdiv.children.push(MdivChild::Score(Box::new(score)));
@@ -381,6 +386,7 @@ fn build_score_from_music(
     score_block: Option<&model::ScoreBlock>,
     assignments: &[Assignment],
     toplevel_markups: &[ToplevelMarkup],
+    ext_store: &mut ExtensionStore,
 ) -> Result<Score, ImportError> {
     let mut score = Score::default();
 
@@ -388,24 +394,21 @@ fn build_score_from_music(
     let staff_infos = analyze_staves(&ly_music);
 
     // Build ScoreDef with staffDef(s)
-    let mut score_def = build_score_def_from_staves(&staff_infos, assignments);
+    let mut score_def = build_score_def_from_staves(&staff_infos, assignments, ext_store);
 
-    // Store score-level \header/\layout/\midi in ScoreDef label for roundtrip
+    // Store score-level \header/\layout/\midi in ScoreDef via ext_store
     if let Some(sb) = score_block {
-        let score_blocks_label = output_defs::build_score_blocks_label_from_block(sb);
-        if !score_blocks_label.is_empty() {
-            append_label(&mut score_def.common.label, &score_blocks_label);
+        let score_output_defs = output_defs::collect_score_block_output_defs(sb);
+        if !score_output_defs.is_empty() {
+            let sd_id = score_def.common.xml_id.get_or_insert_with(|| "ly-scoredef-0".to_string()).clone();
+            ext_store.insert_output_defs(sd_id, score_output_defs);
         }
     }
 
-    // Store top-level markups on ScoreDef label
+    // Store top-level markups via ext_store
     if !toplevel_markups.is_empty() {
-        let json =
-            utils::escape_json_pipe(&serde_json::to_string(toplevel_markups).unwrap_or_default());
-        append_label(
-            &mut score_def.common.label,
-            &format!("tusk:toplevel-markup,{json}"),
-        );
+        let sd_id = score_def.common.xml_id.get_or_insert_with(|| "ly-scoredef-0".to_string()).clone();
+        ext_store.insert_toplevel_markups(sd_id, toplevel_markups.to_vec());
     }
 
     score
@@ -413,20 +416,19 @@ fn build_score_from_music(
         .push(ScoreChild::ScoreDef(Box::new(score_def)));
 
     // Section with measure(s) containing the notes
-    let section = build_section_from_staves(&staff_infos)?;
+    let section = build_section_from_staves(&staff_infos, ext_store)?;
     score.children.push(ScoreChild::Section(Box::new(section)));
 
     Ok(score)
 }
 
-/// Append a label segment to an existing label, using `|` separator.
-fn append_label(label: &mut Option<String>, segment: &str) {
-    match label {
-        Some(existing) => {
-            existing.push('|');
-            existing.push_str(segment);
-        }
-        None => *label = Some(segment.to_string()),
+/// Get the xml:id of the last note/rest/chord in a layer.
+fn get_last_layer_child_id(layer: &Layer) -> Option<String> {
+    match layer.children.last() {
+        Some(LayerChild::Note(n)) => n.common.xml_id.clone(),
+        Some(LayerChild::Rest(r)) => r.common.xml_id.clone(),
+        Some(LayerChild::Chord(c)) => c.common.xml_id.clone(),
+        _ => None,
     }
 }
 
@@ -486,7 +488,7 @@ enum PendingTempoMark {
 }
 
 /// Build a Section from analyzed staff layout.
-fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, ImportError> {
+fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut ExtensionStore) -> Result<Section, ImportError> {
     let mut section = Section::default();
     let mut id_counter = 0u32;
     let mut measure = Measure::default();
@@ -546,7 +548,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
             // Pending Scheme music expressions waiting for next note's startid
             let mut pending_scheme_music: Vec<String> = Vec::new();
             // Cross-staff override from \change Staff = "name"
-            let mut cross_staff_override: Option<String> = None;
+            let mut cross_staff_override: Option<tusk_model::ContextChange> = None;
 
             for event in &events {
                 let (post_events, current_id) = match event {
@@ -571,7 +573,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                             tie_pending = true;
                         }
                         if let Some(ref gt) = current_grace {
-                            apply_grace_to_note(&mut mei_note, gt);
+                            apply_grace_to_note(&mut mei_note, gt, ext_store);
                         }
                         layer.children.push(LayerChild::Note(Box::new(mei_note)));
                         (pe, id_str)
@@ -586,7 +588,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                     }
                     LyEvent::PitchedRest(note) => {
                         id_counter += 1;
-                        let mei_rest = convert_pitched_rest(note, id_counter);
+                        let mei_rest = convert_pitched_rest(note, id_counter, ext_store);
                         let id_str = format!("ly-rest-{}", id_counter);
                         let pe = note.post_events.clone();
                         layer.children.push(LayerChild::Rest(Box::new(mei_rest)));
@@ -610,8 +612,8 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         let mut mei_chord =
                             convert_chord(pitches, duration.as_ref(), &mut id_counter);
                         if *is_chord_repetition {
-                            let json = serde_json::to_string(&tusk_model::ChordRepetition).unwrap();
-                            mei_chord.common.label = Some(format!("tusk:chord-rep,{json}"));
+                            let id = mei_chord.common.xml_id.clone().unwrap();
+                            ext_store.insert_chord_repetition(id, tusk_model::ChordRepetition);
                         }
                         if tie_pending {
                             for child in &mut mei_chord.children {
@@ -641,14 +643,14 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                             tie_pending = true;
                         }
                         if let Some(ref gt) = current_grace {
-                            apply_grace_to_chord(&mut mei_chord, gt);
+                            apply_grace_to_chord(&mut mei_chord, gt, ext_store);
                         }
                         layer.children.push(LayerChild::Chord(Box::new(mei_chord)));
                         (pe, id_str)
                     }
                     LyEvent::MeasureRest(rest) => {
                         id_counter += 1;
-                        let mei_mrest = convert_mrest(rest, id_counter);
+                        let mei_mrest = convert_mrest(rest, id_counter, ext_store);
                         layer.children.push(LayerChild::MRest(Box::new(mei_mrest)));
                         continue;
                     }
@@ -680,6 +682,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                                 pending.denominator,
                                 pending.span_duration.as_ref(),
                                 tuplet_counter,
+                                ext_store,
                             );
                             measure
                                 .children
@@ -715,6 +718,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                                 pending.count,
                                 pending.num_alternatives,
                                 repeat_counter,
+                                ext_store,
                             );
                             measure.children.push(MeasureChild::Dir(Box::new(dir)));
                         }
@@ -740,6 +744,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                                 pending.staff_n,
                                 pending.index,
                                 repeat_counter,
+                                ext_store,
                             );
                             measure.children.push(MeasureChild::Dir(Box::new(dir)));
                         }
@@ -772,7 +777,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         // Inline chord name: create Harm with startid if a note
                         // has already been seen, otherwise queue for later
                         if let Some(ref note_id) = last_note_id {
-                            let harm = make_harm(ce, note_id, staff_info.n, harm_counter);
+                            let harm = make_harm(ce, note_id, staff_info.n, harm_counter, ext_store);
                             measure.children.push(MeasureChild::Harm(Box::new(harm)));
                         } else {
                             pending_chord_names.push((ce.clone(), staff_info.n));
@@ -781,13 +786,13 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                     }
                     LyEvent::FigureEvent(fe) => {
                         fb_counter += 1;
-                        let fb = make_fb(fe, staff_info.n, fb_counter);
+                        let fb = make_fb(fe, staff_info.n, fb_counter, ext_store);
                         measure.children.push(MeasureChild::Fb(Box::new(fb)));
                         continue;
                     }
                     LyEvent::DrumEvent(dn) => {
                         id_counter += 1;
-                        let n = convert_drum_note(dn, id_counter);
+                        let n = convert_drum_note(dn, id_counter, ext_store);
                         let id = format!("ly-note-{}", id_counter);
                         let pe = dn.post_events.clone();
                         layer.children.push(LayerChild::Note(Box::new(n)));
@@ -795,7 +800,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                     }
                     LyEvent::DrumChordEvent(dc) => {
                         id_counter += 1;
-                        let n = convert_drum_chord(dc, id_counter);
+                        let n = convert_drum_chord(dc, id_counter, ext_store);
                         let id = format!("ly-note-{}", id_counter);
                         let pe = dc.post_events.clone();
                         layer.children.push(LayerChild::Note(Box::new(n)));
@@ -814,15 +819,12 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         continue;
                     }
                     LyEvent::ContextChange { context_type, name } => {
-                        // Track cross-staff override; store typed JSON label for roundtrip
+                        // Track cross-staff override; store in ext_store for roundtrip
                         let cc = tusk_model::ContextChange {
                             context_type: context_type.clone(),
                             name: name.clone(),
                         };
-                        let json = utils::escape_json_pipe(
-                            &serde_json::to_string(&cc).unwrap_or_default(),
-                        );
-                        cross_staff_override = Some(format!("tusk:context-change,{json}"));
+                        cross_staff_override = Some(cc);
                         continue;
                     }
                     LyEvent::Clef(_)
@@ -854,15 +856,17 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                 }
                 last_note_id = Some(current_id.clone());
 
-                // Apply cross-staff label if active
-                if let Some(ref change_label) = cross_staff_override {
-                    append_label_to_last_layer_child(&mut layer, change_label);
+                // Apply cross-staff context change if active
+                if let Some(ref cc) = cross_staff_override {
+                    if let Some(id) = get_last_layer_child_id(&layer) {
+                        ext_store.insert_context_change(id, cc.clone());
+                    }
                 }
 
                 // Flush pending inline chord names
                 for (ce, staff_n) in pending_chord_names.drain(..) {
                     harm_counter += 1;
-                    let harm = make_harm(&ce, &current_id, staff_n, harm_counter);
+                    let harm = make_harm(&ce, &current_id, staff_n, harm_counter, ext_store);
                     measure.children.push(MeasureChild::Harm(Box::new(harm)));
                 }
 
@@ -872,14 +876,14 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                     match ptm {
                         PendingTempoMark::Tempo(t) => {
                             let mei_tempo =
-                                make_tempo(&t, &current_id, staff_info.n, tempo_mark_counter);
+                                make_tempo(&t, &current_id, staff_info.n, tempo_mark_counter, ext_store);
                             measure
                                 .children
                                 .push(MeasureChild::Tempo(Box::new(mei_tempo)));
                         }
                         PendingTempoMark::Mark(s) => {
                             let dir =
-                                make_mark_dir(&s, &current_id, staff_info.n, tempo_mark_counter);
+                                make_mark_dir(&s, &current_id, staff_info.n, tempo_mark_counter, ext_store);
                             measure.children.push(MeasureChild::Dir(Box::new(dir)));
                         }
                         PendingTempoMark::TextMark(s) => {
@@ -888,6 +892,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                                 &current_id,
                                 staff_info.n,
                                 tempo_mark_counter,
+                                ext_store,
                             );
                             measure.children.push(MeasureChild::Dir(Box::new(dir)));
                         }
@@ -902,6 +907,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         &current_id,
                         staff_info.n,
                         artic_counter,
+                        ext_store,
                     );
                     measure.children.push(MeasureChild::Dir(Box::new(dir)));
                 }
@@ -909,7 +915,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                 // Flush pending music function calls
                 for fc in pending_function_ops.drain(..) {
                     func_counter += 1;
-                    let dir = make_function_dir(&fc, &current_id, staff_info.n, func_counter);
+                    let dir = make_function_dir(&fc, &current_id, staff_info.n, func_counter, ext_store);
                     measure.children.push(MeasureChild::Dir(Box::new(dir)));
                 }
 
@@ -917,7 +923,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                 for serialized in pending_scheme_music.drain(..) {
                     scm_counter += 1;
                     let dir =
-                        make_scheme_music_dir(&serialized, &current_id, staff_info.n, scm_counter);
+                        make_scheme_music_dir(&serialized, &current_id, staff_info.n, scm_counter, ext_store);
                     measure.children.push(MeasureChild::Dir(Box::new(dir)));
                 }
 
@@ -941,6 +947,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                                     pending.staff_n,
                                     slur_counter,
                                     false,
+                                    ext_store,
                                 );
                                 measure.children.push(MeasureChild::Slur(Box::new(slur)));
                             }
@@ -962,6 +969,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                                     pending.staff_n,
                                     slur_counter,
                                     true,
+                                    ext_store,
                                 );
                                 measure.children.push(MeasureChild::Slur(Box::new(slur)));
                             }
@@ -1011,6 +1019,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                                 &current_id,
                                 staff_info.n,
                                 artic_counter,
+                                ext_store,
                             );
                             measure.children.push(MeasureChild::Dir(Box::new(dir)));
                         }
@@ -1023,6 +1032,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                                 &current_id,
                                 staff_info.n,
                                 &mut ornam_counter,
+                                ext_store,
                             ) {
                                 measure.children.push(mc);
                             } else {
@@ -1033,6 +1043,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                                     &current_id,
                                     staff_info.n,
                                     artic_counter,
+                                    ext_store,
                                 );
                                 measure.children.push(MeasureChild::Dir(Box::new(dir)));
                             }
@@ -1047,6 +1058,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                                 &current_id,
                                 staff_info.n,
                                 artic_counter,
+                                ext_store,
                             );
                             measure.children.push(MeasureChild::Dir(Box::new(dir)));
                         }
@@ -1060,6 +1072,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                                 &current_id,
                                 staff_info.n,
                                 artic_counter,
+                                ext_store,
                             );
                             measure.children.push(MeasureChild::Dir(Box::new(dir)));
                         }
@@ -1084,7 +1097,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                             }
                         }
                         PostEvent::Tremolo(value) => {
-                            wrap_last_in_btrem(&mut layer, *value, &mut ornam_counter);
+                            wrap_last_in_btrem(&mut layer, *value, &mut ornam_counter, ext_store);
                         }
                         PostEvent::Tweak { path, value } => {
                             // Check for \tweak id #"value" — set xml:id
@@ -1094,13 +1107,15 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                                 set_xml_id_on_last_layer_child(&mut layer, &id_val);
                             }
                             let serialized = crate::serializer::serialize_tweak(path, value);
-                            let escaped = utils::escape_json_pipe(
-                                &serde_json::to_string(&serialized).unwrap_or_default(),
-                            );
-                            append_label_to_last_layer_child(
-                                &mut layer,
-                                &format!("tusk:tweak,{escaped}"),
-                            );
+                            let tweak_info = tusk_model::TweakInfo {
+                                path: serialized.clone(),
+                                value: tusk_model::ExtValue::String(String::new()),
+                            };
+                            if let Some(id) = get_last_layer_child_id(&layer) {
+                                let mut tweaks = ext_store.tweak_infos(&id).cloned().unwrap_or_default();
+                                tweaks.push(tweak_info);
+                                ext_store.insert_tweak_infos(id, tweaks);
+                            }
                         }
                         PostEvent::TextScript {
                             direction, text, ..
@@ -1112,6 +1127,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                                 &current_id,
                                 staff_info.n,
                                 text_script_counter,
+                                ext_store,
                             );
                             measure.children.push(MeasureChild::Dir(Box::new(dir)));
                         }
@@ -1127,7 +1143,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                 let mut beat = 1.0f64;
                 for (ce, staff_n) in pending_chord_names.drain(..) {
                     harm_counter += 1;
-                    let mut harm = make_harm(&ce, "", staff_n, harm_counter);
+                    let mut harm = make_harm(&ce, "", staff_n, harm_counter, ext_store);
                     harm.harm_log.startid = None;
                     harm.harm_log.tstamp = Some(tusk_model::generated::data::DataBeat(beat));
                     measure.children.push(MeasureChild::Harm(Box::new(harm)));
@@ -1140,7 +1156,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
             // Attach lyrics to notes in this layer
             for (verse_idx, lyric_info) in staff_info.lyrics.iter().enumerate() {
                 let verse_n = (verse_idx + 1) as u32;
-                lyrics::attach_lyrics_to_layer(&mut layer.children, &lyric_info.syllables, verse_n);
+                lyrics::attach_lyrics_to_layer(&mut layer.children, &lyric_info.syllables, verse_n, ext_store);
                 lyrics::refine_wordpos(&mut layer.children, verse_n);
             }
 
@@ -1160,7 +1176,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
         for ev in &cn_events {
             if let LyEvent::ChordName(ce) = ev {
                 harm_counter += 1;
-                let mut harm = make_harm(ce, "", 1, harm_counter);
+                let mut harm = make_harm(ce, "", 1, harm_counter, ext_store);
                 // Override: use @tstamp instead of @startid
                 harm.harm_log.startid = None;
                 harm.harm_log.tstamp = Some(tusk_model::generated::data::DataBeat(beat));
@@ -1181,7 +1197,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
         for ev in &fb_events {
             if let LyEvent::FigureEvent(fe) = ev {
                 fb_counter += 1;
-                let fb = make_fb(fe, 1, fb_counter);
+                let fb = make_fb(fe, 1, fb_counter, ext_store);
                 measure.children.push(MeasureChild::Fb(Box::new(fb)));
             }
         }
@@ -1205,6 +1221,6 @@ use control_events::{
 
 mod utils;
 use utils::{
-    append_label_to_last_layer_child, extract_tweak_string_value, is_id_tweak,
+    extract_tweak_string_value, is_id_tweak,
     parse_tempo_from_serialized, set_xml_id_on_last_layer_child,
 };

@@ -3,8 +3,9 @@
 use super::*;
 use crate::parser::Parser;
 use tusk_model::elements::{FbChild, Mei, MeiChild, ScoreChild, SectionChild};
+use tusk_model::ExtensionStore;
 
-fn parse_and_import(src: &str) -> Mei {
+fn parse_and_import(src: &str) -> (Mei, ExtensionStore) {
     let file = Parser::new(src).unwrap().parse().unwrap();
     import(&file).unwrap()
 }
@@ -43,26 +44,26 @@ fn measure_fbs(mei: &Mei) -> Vec<&tusk_model::elements::Fb> {
 
 #[test]
 fn import_figures_creates_fb_elements() {
-    let mei = parse_and_import("\\figures { \\<6 4\\>4 \\<7 5\\>4 \\<3\\>2 }");
+    let (mei, _ext_store) = parse_and_import("\\figures { \\<6 4\\>4 \\<7 5\\>4 \\<3\\>2 }");
     let fbs = measure_fbs(&mei);
     assert_eq!(fbs.len(), 3, "should create 3 fb elements");
 }
 
 #[test]
-fn fb_has_figure_label() {
-    let mei = parse_and_import("\\figures { \\<6 4\\>4 }");
+fn fb_has_figure_info() {
+    let (mei, ext_store) = parse_and_import("\\figures { \\<6 4\\>4 }");
     let fbs = measure_fbs(&mei);
     assert_eq!(fbs.len(), 1);
-    let label = fbs[0].common.label.as_deref().unwrap();
+    let id = fbs[0].common.xml_id.as_deref().unwrap();
     assert!(
-        label.starts_with("tusk:figure,"),
-        "label should have figure prefix: {label}"
+        ext_store.figured_bass_info(id).is_some(),
+        "fb should have figured_bass_info in ext_store"
     );
 }
 
 #[test]
 fn fb_has_f_children() {
-    let mei = parse_and_import("\\figures { \\<6 4\\>4 }");
+    let (mei, _ext_store) = parse_and_import("\\figures { \\<6 4\\>4 }");
     let fbs = measure_fbs(&mei);
     assert_eq!(fbs.len(), 1);
     assert_eq!(fbs[0].children.len(), 2, "should have 2 <f> children");
@@ -92,7 +93,7 @@ fn fb_has_f_children() {
 
 #[test]
 fn fb_xml_id_is_set() {
-    let mei = parse_and_import("\\figures { \\<6 4\\>4 }");
+    let (mei, _ext_store) = parse_and_import("\\figures { \\<6 4\\>4 }");
     let fbs = measure_fbs(&mei);
     assert!(fbs[0].common.xml_id.is_some(), "fb should have xml:id");
     assert!(
@@ -108,14 +109,14 @@ fn fb_xml_id_is_set() {
 
 #[test]
 fn import_figuremode_creates_fb() {
-    let mei = parse_and_import("\\figuremode { \\<5\\+ 3\\>4 }");
+    let (mei, _ext_store) = parse_and_import("\\figuremode { \\<5\\+ 3\\>4 }");
     let fbs = measure_fbs(&mei);
     assert_eq!(fbs.len(), 1, "figuremode should create fb");
 }
 
 #[test]
 fn fb_alterations_in_text() {
-    let mei = parse_and_import("\\figuremode { \\<6+ 4-\\>4 }");
+    let (mei, _ext_store) = parse_and_import("\\figuremode { \\<6+ 4-\\>4 }");
     let fbs = measure_fbs(&mei);
     assert_eq!(fbs.len(), 1);
     let FbChild::F(f0) = &fbs[0].children[0];
@@ -142,7 +143,7 @@ fn fb_alterations_in_text() {
 
 #[test]
 fn fb_figure_space() {
-    let mei = parse_and_import("\\figuremode { \\<6! _\\>2 }");
+    let (mei, _ext_store) = parse_and_import("\\figuremode { \\<6! _\\>2 }");
     let fbs = measure_fbs(&mei);
     assert_eq!(fbs.len(), 1);
     // Second figure should be space

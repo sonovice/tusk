@@ -9,6 +9,7 @@ use tusk_model::elements::{
     TupletSpan, Turn,
 };
 use tusk_model::generated::data::DataUri;
+use tusk_model::ExtensionStore;
 
 use crate::model::note::{
     BassFigure, ChordModeEvent, Direction, FigureAlteration, FigureEvent, FiguredBassModification,
@@ -23,14 +24,12 @@ fn direction_to_ext(dir: Direction) -> Option<tusk_model::DirectionExt> {
     }
 }
 
-/// Build a typed JSON ornament label.
-fn ornament_label(name: &str, direction: Direction) -> String {
-    let info = tusk_model::OrnamentInfo {
+/// Build an OrnamentInfo struct.
+fn ornament_info(name: &str, direction: Direction) -> tusk_model::OrnamentInfo {
+    tusk_model::OrnamentInfo {
         name: name.to_string(),
         direction: direction_to_ext(direction),
-    };
-    let json = serde_json::to_string(&info).unwrap_or_default();
-    format!("tusk:ornament,{json}")
+    }
 }
 
 /// Convert a LilyPond RepeatType to an extension RepeatTypeExt.
@@ -44,15 +43,13 @@ fn repeat_type_to_ext(rt: crate::model::RepeatType) -> tusk_model::RepeatTypeExt
     }
 }
 
-/// Build a typed JSON articulation/fingering/string label.
-fn artic_label(kind: tusk_model::ArticulationKind, value: &str, direction: Direction) -> String {
-    let info = tusk_model::ArticulationInfo {
+/// Build an ArticulationInfo struct.
+fn artic_info(kind: tusk_model::ArticulationKind, value: &str, direction: Direction) -> tusk_model::ArticulationInfo {
+    tusk_model::ArticulationInfo {
         kind,
         value: value.to_string(),
         direction: direction_to_ext(direction),
-    };
-    let json = serde_json::to_string(&info).unwrap_or_default();
-    format!("tusk:artic,{json}")
+    }
 }
 
 /// Compute the number of tremolo slashes from the subdivision value.
@@ -73,15 +70,16 @@ pub(super) fn make_slur(
     staff_n: u32,
     slur_id: u32,
     is_phrase: bool,
+    ext_store: &mut ExtensionStore,
 ) -> Slur {
     let mut slur = Slur::default();
-    slur.common.xml_id = Some(format!("ly-slur-{slur_id}"));
+    let id = format!("ly-slur-{slur_id}");
+    slur.common.xml_id = Some(id.clone());
     slur.slur_log.startid = Some(DataUri(format!("#{start_id}")));
     slur.slur_log.endid = Some(DataUri(format!("#{end_id}")));
     slur.slur_log.staff = Some(staff_n.to_string());
     if is_phrase {
-        let json = serde_json::to_string(&tusk_model::PhrasingSlur).unwrap_or_default();
-        slur.common.label = Some(format!("tusk:phrase,{json}"));
+        ext_store.insert_phrasing_slur(id, tusk_model::PhrasingSlur);
     }
     slur
 }
@@ -114,9 +112,6 @@ pub(super) fn make_hairpin(
 }
 
 /// Create an MEI TupletSpan control event.
-///
-/// Label stores the LilyPond-specific data for lossless roundtrip:
-/// `tusk:tuplet,{json}` (typed `TupletInfo` JSON)
 pub(super) fn make_tuplet_span(
     start_id: &str,
     end_id: &str,
@@ -125,16 +120,17 @@ pub(super) fn make_tuplet_span(
     numbase: u32,
     span_duration: Option<&crate::model::Duration>,
     tuplet_id: u32,
+    ext_store: &mut ExtensionStore,
 ) -> TupletSpan {
     let mut ts = TupletSpan::default();
-    ts.common.xml_id = Some(format!("ly-tuplet-{tuplet_id}"));
+    let id = format!("ly-tuplet-{tuplet_id}");
+    ts.common.xml_id = Some(id.clone());
     ts.tuplet_span_log.startid = Some(DataUri(format!("#{start_id}")));
     ts.tuplet_span_log.endid = Some(DataUri(format!("#{end_id}")));
     ts.tuplet_span_log.staff = Some(staff_n.to_string());
     ts.tuplet_span_log.num = Some(num.to_string());
     ts.tuplet_span_log.numbase = Some(numbase.to_string());
 
-    // Build typed JSON label for roundtrip
     let info = tusk_model::TupletInfo {
         num,
         denom: numbase,
@@ -144,8 +140,7 @@ pub(super) fn make_tuplet_span(
             multipliers: dur.multipliers.clone(),
         }),
     };
-    let json = serde_json::to_string(&info).unwrap_or_default();
-    ts.common.label = Some(format!("tusk:tuplet,{json}"));
+    ext_store.insert_tuplet_info(id, info);
 
     ts
 }
@@ -160,49 +155,50 @@ pub(super) fn make_ornament_control_event(
     startid: &str,
     staff_n: u32,
     counter: &mut u32,
+    ext_store: &mut ExtensionStore,
 ) -> Option<MeasureChild> {
     match name {
         "trill" => {
             *counter += 1;
             Some(MeasureChild::Trill(Box::new(make_trill(
-                startid, staff_n, direction, *counter,
+                startid, staff_n, direction, *counter, ext_store,
             ))))
         }
         "mordent" => {
             *counter += 1;
             Some(MeasureChild::Mordent(Box::new(make_mordent(
-                startid, staff_n, direction, "lower", false, *counter, None,
+                startid, staff_n, direction, "lower", false, *counter, None, ext_store,
             ))))
         }
         "prall" => {
             *counter += 1;
             Some(MeasureChild::Mordent(Box::new(make_mordent(
-                startid, staff_n, direction, "upper", false, *counter, None,
+                startid, staff_n, direction, "upper", false, *counter, None, ext_store,
             ))))
         }
         "prallprall" | "prallmordent" | "upprall" | "downprall" | "upmordent" | "downmordent"
         | "pralldown" | "prallup" | "lineprall" => {
             *counter += 1;
             Some(MeasureChild::Ornam(Box::new(make_ornam(
-                name, startid, staff_n, direction, *counter,
+                name, startid, staff_n, direction, *counter, ext_store,
             ))))
         }
         "turn" => {
             *counter += 1;
             Some(MeasureChild::Turn(Box::new(make_turn(
-                startid, staff_n, direction, "upper", *counter,
+                startid, staff_n, direction, "upper", *counter, ext_store,
             ))))
         }
         "reverseturn" => {
             *counter += 1;
             Some(MeasureChild::Turn(Box::new(make_turn(
-                startid, staff_n, direction, "lower", *counter,
+                startid, staff_n, direction, "lower", *counter, ext_store,
             ))))
         }
         "fermata" | "shortfermata" | "longfermata" | "verylongfermata" => {
             *counter += 1;
             Some(MeasureChild::Fermata(Box::new(make_fermata(
-                name, startid, staff_n, direction, *counter,
+                name, startid, staff_n, direction, *counter, ext_store,
             ))))
         }
         _ => None,
@@ -210,12 +206,13 @@ pub(super) fn make_ornament_control_event(
 }
 
 /// Create an MEI Trill control event.
-fn make_trill(startid: &str, staff_n: u32, direction: Direction, id: u32) -> Trill {
+fn make_trill(startid: &str, staff_n: u32, direction: Direction, id: u32, ext_store: &mut ExtensionStore) -> Trill {
     let mut trill = Trill::default();
-    trill.common.xml_id = Some(format!("ly-ornam-{id}"));
+    let eid = format!("ly-ornam-{id}");
+    trill.common.xml_id = Some(eid.clone());
     trill.trill_log.startid = Some(DataUri(format!("#{startid}")));
     trill.trill_log.staff = Some(staff_n.to_string());
-    trill.common.label = Some(ornament_label("trill", direction));
+    ext_store.insert_ornament_info(eid, ornament_info("trill", direction));
     trill
 }
 
@@ -228,9 +225,11 @@ fn make_mordent(
     long: bool,
     id: u32,
     ornament_name: Option<&str>,
+    ext_store: &mut ExtensionStore,
 ) -> Mordent {
     let mut mordent = Mordent::default();
-    mordent.common.xml_id = Some(format!("ly-ornam-{id}"));
+    let eid = format!("ly-ornam-{id}");
+    mordent.common.xml_id = Some(eid.clone());
     mordent.mordent_log.startid = Some(DataUri(format!("#{startid}")));
     mordent.mordent_log.staff = Some(staff_n.to_string());
     mordent.mordent_log.form = Some(form.to_string());
@@ -238,14 +237,15 @@ fn make_mordent(
         mordent.mordent_log.long = Some(tusk_model::generated::data::DataBoolean::True);
     }
     let name = ornament_name.unwrap_or(if form == "upper" { "prall" } else { "mordent" });
-    mordent.common.label = Some(ornament_label(name, direction));
+    ext_store.insert_ornament_info(eid, ornament_info(name, direction));
     mordent
 }
 
 /// Create an MEI Turn control event.
-fn make_turn(startid: &str, staff_n: u32, direction: Direction, form: &str, id: u32) -> Turn {
+fn make_turn(startid: &str, staff_n: u32, direction: Direction, form: &str, id: u32, ext_store: &mut ExtensionStore) -> Turn {
     let mut turn = Turn::default();
-    turn.common.xml_id = Some(format!("ly-ornam-{id}"));
+    let eid = format!("ly-ornam-{id}");
+    turn.common.xml_id = Some(eid.clone());
     turn.turn_log.startid = Some(DataUri(format!("#{startid}")));
     turn.turn_log.staff = Some(staff_n.to_string());
     turn.turn_log.form = Some(form.to_string());
@@ -254,14 +254,15 @@ fn make_turn(startid: &str, staff_n: u32, direction: Direction, form: &str, id: 
     } else {
         "turn"
     };
-    turn.common.label = Some(ornament_label(name, direction));
+    ext_store.insert_ornament_info(eid, ornament_info(name, direction));
     turn
 }
 
 /// Create an MEI Fermata control event.
-fn make_fermata(name: &str, startid: &str, staff_n: u32, direction: Direction, id: u32) -> Fermata {
+fn make_fermata(name: &str, startid: &str, staff_n: u32, direction: Direction, id: u32, ext_store: &mut ExtensionStore) -> Fermata {
     let mut fermata = Fermata::default();
-    fermata.common.xml_id = Some(format!("ly-ornam-{id}"));
+    let eid = format!("ly-ornam-{id}");
+    fermata.common.xml_id = Some(eid.clone());
     fermata.fermata_log.startid = Some(DataUri(format!("#{startid}")));
     fermata.fermata_log.staff = Some(staff_n.to_string());
     let shape = match name {
@@ -273,30 +274,30 @@ fn make_fermata(name: &str, startid: &str, staff_n: u32, direction: Direction, i
     if let Some(s) = shape {
         fermata.fermata_vis.shape = Some(s.to_string());
     }
-    fermata.common.label = Some(ornament_label(name, direction));
+    ext_store.insert_ornament_info(eid, ornament_info(name, direction));
     fermata
 }
 
 /// Create an MEI Ornam (generic ornament) control event.
-fn make_ornam(name: &str, startid: &str, staff_n: u32, direction: Direction, id: u32) -> Ornam {
+fn make_ornam(name: &str, startid: &str, staff_n: u32, direction: Direction, id: u32, ext_store: &mut ExtensionStore) -> Ornam {
     let mut ornam = Ornam::default();
-    ornam.common.xml_id = Some(format!("ly-ornam-{id}"));
+    let eid = format!("ly-ornam-{id}");
+    ornam.common.xml_id = Some(eid.clone());
     ornam.ornam_log.startid = Some(DataUri(format!("#{startid}")));
     ornam.ornam_log.staff = Some(staff_n.to_string());
-    ornam.common.label = Some(ornament_label(name, direction));
+    ext_store.insert_ornament_info(eid, ornament_info(name, direction));
     ornam.children.push(OrnamChild::Text(name.to_string()));
     ornam
 }
 
 /// Wrap the last-added LayerChild in a `<bTrem>` element for single-note tremolo.
-pub(super) fn wrap_last_in_btrem(layer: &mut Layer, value: u32, counter: &mut u32) {
+pub(super) fn wrap_last_in_btrem(layer: &mut Layer, value: u32, counter: &mut u32, ext_store: &mut ExtensionStore) {
     if let Some(last) = layer.children.pop() {
         *counter += 1;
         let mut btrem = BTrem::default();
-        btrem.common.xml_id = Some(format!("ly-btrem-{}", *counter));
-        let trem_info = tusk_model::TremoloInfo { value };
-        let json = serde_json::to_string(&trem_info).unwrap_or_default();
-        btrem.common.label = Some(format!("tusk:tremolo,{json}"));
+        let eid = format!("ly-btrem-{}", *counter);
+        btrem.common.xml_id = Some(eid.clone());
+        ext_store.insert_tremolo_info(eid, tusk_model::TremoloInfo { value });
         let num = tremolo_slash_count(value);
         if num > 0 {
             btrem.b_trem_log.num = Some(num.to_string());
@@ -320,12 +321,14 @@ pub(super) fn make_artic_dir(
     startid: &str,
     staff_n: u32,
     id: u32,
+    ext_store: &mut ExtensionStore,
 ) -> Dir {
     let mut dir = Dir::default();
-    dir.common.xml_id = Some(format!("ly-artic-{id}"));
+    let eid = format!("ly-artic-{id}");
+    dir.common.xml_id = Some(eid.clone());
     dir.dir_log.startid = Some(DataUri(format!("#{startid}")));
     dir.dir_log.staff = Some(staff_n.to_string());
-    dir.common.label = Some(artic_label(
+    ext_store.insert_articulation_info(eid, artic_info(
         tusk_model::ArticulationKind::Articulation,
         name,
         direction,
@@ -341,12 +344,14 @@ pub(super) fn make_fing_dir(
     startid: &str,
     staff_n: u32,
     id: u32,
+    ext_store: &mut ExtensionStore,
 ) -> Dir {
     let mut dir = Dir::default();
-    dir.common.xml_id = Some(format!("ly-artic-{id}"));
+    let eid = format!("ly-artic-{id}");
+    dir.common.xml_id = Some(eid.clone());
     dir.dir_log.startid = Some(DataUri(format!("#{startid}")));
     dir.dir_log.staff = Some(staff_n.to_string());
-    dir.common.label = Some(artic_label(
+    ext_store.insert_articulation_info(eid, artic_info(
         tusk_model::ArticulationKind::Fingering,
         &digit.to_string(),
         direction,
@@ -362,12 +367,14 @@ pub(super) fn make_string_dir(
     startid: &str,
     staff_n: u32,
     id: u32,
+    ext_store: &mut ExtensionStore,
 ) -> Dir {
     let mut dir = Dir::default();
-    dir.common.xml_id = Some(format!("ly-artic-{id}"));
+    let eid = format!("ly-artic-{id}");
+    dir.common.xml_id = Some(eid.clone());
     dir.dir_log.startid = Some(DataUri(format!("#{startid}")));
     dir.dir_log.staff = Some(staff_n.to_string());
-    dir.common.label = Some(artic_label(
+    ext_store.insert_articulation_info(eid, artic_info(
         tusk_model::ArticulationKind::StringNumber,
         &number.to_string(),
         direction,
@@ -386,6 +393,7 @@ pub(super) fn make_tempo(
     startid: &str,
     staff_n: u32,
     id: u32,
+    ext_store: &mut ExtensionStore,
 ) -> tusk_model::elements::Tempo {
     use tusk_model::elements::{Tempo, TempoChild};
     use tusk_model::generated::data::{
@@ -393,7 +401,8 @@ pub(super) fn make_tempo(
     };
 
     let mut mei_tempo = Tempo::default();
-    mei_tempo.common.xml_id = Some(format!("ly-tempo-{id}"));
+    let eid = format!("ly-tempo-{id}");
+    mei_tempo.common.xml_id = Some(eid.clone());
     mei_tempo.tempo_log.startid = Some(DataUri(format!("#{startid}")));
     mei_tempo.tempo_log.staff = Some(staff_n.to_string());
 
@@ -433,41 +442,37 @@ pub(super) fn make_tempo(
             .push(TempoChild::Text(text_str.trim().to_string()));
     }
 
-    // Store full serialized form as typed JSON label for lossless roundtrip
+    // Store full serialized form in ext_store for lossless roundtrip
     let serialized = crate::serializer::serialize_tempo(tempo);
-    let info = tusk_model::TempoInfo { serialized };
-    let json = serde_json::to_string(&info).unwrap_or_default();
-    mei_tempo.common.label = Some(format!("tusk:tempo,{json}"));
+    ext_store.insert_tempo_info(eid, tusk_model::TempoInfo { serialized });
 
     mei_tempo
 }
 
 /// Create an MEI Dir for a LilyPond `\mark`.
-pub(super) fn make_mark_dir(serialized: &str, startid: &str, staff_n: u32, id: u32) -> Dir {
+pub(super) fn make_mark_dir(serialized: &str, startid: &str, staff_n: u32, id: u32, ext_store: &mut ExtensionStore) -> Dir {
     let mut dir = Dir::default();
-    dir.common.xml_id = Some(format!("ly-mark-{id}"));
+    let eid = format!("ly-mark-{id}");
+    dir.common.xml_id = Some(eid.clone());
     dir.dir_log.startid = Some(DataUri(format!("#{startid}")));
     dir.dir_log.staff = Some(staff_n.to_string());
-    let info = tusk_model::MarkInfo {
+    ext_store.insert_mark_info(eid, tusk_model::MarkInfo {
         serialized: serialized.to_string(),
-    };
-    let json = super::utils::escape_json_pipe(&serde_json::to_string(&info).unwrap_or_default());
-    dir.common.label = Some(format!("tusk:mark,{json}"));
+    });
     dir.children.push(DirChild::Text(serialized.to_string()));
     dir
 }
 
 /// Create an MEI Dir for a LilyPond `\textMark`.
-pub(super) fn make_textmark_dir(serialized: &str, startid: &str, staff_n: u32, id: u32) -> Dir {
+pub(super) fn make_textmark_dir(serialized: &str, startid: &str, staff_n: u32, id: u32, ext_store: &mut ExtensionStore) -> Dir {
     let mut dir = Dir::default();
-    dir.common.xml_id = Some(format!("ly-mark-{id}"));
+    let eid = format!("ly-mark-{id}");
+    dir.common.xml_id = Some(eid.clone());
     dir.dir_log.startid = Some(DataUri(format!("#{startid}")));
     dir.dir_log.staff = Some(staff_n.to_string());
-    let info = tusk_model::TextMarkInfo {
+    ext_store.insert_textmark_info(eid, tusk_model::TextMarkInfo {
         serialized: serialized.to_string(),
-    };
-    let json = super::utils::escape_json_pipe(&serde_json::to_string(&info).unwrap_or_default());
-    dir.common.label = Some(format!("tusk:textmark,{json}"));
+    });
     dir.children.push(DirChild::Text(serialized.to_string()));
     dir
 }
@@ -483,9 +488,11 @@ pub(super) fn make_repeat_dir(
     count: u32,
     num_alternatives: u32,
     id: u32,
+    ext_store: &mut ExtensionStore,
 ) -> Dir {
     let mut dir = Dir::default();
-    dir.common.xml_id = Some(format!("ly-repeat-{id}"));
+    let eid = format!("ly-repeat-{id}");
+    dir.common.xml_id = Some(eid.clone());
     dir.dir_log.startid = Some(DataUri(format!("#{start_id}")));
     dir.dir_log.endid = Some(DataUri(format!("#{end_id}")));
     dir.dir_log.staff = Some(staff_n.to_string());
@@ -499,8 +506,7 @@ pub(super) fn make_repeat_dir(
         },
         ending_index: None,
     };
-    let json = serde_json::to_string(&info).unwrap_or_default();
-    dir.common.label = Some(format!("tusk:repeat,{json}"));
+    ext_store.insert_repeat_info(eid, info);
     dir.children.push(DirChild::Text(format!(
         "repeat {} {count}",
         repeat_type.as_str()
@@ -517,15 +523,15 @@ pub(super) fn make_ending_dir(
     staff_n: u32,
     index: u32,
     id: u32,
+    ext_store: &mut ExtensionStore,
 ) -> Dir {
     let mut dir = Dir::default();
-    dir.common.xml_id = Some(format!("ly-repeat-{id}"));
+    let eid = format!("ly-repeat-{id}");
+    dir.common.xml_id = Some(eid.clone());
     dir.dir_log.startid = Some(DataUri(format!("#{start_id}")));
     dir.dir_log.endid = Some(DataUri(format!("#{end_id}")));
     dir.dir_log.staff = Some(staff_n.to_string());
-    let info = tusk_model::EndingInfo { index };
-    let json = serde_json::to_string(&info).unwrap_or_default();
-    dir.common.label = Some(format!("tusk:ending,{json}"));
+    ext_store.insert_ending_info(eid, tusk_model::EndingInfo { index });
     dir.children
         .push(DirChild::Text(format!("ending {}", index + 1)));
     dir
@@ -534,19 +540,17 @@ pub(super) fn make_ending_dir(
 /// Create an MEI Harm control event from a LilyPond chord-mode event.
 ///
 /// Text child: human-readable chord symbol (e.g. "c:m7/e").
-pub(super) fn make_harm(ce: &ChordModeEvent, startid: &str, staff_n: u32, id: u32) -> Harm {
+pub(super) fn make_harm(ce: &ChordModeEvent, startid: &str, staff_n: u32, id: u32, ext_store: &mut ExtensionStore) -> Harm {
     let mut harm = Harm::default();
-    harm.common.xml_id = Some(format!("ly-harm-{id}"));
+    let eid = format!("ly-harm-{id}");
+    harm.common.xml_id = Some(eid.clone());
     harm.harm_log.startid = Some(DataUri(format!("#{startid}")));
     harm.harm_log.staff = Some(staff_n.to_string());
 
-    // Serialize the chord mode event as typed JSON label for lossless roundtrip
     let serialized = crate::serializer::serialize_chord_mode_event(ce);
-    let info = tusk_model::ChordModeInfo {
+    ext_store.insert_chord_mode_info(eid, tusk_model::ChordModeInfo {
         serialized: serialized.clone(),
-    };
-    let json = super::utils::escape_json_pipe(&serde_json::to_string(&info).unwrap_or_default());
-    harm.common.label = Some(format!("tusk:chord-mode,{json}"));
+    });
 
     // Human-readable text child
     harm.children.push(HarmChild::Text(serialized));
@@ -557,15 +561,13 @@ pub(super) fn make_harm(ce: &ChordModeEvent, startid: &str, staff_n: u32, id: u3
 /// Create an MEI `<fb>` control event from a LilyPond figure event.
 ///
 /// `<f>` children carry human-readable text (e.g. "6+", "4", "_").
-pub(super) fn make_fb(fe: &FigureEvent, _staff_n: u32, id: u32) -> Fb {
+pub(super) fn make_fb(fe: &FigureEvent, _staff_n: u32, id: u32, ext_store: &mut ExtensionStore) -> Fb {
     let mut fb = Fb::default();
-    fb.common.xml_id = Some(format!("ly-fb-{id}"));
+    let eid = format!("ly-fb-{id}");
+    fb.common.xml_id = Some(eid.clone());
 
-    // Serialize the figure event as typed JSON label for lossless roundtrip
     let serialized = crate::serializer::serialize_figure_event(fe);
-    let info = tusk_model::FiguredBassInfo { serialized };
-    let json = super::utils::escape_json_pipe(&serde_json::to_string(&info).unwrap_or_default());
-    fb.common.label = Some(format!("tusk:figure,{json}"));
+    ext_store.insert_figured_bass_info(eid, tusk_model::FiguredBassInfo { serialized });
 
     // Create <f> children with human-readable text
     for fig in &fe.figures {
@@ -612,34 +614,34 @@ pub(super) fn make_function_dir(
     startid: &str,
     staff_n: u32,
     id: u32,
+    ext_store: &mut ExtensionStore,
 ) -> Dir {
     let mut dir = Dir::default();
-    dir.common.xml_id = Some(format!("ly-func-{id}"));
+    let eid = format!("ly-func-{id}");
+    dir.common.xml_id = Some(eid.clone());
     dir.dir_log.startid = Some(DataUri(format!("#{startid}")));
     dir.dir_log.staff = Some(staff_n.to_string());
-    let json = super::utils::escape_json_pipe(&serde_json::to_string(fc).unwrap_or_default());
-    dir.common.label = Some(format!("tusk:func,{json}"));
+    ext_store.insert_function_call(eid, fc.clone());
     dir
 }
 
 /// Create an MEI Dir for a LilyPond property operation (`\override`, `\set`, etc.).
-pub(super) fn make_property_dir(serialized: &str, startid: &str, staff_n: u32, id: u32) -> Dir {
+pub(super) fn make_property_dir(serialized: &str, startid: &str, staff_n: u32, id: u32, ext_store: &mut ExtensionStore) -> Dir {
     let mut dir = Dir::default();
-    dir.common.xml_id = Some(format!("ly-prop-{id}"));
+    let eid = format!("ly-prop-{id}");
+    dir.common.xml_id = Some(eid.clone());
     dir.dir_log.startid = Some(DataUri(format!("#{startid}")));
     dir.dir_log.staff = Some(staff_n.to_string());
-    let info = tusk_model::PropertyOpInfo {
+    ext_store.insert_property_op_info(eid, tusk_model::PropertyOpInfo {
         serialized: serialized.to_string(),
-    };
-    let json = super::utils::escape_json_pipe(&serde_json::to_string(&info).unwrap_or_default());
-    dir.common.label = Some(format!("tusk:prop,{json}"));
+    });
     dir
 }
 
 /// Create an MEI Dir for a LilyPond text script post-event.
 ///
 /// The text is stored both as human-readable `<dir>` text content and as a typed
-/// JSON label (`tusk:text-script,{json}`) for lossless markup roundtrip.
+/// ExtensionStore entry for lossless markup roundtrip.
 /// Direction maps to `@place` (above/below) on the native MEI element.
 pub(super) fn make_text_script_dir(
     text: &crate::model::markup::Markup,
@@ -647,9 +649,11 @@ pub(super) fn make_text_script_dir(
     startid: &str,
     staff_n: u32,
     id: u32,
+    ext_store: &mut ExtensionStore,
 ) -> Dir {
     let mut dir = Dir::default();
-    dir.common.xml_id = Some(format!("ly-textscript-{id}"));
+    let eid = format!("ly-textscript-{id}");
+    dir.common.xml_id = Some(eid.clone());
     dir.dir_log.startid = Some(DataUri(format!("#{startid}")));
     dir.dir_log.staff = Some(staff_n.to_string());
 
@@ -674,28 +678,25 @@ pub(super) fn make_text_script_dir(
         dir.children.push(DirChild::Text(display_text));
     }
 
-    // Typed JSON label for lossless roundtrip
+    // Store in ext_store for lossless roundtrip
     let serialized = crate::serializer::serialize_text_script_text(text);
-    let info = tusk_model::TextScriptInfo {
+    ext_store.insert_text_script_info(eid, tusk_model::TextScriptInfo {
         serialized,
         direction: direction_to_ext(direction),
-    };
-    let json = super::utils::escape_json_pipe(&serde_json::to_string(&info).unwrap_or_default());
-    dir.common.label = Some(format!("tusk:text-script,{json}"));
+    });
 
     dir
 }
 
 /// Create an MEI Dir for a Scheme expression in music position (`#expr`).
-pub(super) fn make_scheme_music_dir(serialized: &str, startid: &str, staff_n: u32, id: u32) -> Dir {
+pub(super) fn make_scheme_music_dir(serialized: &str, startid: &str, staff_n: u32, id: u32, ext_store: &mut ExtensionStore) -> Dir {
     let mut dir = Dir::default();
-    dir.common.xml_id = Some(format!("ly-scm-{id}"));
+    let eid = format!("ly-scm-{id}");
+    dir.common.xml_id = Some(eid.clone());
     dir.dir_log.startid = Some(DataUri(format!("#{startid}")));
     dir.dir_log.staff = Some(staff_n.to_string());
-    let info = tusk_model::SchemeMusicInfo {
+    ext_store.insert_scheme_music_info(eid, tusk_model::SchemeMusicInfo {
         serialized: serialized.to_string(),
-    };
-    let json = super::utils::escape_json_pipe(&serde_json::to_string(&info).unwrap_or_default());
-    dir.common.label = Some(format!("tusk:scheme-music,{json}"));
+    });
     dir
 }

@@ -27,13 +27,14 @@
 //! registry.register_exporter(Box::new(my_format::MyFormat));
 //!
 //! let importer = registry.find_importer("myext", Some(content)).unwrap();
-//! let mei = importer.import_from_str(input)?;
+//! let (mei, ext_store) = importer.import_from_str(input)?;
 //! ```
 
 use thiserror::Error;
 
-// Re-export the canonical model type for convenience.
+// Re-export the canonical model types for convenience.
 pub use tusk_model::elements::Mei;
+pub use tusk_model::extensions::ExtensionStore;
 
 // ---------------------------------------------------------------------------
 // Error
@@ -119,18 +120,22 @@ pub trait Format: Send + Sync {
 ///
 /// The full pipeline (parsing the format's native representation *and*
 /// converting to MEI) is encapsulated behind this single method.
+/// Returns both the MEI document and an [`ExtensionStore`] containing
+/// format-specific roundtrip data keyed by MEI element IDs.
 pub trait Importer: Format {
-    /// Parse `input` and convert it to an MEI document.
-    fn import_from_str(&self, input: &str) -> FormatResult<Mei>;
+    /// Parse `input` and convert it to an MEI document with extension data.
+    fn import_from_str(&self, input: &str) -> FormatResult<(Mei, ExtensionStore)>;
 }
 
 /// Export from the canonical MEI model to a file format.
 ///
 /// The full pipeline (converting from MEI *and* serializing to the
 /// format's native representation) is encapsulated behind this single method.
+/// The [`ExtensionStore`] carries format-specific data from a prior import,
+/// enabling lossless roundtrip and cross-format conversion.
 pub trait Exporter: Format {
     /// Convert `mei` to the format's string representation.
-    fn export_to_string(&self, mei: &Mei) -> FormatResult<String>;
+    fn export_to_string(&self, mei: &Mei, ext_store: &ExtensionStore) -> FormatResult<String>;
 }
 
 // ---------------------------------------------------------------------------
@@ -307,13 +312,13 @@ mod tests {
     }
 
     impl Importer for TestFormat {
-        fn import_from_str(&self, _input: &str) -> FormatResult<Mei> {
-            Ok(Mei::default())
+        fn import_from_str(&self, _input: &str) -> FormatResult<(Mei, ExtensionStore)> {
+            Ok((Mei::default(), ExtensionStore::default()))
         }
     }
 
     impl Exporter for TestFormat {
-        fn export_to_string(&self, _mei: &Mei) -> FormatResult<String> {
+        fn export_to_string(&self, _mei: &Mei, _ext_store: &ExtensionStore) -> FormatResult<String> {
             Ok("TEST output".to_string())
         }
     }

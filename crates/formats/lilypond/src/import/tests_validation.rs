@@ -13,7 +13,9 @@ fn try_import(src: &str) -> Result<Mei, String> {
         },
         Err(e) => return Err(format!("lexer error: {e}")),
     };
-    import(&file).map_err(|e| format!("{e}"))
+    import(&file)
+        .map(|(mei, _)| mei)
+        .map_err(|e| format!("{e}"))
 }
 
 // ---------------------------------------------------------------------------

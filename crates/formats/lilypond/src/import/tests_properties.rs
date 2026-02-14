@@ -3,8 +3,9 @@
 use super::*;
 use crate::parser::Parser;
 use tusk_model::elements::{Mei, MeiChild};
+use tusk_model::ExtensionStore;
 
-fn parse_and_import(src: &str) -> Mei {
+fn parse_and_import(src: &str) -> (Mei, ExtensionStore) {
     let file = Parser::new(src).unwrap().parse().unwrap();
     import(&file).unwrap()
 }
@@ -45,59 +46,67 @@ fn collect_dirs(mei: &Mei) -> Vec<&tusk_model::elements::Dir> {
 
 #[test]
 fn import_override_creates_dir() {
-    let mei = parse_and_import("{ \\override NoteHead.color = #red c4 d e f }");
+    let (mei, ext_store) = parse_and_import("{ \\override NoteHead.color = #red c4 d e f }");
     let dirs = collect_dirs(&mei);
     let prop_dirs: Vec<_> = dirs
         .iter()
         .filter(|d| {
             d.common
-                .label
+                .xml_id
                 .as_deref()
-                .is_some_and(|l| l.starts_with("tusk:prop,"))
+                .is_some_and(|id| ext_store.property_op_info(id).is_some())
         })
         .collect();
     assert_eq!(prop_dirs.len(), 1, "expected one property dir");
-    let label = prop_dirs[0].common.label.as_deref().unwrap();
+    let id = prop_dirs[0].common.xml_id.as_deref().unwrap();
+    let info = ext_store.property_op_info(id).unwrap();
     assert!(
-        label.contains("override"),
-        "label should contain override: {label}"
+        info.serialized.contains("\\override"),
+        "serialized should contain override: {}",
+        info.serialized
     );
     assert!(
-        label.contains("NoteHead.color"),
-        "label should contain path: {label}"
+        info.serialized.contains("NoteHead.color"),
+        "serialized should contain path: {}",
+        info.serialized
     );
 }
 
 #[test]
 fn import_set_creates_dir() {
-    let mei = parse_and_import("{ \\set Staff.instrumentName = \"Piano\" c4 }");
+    let (mei, ext_store) = parse_and_import("{ \\set Staff.instrumentName = \"Piano\" c4 }");
     let dirs = collect_dirs(&mei);
     let prop_dirs: Vec<_> = dirs
         .iter()
         .filter(|d| {
             d.common
-                .label
+                .xml_id
                 .as_deref()
-                .is_some_and(|l| l.starts_with("tusk:prop,"))
+                .is_some_and(|id| ext_store.property_op_info(id).is_some())
         })
         .collect();
     assert_eq!(prop_dirs.len(), 1);
-    let label = prop_dirs[0].common.label.as_deref().unwrap();
-    assert!(label.contains("set"), "label should contain set: {label}");
+    let id = prop_dirs[0].common.xml_id.as_deref().unwrap();
+    let info = ext_store.property_op_info(id).unwrap();
+    assert!(
+        info.serialized.contains("\\set"),
+        "serialized should contain set: {}",
+        info.serialized
+    );
 }
 
 #[test]
 fn import_revert_creates_dir() {
-    let mei =
+    let (mei, ext_store) =
         parse_and_import("{ \\override NoteHead.color = #red c4 \\revert NoteHead.color d4 }");
     let dirs = collect_dirs(&mei);
     let prop_dirs: Vec<_> = dirs
         .iter()
         .filter(|d| {
             d.common
-                .label
+                .xml_id
                 .as_deref()
-                .is_some_and(|l| l.starts_with("tusk:prop,"))
+                .is_some_and(|id| ext_store.property_op_info(id).is_some())
         })
         .collect();
     assert_eq!(prop_dirs.len(), 2, "expected two property dirs");
@@ -105,26 +114,31 @@ fn import_revert_creates_dir() {
 
 #[test]
 fn import_once_override_creates_dir() {
-    let mei = parse_and_import("{ \\once \\override NoteHead.color = #red c4 }");
+    let (mei, ext_store) = parse_and_import("{ \\once \\override NoteHead.color = #red c4 }");
     let dirs = collect_dirs(&mei);
     let prop_dirs: Vec<_> = dirs
         .iter()
         .filter(|d| {
             d.common
-                .label
+                .xml_id
                 .as_deref()
-                .is_some_and(|l| l.starts_with("tusk:prop,"))
+                .is_some_and(|id| ext_store.property_op_info(id).is_some())
         })
         .collect();
     assert_eq!(prop_dirs.len(), 1);
-    let label = prop_dirs[0].common.label.as_deref().unwrap();
-    assert!(label.contains("once"), "label should contain once: {label}");
+    let id = prop_dirs[0].common.xml_id.as_deref().unwrap();
+    let info = ext_store.property_op_info(id).unwrap();
+    assert!(
+        info.serialized.contains("\\once"),
+        "serialized should contain once: {}",
+        info.serialized
+    );
 }
 
 #[test]
-fn import_tweak_on_note_label() {
-    let mei = parse_and_import("{ c4\\tweak color #red -. }");
-    // Find the first note and check its label
+fn import_tweak_on_note_ext_store() {
+    let (mei, ext_store) = parse_and_import("{ c4\\tweak color #red -. }");
+    // Find the first note and check ext_store for tweak info
     for child in &mei.children {
         if let MeiChild::Music(music) = child {
             for mc in &music.children {
@@ -147,14 +161,14 @@ fn import_tweak_on_note_label() {
                                                     ) = sl;
                                                     for lc in &layer.children {
                                                         if let LayerChild::Note(note) = lc {
-                                                            let label = note
+                                                            let id = note
                                                                 .common
-                                                                .label
+                                                                .xml_id
                                                                 .as_deref()
-                                                                .unwrap_or("");
+                                                                .unwrap();
                                                             assert!(
-                                                                label.contains("tusk:tweak,"),
-                                                                "note label should contain tweak: {label}"
+                                                                ext_store.tweak_infos(id).is_some(),
+                                                                "note should have tweak_infos in ext_store"
                                                             );
                                                             return;
                                                         }

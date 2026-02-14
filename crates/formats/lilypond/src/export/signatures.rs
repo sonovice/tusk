@@ -2,6 +2,7 @@
 
 use tusk_model::elements::ScoreDefChild;
 use tusk_model::elements::StaffGrpChild;
+use tusk_model::extensions::ExtensionStore;
 use tusk_model::{ControlEvent, EventSequence};
 
 use crate::model::pitch::Pitch;
@@ -16,9 +17,10 @@ pub(super) struct SignatureEvent {
     pub(super) music: Music,
 }
 
-/// Extract event sequences from all staffDefs.
+/// Extract event sequences from all staffDefs via ext_store.
 pub(super) fn extract_event_sequences(
     score: &tusk_model::elements::Score,
+    ext_store: &ExtensionStore,
 ) -> Vec<Vec<SignatureEvent>> {
     let mut result = Vec::new();
     for child in &score.children {
@@ -27,7 +29,7 @@ pub(super) fn extract_event_sequences(
                 if let ScoreDefChild::StaffGrp(grp) = sd_child {
                     for grp_child in &grp.children {
                         if let StaffGrpChild::StaffDef(sdef) = grp_child {
-                            result.push(parse_event_sequence_json(sdef));
+                            result.push(parse_event_sequence_from_ext(sdef, ext_store));
                         }
                     }
                 }
@@ -37,19 +39,11 @@ pub(super) fn extract_event_sequences(
     result
 }
 
-/// Parse the `tusk:events,{json}` segment from a staffDef label.
-fn parse_event_sequence_json(staff_def: &tusk_model::elements::StaffDef) -> Vec<SignatureEvent> {
-    let label = match &staff_def.labelled.label {
-        Some(l) => l.as_str(),
-        None => return Vec::new(),
-    };
-
-    // Find the tusk:events JSON segment
-    for segment in label.split('|') {
-        if let Some(json) = segment.strip_prefix("tusk:events,")
-            && let Ok(seq) = serde_json::from_str::<EventSequence>(json)
-        {
-            return convert_event_sequence(seq);
+/// Read event sequence from ext_store, falling back to staffDef attributes.
+fn parse_event_sequence_from_ext(staff_def: &tusk_model::elements::StaffDef, ext_store: &ExtensionStore) -> Vec<SignatureEvent> {
+    if let Some(id) = staff_def.basic.xml_id.as_deref() {
+        if let Some(seq) = ext_store.event_sequence(id) {
+            return convert_event_sequence(seq.clone());
         }
     }
 

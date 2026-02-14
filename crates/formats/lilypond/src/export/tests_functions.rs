@@ -8,8 +8,8 @@ use crate::serializer;
 /// Parse LilyPond -> import to MEI -> export to LilyPond AST -> serialize.
 fn roundtrip(src: &str) -> String {
     let file = Parser::new(src).unwrap().parse().unwrap();
-    let mei = import::import(&file).unwrap();
-    let exported = export(&mei).unwrap();
+    let (mei, ext_store) = import::import(&file).unwrap();
+    let exported = export(&mei, &ext_store).unwrap();
     serializer::serialize(&exported)
 }
 
@@ -136,25 +136,24 @@ fn roundtrip_partial_with_scheme_args() {
 
 #[test]
 fn roundtrip_function_preserves_typed_args() {
-    // Verify that the typed FunctionCall label preserves argument structure
+    // Verify that the typed FunctionCall is stored in ext_store
     let src = "{ \\tag \"part\" { c4 d e f } g4 }";
     let file = Parser::new(src).unwrap().parse().unwrap();
-    let mei = import::import(&file).unwrap();
+    let (mei, ext_store) = import::import(&file).unwrap();
 
-    // Check that the MEI label contains typed FunctionCall JSON
-    let label = find_func_dir_label(&mei);
+    // Find the first Dir with a function_call in ext_store
+    let dir_id = find_func_dir_id(&mei, &ext_store);
+    assert!(!dir_id.is_empty(), "should find a function dir");
+    let fc = ext_store.function_call(&dir_id).unwrap();
+    assert_eq!(fc.name, "tag", "function name should be tag");
     assert!(
-        label.contains("\"name\":\"tag\""),
-        "label should have typed name: {label}"
-    );
-    assert!(
-        label.contains("\"String\""),
-        "label should have String-typed arg: {label}"
+        !fc.args.is_empty(),
+        "function should have args"
     );
 }
 
-/// Helper to find the first function dir label in an MEI document.
-fn find_func_dir_label(mei: &tusk_model::elements::Mei) -> String {
+/// Helper to find the first Dir xml:id that has a function_call in ext_store.
+fn find_func_dir_id(mei: &tusk_model::elements::Mei, ext_store: &tusk_model::ExtensionStore) -> String {
     use tusk_model::elements::*;
     for child in &mei.children {
         if let MeiChild::Music(music) = child {
@@ -170,10 +169,10 @@ fn find_func_dir_label(mei: &tusk_model::elements::Mei) -> String {
                                     if let SectionChild::Measure(measure) = sec_c {
                                         for mc2 in &measure.children {
                                             if let MeasureChild::Dir(dir) = mc2
-                                                && let Some(l) = &dir.common.label
-                                                && l.starts_with("tusk:func,")
+                                                && let Some(id) = &dir.common.xml_id
+                                                && ext_store.function_call(id).is_some()
                                             {
-                                                return l.clone();
+                                                return id.clone();
                                             }
                                         }
                                     }
