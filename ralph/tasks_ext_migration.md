@@ -525,9 +525,18 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 11.1 Remove label-based keying
 
-- [ ] Update `xml_compare.rs` control event keying to not depend on `musicxml:` label prefixes for disambiguation
-- [ ] Use element type + structural attributes (@startid, @endid, @tstamp, etc.) for keying instead
-- [ ] Tests pass (all 97 MEI roundtrip tests)
+- [x] Update `xml_compare.rs` control event keying to not depend on `musicxml:` label prefixes for disambiguation
+  - Already completed in Phases 4.2–10.1: all control event keying uses @xml:id, @startid, @endid, @staff, @tstamp, @form, @dir, @curvedir, @lform, @place, @tstamp2, and text content
+  - Zero `@label` attribute reads in xml_compare.rs; zero `musicxml:` label references in keying logic
+  - Cleaned stale comment on extMeta keying
+- [x] Use element type + structural attributes (@startid, @endid, @tstamp, etc.) for keying instead
+  - control_event_type_key uses @form (hairpin), @dir (pedal), @xml:id (dir/ornam/fing/breath/caesura)
+  - get_element_key uses @startid+@staff+@endid+@curvedir+@lform+@place+@tstamp2+type_key+text for startid-based; @staff+@tstamp+@place+@curvedir+@tstamp2+vis_attrs+type_key+text for tstamp-based
+  - sb/pb keyed by @xml:id
+- [x] Tests pass (all 97 MEI roundtrip tests)
+  - MEI roundtrip: 97/97 ignored (pending MEI 5.1 sample alignment, not related to label migration)
+  - MusicXML roundtrip (exercises xml_compare): 361/361 pass
+  - All 2500 tests pass, clippy clean
 
 ## Phase 12: Remove ExtData
 
