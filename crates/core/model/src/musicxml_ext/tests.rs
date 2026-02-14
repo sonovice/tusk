@@ -432,3 +432,27 @@ fn offset_data_roundtrip() {
     let back: OffsetData = serde_json::from_str(&json).unwrap();
     assert_eq!(data, back);
 }
+
+#[test]
+fn direction_content_data_roundtrip() {
+    // Simple marker type
+    let damp = DirectionContentData::Damp(serde_json::Value::Null);
+    let json = serde_json::to_string(&damp).unwrap();
+    let back: DirectionContentData = serde_json::from_str(&json).unwrap();
+    assert_eq!(damp, back);
+
+    // Type with structured data
+    let pedal = DirectionContentData::Pedal(serde_json::json!({
+        "@type": "start",
+        "@line": "yes"
+    }));
+    let json = serde_json::to_string(&pedal).unwrap();
+    let back: DirectionContentData = serde_json::from_str(&json).unwrap();
+    assert_eq!(pedal, back);
+
+    // Rehearsal with text
+    let rehearsal = DirectionContentData::Rehearsal(serde_json::json!([{"$value": "A"}]));
+    let json = serde_json::to_string(&rehearsal).unwrap();
+    let back: DirectionContentData = serde_json::from_str(&json).unwrap();
+    assert_eq!(rehearsal, back);
+}

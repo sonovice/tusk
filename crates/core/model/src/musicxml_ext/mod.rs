@@ -1360,5 +1360,58 @@ pub struct FigureExtendData {
     pub visual: Option<VisualAttrs>,
 }
 
+// ---------------------------------------------------------------------------
+// DirectionContentData
+// ---------------------------------------------------------------------------
+
+/// Direction type content for lossless roundtrip of MusicXML direction types.
+///
+/// Each variant captures the data for one `<direction-type>` element.
+/// Types that are natively handled by MEI (Dynamics, Wedge, Metronome, Words)
+/// are not included here — they use dedicated MEI elements (dynam, hairpin, tempo, dir).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum DirectionContentData {
+    /// Rehearsal mark(s) — text content.
+    Rehearsal(serde_json::Value),
+    /// Segno sign(s).
+    Segno(serde_json::Value),
+    /// Coda sign(s).
+    Coda(serde_json::Value),
+    /// SMuFL symbol(s) — glyph names.
+    Symbol(serde_json::Value),
+    /// Dashes (cresc./dim. text extension).
+    Dashes(serde_json::Value),
+    /// Bracket line.
+    Bracket(serde_json::Value),
+    /// Piano pedal mark.
+    Pedal(serde_json::Value),
+    /// Octave shift (8va, 8vb, 15ma, etc.).
+    OctaveShift(serde_json::Value),
+    /// Harp pedal diagram.
+    HarpPedals(serde_json::Value),
+    /// Harp damping.
+    Damp(serde_json::Value),
+    /// Damp all strings.
+    DampAll(serde_json::Value),
+    /// Eyeglasses symbol.
+    Eyeglasses(serde_json::Value),
+    /// String mute on/off.
+    StringMute(serde_json::Value),
+    /// Scordatura (string tuning).
+    Scordatura(serde_json::Value),
+    /// Embedded image.
+    Image(serde_json::Value),
+    /// Principal voice marking.
+    PrincipalVoice(serde_json::Value),
+    /// Percussion pictogram(s).
+    Percussion(serde_json::Value),
+    /// Accordion registration diagram.
+    AccordionRegistration(serde_json::Value),
+    /// Staff division symbol.
+    StaffDivide(serde_json::Value),
+    /// Other direction type.
+    OtherDirection(serde_json::Value),
+}
+
 #[cfg(test)]
 mod tests;

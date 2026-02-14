@@ -250,10 +250,14 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 4.1 Create DirectionContentData
 
-- [ ] Create `DirectionContentData` enum in `musicxml_ext/` covering all 21 direction types: Rehearsal, Segno, Coda, Symbol, Dashes, Bracket, Pedal, OctaveShift, HarpPedals, Damp, DampAll, Eyeglasses, StringMute, Scordatura, Image, PrincipalVoice, Percussion, AccordionRegistration, StaffDivide, OtherDirection, Words
-- [ ] Each variant holds the type-specific data needed for roundtrip (use existing MusicXML model types as serde_json::Value where complex, or create typed structs)
-- [ ] Add `direction_contents: HashMap<String, DirectionContentData>` to ExtensionStore
-- [ ] Tests pass (new struct tests)
+- [x] Create `DirectionContentData` enum in `musicxml_ext/` covering all 21 direction types: Rehearsal, Segno, Coda, Symbol, Dashes, Bracket, Pedal, OctaveShift, HarpPedals, Damp, DampAll, Eyeglasses, StringMute, Scordatura, Image, PrincipalVoice, Percussion, AccordionRegistration, StaffDivide, OtherDirection, Words
+  - 20-variant enum in musicxml_ext/mod.rs (Words excluded — uses native MEI dir); all variants use serde_json::Value for initial flexibility
+- [x] Each variant holds the type-specific data needed for roundtrip (use existing MusicXML model types as serde_json::Value where complex, or create typed structs)
+  - All variants use serde_json::Value — can be typed later; serde roundtrip verified in test
+- [x] Add `direction_contents: HashMap<String, DirectionContentData>` to ExtensionStore
+  - HashMap field + `direction_content`/`insert_direction_content` accessors via macro
+- [x] Tests pass (new struct tests)
+  - All 2500 tests pass, clippy clean
 
 ### 4.2 Direction import migration
 
