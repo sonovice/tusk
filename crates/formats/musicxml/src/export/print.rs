@@ -1,33 +1,23 @@
 //! Print element export from MEI to MusicXML.
 //!
 //! Converts MEI `<sb>` and `<pb>` measure children back to MusicXML `<print>`
-//! elements. When the MEI element carries a `musicxml:print,` label prefix,
-//! the full Print struct is deserialized from the JSON payload for lossless
-//! roundtrip. Otherwise, a minimal print element is created.
+//! elements. When the MEI element has PrintData in ExtensionStore, the full
+//! Print struct is reconstructed from typed data. Otherwise, a minimal print
+//! element is created.
 
 use crate::context::ConversionContext;
-use crate::import::print::print_from_label;
 use crate::model::data::YesNo;
 use crate::model::elements::MeasureContent;
 use crate::model::print::Print;
 use tusk_model::elements::{Pb, Sb};
+use tusk_model::musicxml_ext::PrintData;
 
 /// Convert an MEI `<sb>` element to a MusicXML `<print>` measure content.
 pub fn convert_mei_sb(sb: &Sb, ctx: &mut ConversionContext) -> Option<MeasureContent> {
-    // Preferred: reconstruct from ExtensionStore mxml_json
+    // Preferred: reconstruct from ExtensionStore typed data
     if let Some(id) = &sb.common.xml_id {
-        if let Some(ext) = ctx.ext_store().get(id) {
-            if let Some(ref val) = ext.mxml_json {
-                if let Ok(print) = serde_json::from_value::<Print>(val.clone()) {
-                    return Some(MeasureContent::Print(Box::new(print)));
-                }
-            }
-        }
-    }
-
-    // Fallback: reconstruct from label
-    if let Some(label) = sb.common.label.as_deref() {
-        if let Some(print) = print_from_label(label) {
+        if let Some(data) = ctx.ext_store().print(id) {
+            let print = build_print_from_data(data);
             return Some(MeasureContent::Print(Box::new(print)));
         }
     }
@@ -53,20 +43,10 @@ pub fn convert_mei_sb(sb: &Sb, ctx: &mut ConversionContext) -> Option<MeasureCon
 
 /// Convert an MEI `<pb>` element to a MusicXML `<print>` measure content.
 pub fn convert_mei_pb(pb: &Pb, ctx: &mut ConversionContext) -> Option<MeasureContent> {
-    // Preferred: reconstruct from ExtensionStore mxml_json
+    // Preferred: reconstruct from ExtensionStore typed data
     if let Some(id) = &pb.common.xml_id {
-        if let Some(ext) = ctx.ext_store().get(id) {
-            if let Some(ref val) = ext.mxml_json {
-                if let Ok(print) = serde_json::from_value::<Print>(val.clone()) {
-                    return Some(MeasureContent::Print(Box::new(print)));
-                }
-            }
-        }
-    }
-
-    // Fallback: reconstruct from label
-    if let Some(label) = pb.common.label.as_deref() {
-        if let Some(print) = print_from_label(label) {
+        if let Some(data) = ctx.ext_store().print(id) {
+            let print = build_print_from_data(data);
             return Some(MeasureContent::Print(Box::new(print)));
         }
     }
@@ -88,4 +68,49 @@ pub fn convert_mei_pb(pb: &Pb, ctx: &mut ConversionContext) -> Option<MeasureCon
         id: None,
     };
     Some(MeasureContent::Print(Box::new(print)))
+}
+
+/// Build a MusicXML `Print` from typed `PrintData`.
+fn build_print_from_data(data: &PrintData) -> Print {
+    Print {
+        page_layout: data
+            .page_layout
+            .as_ref()
+            .and_then(|v| serde_json::from_value(v.clone()).ok()),
+        system_layout: data
+            .system_layout
+            .as_ref()
+            .and_then(|v| serde_json::from_value(v.clone()).ok()),
+        staff_layouts: data
+            .staff_layouts
+            .iter()
+            .filter_map(|v| serde_json::from_value(v.clone()).ok())
+            .collect(),
+        measure_layout: data
+            .measure_layout
+            .as_ref()
+            .and_then(|v| serde_json::from_value(v.clone()).ok()),
+        measure_numbering: data
+            .measure_numbering
+            .as_ref()
+            .and_then(|v| serde_json::from_value(v.clone()).ok()),
+        part_name_display: data
+            .part_name_display
+            .as_ref()
+            .and_then(|v| serde_json::from_value(v.clone()).ok()),
+        part_abbreviation_display: data
+            .part_abbreviation_display
+            .as_ref()
+            .and_then(|v| serde_json::from_value(v.clone()).ok()),
+        staff_spacing: data.staff_spacing,
+        new_system: data
+            .new_system
+            .map(|b| if b { YesNo::Yes } else { YesNo::No }),
+        new_page: data
+            .new_page
+            .map(|b| if b { YesNo::Yes } else { YesNo::No }),
+        blank_page: data.blank_page,
+        page_number: data.page_number.clone(),
+        id: data.id.clone(),
+    }
 }

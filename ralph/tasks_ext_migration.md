@@ -80,11 +80,18 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 2.3 Print migration
 
-- [ ] Import (`import/print.rs`): write to `ext_store.prints`
-- [ ] Import: stop writing mxml_json, stop setting `musicxml:print` label on `<sb>`/`<pb>`
-- [ ] Export (`export/print.rs`): read from `ext_store.prints.get(id)`
-- [ ] Remove `print_from_label()` legacy function
-- [ ] Tests pass
+- [x] Import (`import/print.rs`): write to `ext_store.prints`
+  - Uses `insert_print()` accessor directly; no more `entry()` + ExtData
+- [x] Import: stop writing mxml_json, stop setting `musicxml:print` label on `<sb>`/`<pb>`
+  - Removed label assignment, mxml_json write, and serde_json::to_value(print) call
+- [x] Export (`export/print.rs`): read from `ext_store.prints.get(id)`
+  - New `build_print_from_data()` reconstructs Print from PrintData (typed, no JSON deser)
+  - Uses `ctx.ext_store().print(id)` accessor instead of `ext.mxml_json`
+- [x] Remove `print_from_label()` legacy function
+  - Removed function + `PRINT_LABEL_PREFIX` constant
+  - Updated xml_compare sb/pb keying from @label to @xml:id
+- [x] Tests pass
+  - All 2500 tests pass, clippy clean
 
 ### 2.4 Sound migration
 
