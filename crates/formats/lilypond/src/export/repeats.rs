@@ -126,7 +126,9 @@ pub(super) fn apply_repeat_wrapping(
             .position(|id| id.as_deref().is_some_and(|i| i == span.start_id));
         let body_end_idx = ids
             .iter()
-            .rposition(|id| id.as_deref().is_some_and(|i| i == span.end_id));
+            .rposition(|id| id.as_deref().is_some_and(|i| i == span.end_id))
+            // Fall back to start when end_id was absorbed by tuplet wrapping
+            .or(start_idx);
 
         if let (Some(s), Some(be)) = (start_idx, body_end_idx) {
             let full_end = if span.num_alternatives > 0 {
@@ -162,6 +164,11 @@ pub(super) fn apply_repeat_wrapping(
         let cur_body_end = ids
             .iter()
             .rposition(|id| id.as_deref().is_some_and(|i| i == span.end_id));
+
+        // If end_id was absorbed by a prior wrapping step (e.g., tuplet
+        // collapsed the entire repeat body into one item), fall back to
+        // the start position so the single wrapper item gets repeated.
+        let cur_body_end = cur_body_end.or(cur_body_start);
 
         let (Some(bs), Some(be)) = (cur_body_start, cur_body_end) else {
             continue;

@@ -215,7 +215,7 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                                 apply_insertion_log(&mut grace_types, &log1);
                                 apply_insertion_log(&mut grace_types, &log2);
                                 apply_insertion_log(&mut grace_types, &log3);
-                                apply_tuplet_wrapping(&mut items, &item_ids, &tuplet_spans);
+                                apply_tuplet_wrapping(&mut items, &mut item_ids, &tuplet_spans, &mut grace_types);
                                 apply_grace_wrapping(&mut items, &grace_types);
                                 apply_repeat_wrapping(
                                     &mut items,
@@ -886,8 +886,9 @@ fn collect_layer_child_ids(child: &LayerChild, ids: &mut Vec<Option<String>>, co
 /// Processes tuplets from innermost to outermost (sorted by range size, ascending).
 fn apply_tuplet_wrapping(
     items: &mut Vec<Music>,
-    item_ids: &[Option<String>],
+    item_ids: &mut Vec<Option<String>>,
     tuplet_spans: &[TupletSpanInfo],
+    grace_types: &mut Vec<Option<grace::ExportGraceType>>,
 ) {
     if tuplet_spans.is_empty() || items.is_empty() {
         return;
@@ -918,19 +919,16 @@ fn apply_tuplet_wrapping(
         size_a.cmp(&size_b).then(b.0.cmp(&a.0))
     });
 
-    // Maintain a mutable id list that gets updated as items are wrapped.
-    // When a range [s..=e] is wrapped, the ids collapse to a single entry
-    // retaining the start_id (so outer tuplets referencing the same note can find it).
-    let mut ids: Vec<Option<String>> = item_ids.to_vec();
-
+    // Update item_ids in place so downstream wrapping steps (grace, repeat)
+    // see positions that match the modified items array.
     for &(_orig_start, _orig_end, span_idx) in &ranges {
         let span = &tuplet_spans[span_idx];
 
         // Find current positions in the (possibly modified) ids list
-        let cur_start = ids
+        let cur_start = item_ids
             .iter()
             .position(|id| id.as_deref().is_some_and(|i| i == span.start_id));
-        let cur_end = ids
+        let cur_end = item_ids
             .iter()
             .rposition(|id| id.as_deref().is_some_and(|i| i == span.end_id));
 
@@ -938,7 +936,7 @@ fn apply_tuplet_wrapping(
             && cs <= ce
             && ce < items.len()
         {
-            let start_id = ids[cs].clone();
+            let start_id = item_ids[cs].clone();
 
             // Extract items in range and wrap in Tuplet
             let body_items: Vec<Music> = items.drain(cs..=ce).collect();
@@ -951,8 +949,15 @@ fn apply_tuplet_wrapping(
             items.insert(cs, tuplet);
 
             // Replace range of ids with single entry preserving start_id
-            ids.drain(cs..=ce);
-            ids.insert(cs, start_id);
+            item_ids.drain(cs..=ce);
+            item_ids.insert(cs, start_id);
+
+            // Keep grace_types in sync: tuplet itself is not grace
+            let gt_end = ce.min(grace_types.len().saturating_sub(1));
+            if cs <= gt_end && cs < grace_types.len() {
+                grace_types.drain(cs..=gt_end);
+                grace_types.insert(cs, None);
+            }
         }
     }
 }

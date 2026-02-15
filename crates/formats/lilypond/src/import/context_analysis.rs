@@ -95,6 +95,20 @@ pub(super) struct StaffLayout<'a> {
 /// - `\new Staff { ... }` (single staff)
 /// - `{ ... }` (bare music, single staff)
 pub(super) fn analyze_staves(music: &Music) -> StaffLayout<'_> {
+    // Unwrap pitch context wrappers when they wrap a staff-group context
+    // (e.g. \transpose c c'' \context StaffGroup << ... >>).
+    // Don't unwrap unconditionally — wrapping bare Simultaneous changes analysis.
+    if let Music::Transpose { body, .. }
+        | Music::Relative { body, .. }
+        | Music::Fixed { body, .. } = music
+    {
+        if let Music::ContextedMusic { context_type, .. } = body.as_ref() {
+            if is_staff_group_context(context_type) {
+                return analyze_staves(body);
+            }
+        }
+    }
+
     // Check for \addlyrics wrapping (music \addlyrics { ... })
     if let Some((inner_music, lyric_infos)) = lyrics::extract_addlyrics(music) {
         let mut layout = analyze_staves(inner_music);
