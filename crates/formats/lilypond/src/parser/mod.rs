@@ -199,6 +199,31 @@ impl<'src> Parser<'src> {
         self.current.token == Token::Eof
     }
 
+    /// Force the lexer past any characters it can't tokenize.
+    ///
+    /// Skips bytes one at a time until the lexer produces a valid token
+    /// (or hits EOF), updating `self.current` with the result.
+    fn force_past_lex_errors(&mut self) {
+        loop {
+            self.lexer.skip_byte();
+            match self.lexer.next_token() {
+                Ok(tok) => {
+                    self.current = tok;
+                    return;
+                }
+                Err(_) => {
+                    if self.lexer.position() >= self.src.len() {
+                        self.current = SpannedToken::new(
+                            Token::Eof,
+                            crate::lexer::Span::new(self.src.len(), self.src.len()),
+                        );
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
     /// Skip tokens until a recovery point is reached.
     ///
     /// Recovery points are: `}`, `|`, `>>`, EOF, or any token that can
@@ -221,13 +246,7 @@ impl<'src> Parser<'src> {
                 Token::Symbol(s) if s == "r" || s == "s" || s == "R" || s == "q" => break,
                 _ => {
                     if self.advance().is_err() {
-                        // Lexer error — force position forward to avoid infinite loop
-                        self.lexer.skip_byte();
-                        // Re-read next valid token
-                        match self.lexer.next_token() {
-                            Ok(tok) => self.current = tok,
-                            Err(_) => continue, // will retry or hit EOF
-                        }
+                        self.force_past_lex_errors();
                     }
                 }
             }
@@ -892,6 +911,7 @@ impl<'src> Parser<'src> {
         self.expect(&Token::BraceOpen)?;
         let mut items = Vec::new();
         while *self.peek() != Token::BraceClose && !self.at_eof() {
+            let before = self.offset();
             match self.parse_music() {
                 Ok(m) => {
                     let m = self.try_wrap_addlyrics(m)?;
@@ -899,12 +919,16 @@ impl<'src> Parser<'src> {
                 }
                 Err(e) => {
                     // Recovery: skip to next `|`, `}`, or known music-start token
-                    let offset = self.offset();
                     self.warn(ParseWarning::RecoveredError {
-                        offset,
+                        offset: before,
                         message: e.to_string(),
                     });
                     self.skip_to_recovery_point();
+                    // If no progress (e.g. lex error left current unchanged),
+                    // force past the problematic characters.
+                    if self.offset() == before && !self.at_eof() {
+                        self.force_past_lex_errors();
+                    }
                 }
             }
         }
@@ -928,18 +952,21 @@ impl<'src> Parser<'src> {
                 self.advance()?;
                 continue;
             }
+            let before = self.offset();
             match self.parse_music() {
                 Ok(m) => {
                     let m = self.try_wrap_addlyrics(m)?;
                     items.push(m);
                 }
                 Err(e) => {
-                    let offset = self.offset();
                     self.warn(ParseWarning::RecoveredError {
-                        offset,
+                        offset: before,
                         message: e.to_string(),
                     });
                     self.skip_to_recovery_point();
+                    if self.offset() == before && !self.at_eof() {
+                        self.force_past_lex_errors();
+                    }
                 }
             }
         }
