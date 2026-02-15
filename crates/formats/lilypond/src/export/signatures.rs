@@ -189,17 +189,53 @@ fn reconstruct_initial_signatures(
     events
 }
 
-/// Inject signature events into layer items at the correct positions.
+/// Count how many note-stream positions a Music item occupies.
 ///
-/// Events are keyed by position in the note/rest stream. We insert them
-/// before the note/rest at that position. Only injected into the first layer
-/// (voice 1) since clef/key/time apply to the whole staff.
-pub(super) fn inject_signature_events(layers: &mut [Vec<Music>], events: &[SignatureEvent]) {
-    if layers.is_empty() || events.is_empty() {
+/// Bare notes count as 1. Wrappers (Tuplet/Grace/Repeat) count as the
+/// total notes they contain. Non-note items (Override, MusicFunction, etc.)
+/// count as 0. Must stay consistent with import's `build_event_sequence`
+/// note counting.
+fn note_count(m: &Music) -> u32 {
+    match m {
+        Music::Note(_)
+        | Music::Chord(_)
+        | Music::Rest(_)
+        | Music::MultiMeasureRest(_)
+        | Music::ChordRepetition(_)
+        | Music::DrumNote(_)
+        | Music::DrumChord(_) => 1,
+        Music::Tuplet { body, .. } => note_count(body),
+        Music::Grace { body }
+        | Music::Acciaccatura { body }
+        | Music::Appoggiatura { body } => note_count(body),
+        Music::AfterGrace { main, grace, .. } => note_count(main) + note_count(grace),
+        Music::Repeat {
+            body, alternatives, ..
+        } => {
+            let mut n = note_count(body);
+            if let Some(alts) = alternatives {
+                for a in alts {
+                    n += note_count(a);
+                }
+            }
+            n
+        }
+        Music::Sequential(items) => items.iter().map(note_count).sum(),
+        Music::Once { music } => note_count(music),
+        _ => 0,
+    }
+}
+
+/// Inject signature events into a single layer at the correct positions.
+///
+/// Events are keyed by position in the note/rest stream. Runs AFTER
+/// wrapping steps so signatures stay outside tuplet/grace/repeat wrappers.
+/// Uses recursive `note_count` to correctly handle both non-note items
+/// (count=0, skipped) and wrapper items (count=N notes inside).
+pub(super) fn inject_signature_events(items: &mut Vec<Music>, events: &[SignatureEvent]) {
+    if items.is_empty() || events.is_empty() {
         return;
     }
-    // Only inject into first layer
-    let layer = &mut layers[0];
 
     // Build insertion map: position -> list of Music to insert (in order)
     let mut inserts: std::collections::BTreeMap<u32, Vec<Music>> =
@@ -211,11 +247,16 @@ pub(super) fn inject_signature_events(layers: &mut [Vec<Music>], events: &[Signa
             .push(ev.music.clone());
     }
 
-    // Rebuild layer with injected events
+    // Rebuild layer with injected events, using note_count for positions
     let mut new_items = Vec::new();
-    for (note_idx, item) in layer.drain(..).enumerate() {
-        if let Some(to_insert) = inserts.remove(&(note_idx as u32)) {
-            new_items.extend(to_insert);
+    let mut note_idx: u32 = 0;
+    for item in items.drain(..) {
+        let nc = note_count(&item);
+        if nc > 0 {
+            if let Some(to_insert) = inserts.remove(&note_idx) {
+                new_items.extend(to_insert);
+            }
+            note_idx += nc;
         }
         new_items.push(item);
     }
@@ -223,7 +264,7 @@ pub(super) fn inject_signature_events(layers: &mut [Vec<Music>], events: &[Signa
     for (_pos, to_insert) in inserts {
         new_items.extend(to_insert);
     }
-    *layer = new_items;
+    *items = new_items;
 }
 
 /// Re-parse a serialized markup string back into a `Markup` AST node.

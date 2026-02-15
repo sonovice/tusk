@@ -205,14 +205,26 @@ fn parse_scheme_str(s: &str) -> Option<crate::model::SchemeExpr> {
 // Shared injection logic
 // ---------------------------------------------------------------------------
 
+/// Insertion log entry: (position, count) in descending position order.
+///
+/// Used to synchronize parallel arrays (like grace_types) that weren't
+/// directly updated during injection.
+pub(super) type InsertionLog = Vec<(usize, usize)>;
+
 /// Inject items from a startid→Music map into the items list before their referenced notes.
+///
+/// Also updates `item_ids` in parallel (inserting `None` for each injected item)
+/// so that subsequent operations (tuplet/grace/repeat wrapping) see correct positions.
+///
+/// Returns an insertion log: `(position, count)` pairs in descending position order,
+/// which callers can use to update other parallel arrays.
 fn inject_ops_by_startid(
     items: &mut Vec<Music>,
-    item_ids: &[Option<String>],
+    item_ids: &mut Vec<Option<String>>,
     ops: &[(String, Music)],
-) {
+) -> InsertionLog {
     if ops.is_empty() {
-        return;
+        return Vec::new();
     }
     // Build a map of id → list of items to inject before that id
     let mut inject_map: HashMap<String, Vec<Music>> = HashMap::new();
@@ -236,39 +248,44 @@ fn inject_ops_by_startid(
     }
     // Sort by position descending so we insert from back to front
     insertions.sort_by(|a, b| b.0.cmp(&a.0));
+    let mut log = Vec::with_capacity(insertions.len());
     for (pos, inject_items) in insertions {
         if pos <= items.len() {
+            let count = inject_items.len();
             for (j, op) in inject_items.into_iter().enumerate() {
                 items.insert(pos + j, op);
+                item_ids.insert(pos + j, None);
             }
+            log.push((pos, count));
         }
     }
+    log
 }
 
 /// Inject property operations into the items list before their referenced notes.
 pub(super) fn inject_property_ops(
     items: &mut Vec<Music>,
-    item_ids: &[Option<String>],
+    item_ids: &mut Vec<Option<String>>,
     ops: &[PropertyOpInfo],
-) {
+) -> InsertionLog {
     let pairs: Vec<(String, Music)> = ops
         .iter()
         .map(|op| (op.start_id.clone(), op.music.clone()))
         .collect();
-    inject_ops_by_startid(items, item_ids, &pairs);
+    inject_ops_by_startid(items, item_ids, &pairs)
 }
 
 /// Inject music function calls into the items list before their referenced notes.
 pub(super) fn inject_function_ops(
     items: &mut Vec<Music>,
-    item_ids: &[Option<String>],
+    item_ids: &mut Vec<Option<String>>,
     ops: &[FunctionOpInfo],
-) {
+) -> InsertionLog {
     let pairs: Vec<(String, Music)> = ops
         .iter()
         .map(|op| (op.start_id.clone(), op.music.clone()))
         .collect();
-    inject_ops_by_startid(items, item_ids, &pairs);
+    inject_ops_by_startid(items, item_ids, &pairs)
 }
 
 // ---------------------------------------------------------------------------
@@ -314,12 +331,12 @@ pub(super) fn collect_scheme_music_ops(measure_children: &[MeasureChild], ext_st
 /// Inject Scheme music expressions into the items list before their referenced notes.
 pub(super) fn inject_scheme_music_ops(
     items: &mut Vec<Music>,
-    item_ids: &[Option<String>],
+    item_ids: &mut Vec<Option<String>>,
     ops: &[SchemeMusicOp],
-) {
+) -> InsertionLog {
     let pairs: Vec<(String, Music)> = ops
         .iter()
         .map(|op| (op.start_id.clone(), op.music.clone()))
         .collect();
-    inject_ops_by_startid(items, item_ids, &pairs);
+    inject_ops_by_startid(items, item_ids, &pairs)
 }

@@ -206,9 +206,15 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                                     convert_layer_child_to_items(lc, &post_event_map, &mut items, ext_store);
                                     collect_layer_child_ids(lc, &mut item_ids, items.len() - start);
                                 }
-                                inject_property_ops(&mut items, &item_ids, &property_ops);
-                                inject_function_ops(&mut items, &item_ids, &function_ops);
-                                inject_scheme_music_ops(&mut items, &item_ids, &scheme_music_ops);
+                                let log1 = inject_property_ops(&mut items, &mut item_ids, &property_ops);
+                                let log2 = inject_function_ops(&mut items, &mut item_ids, &function_ops);
+                                let log3 = inject_scheme_music_ops(&mut items, &mut item_ids, &scheme_music_ops);
+                                // Sync grace_types with insertion logs so it stays
+                                // aligned with items after ops injection.
+                                let mut grace_types = grace_types;
+                                apply_insertion_log(&mut grace_types, &log1);
+                                apply_insertion_log(&mut grace_types, &log2);
+                                apply_insertion_log(&mut grace_types, &log3);
                                 apply_tuplet_wrapping(&mut items, &item_ids, &tuplet_spans);
                                 apply_grace_wrapping(&mut items, &grace_types);
                                 apply_repeat_wrapping(
@@ -220,8 +226,12 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                                 layers.push(items);
                             }
 
+                            // Inject signature events into first layer only, after
+                            // wrapping (so signatures stay outside wrappers).
                             if let Some(seq) = event_sequences.get(staff_idx) {
-                                inject_signature_events(&mut layers, seq);
+                                if let Some(first_layer) = layers.first_mut() {
+                                    inject_signature_events(first_layer, seq);
+                                }
                             }
 
                             staff_music.push(layers);
@@ -857,6 +867,11 @@ fn collect_layer_child_ids(child: &LayerChild, ids: &mut Vec<Option<String>>, co
             }
         }
         _ => {
+            // Push None for any extra items (e.g. context changes) injected
+            // before the note by convert_layer_child_to_items.
+            for _ in 1..count {
+                ids.push(None);
+            }
             if count > 0 {
                 ids.push(layer_child_xml_id(child).map(String::from));
             }
@@ -954,9 +969,23 @@ use figured_bass::{FiguredBassMeta, collect_figure_mode_fbs, extract_figured_bas
 
 mod operations;
 use operations::{
-    collect_function_ops, collect_property_ops, collect_scheme_music_ops, inject_function_ops,
-    inject_property_ops, inject_scheme_music_ops,
+    InsertionLog, collect_function_ops, collect_property_ops, collect_scheme_music_ops,
+    inject_function_ops, inject_property_ops, inject_scheme_music_ops,
 };
+
+/// Apply an insertion log to a parallel array, inserting `None` at the logged positions.
+///
+/// The log contains `(position, count)` pairs in descending position order,
+/// matching the back-to-front insertion order used by `inject_ops_by_startid`.
+fn apply_insertion_log<T>(vec: &mut Vec<Option<T>>, log: &InsertionLog) {
+    for &(pos, count) in log {
+        for j in 0..count {
+            if pos + j <= vec.len() {
+                vec.insert(pos + j, None);
+            }
+        }
+    }
+}
 
 /// Find the Score element in the MEI hierarchy.
 fn find_score(mei: &Mei) -> Option<&tusk_model::elements::Score> {
