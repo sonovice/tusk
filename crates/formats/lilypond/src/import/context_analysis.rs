@@ -39,6 +39,8 @@ pub(super) struct StaffInfo<'a> {
     pub voices: Vec<Vec<&'a Music>>,
     /// Lyrics attached to this staff (from \addlyrics, \lyricsto, etc.).
     pub lyrics: Vec<lyrics::LyricsInfo>,
+    /// Original inner music ref for pitch context detection (before voice extraction).
+    pub original_music: Option<&'a Music>,
 }
 
 /// Information about a staff group wrapping multiple staves.
@@ -131,8 +133,8 @@ pub(super) fn analyze_staves(music: &Music) -> StaffLayout<'_> {
             }
         }
 
-        // Single contexted staff (e.g. \new Staff { ... })
-        if is_staff_context(context_type) {
+        // Single contexted staff or voice (e.g. \new Staff { ... }, \new Voice { ... })
+        if is_staff_context(context_type) || is_voice_context(context_type) {
             let voices = extract_voices(inner);
             let mut layout = StaffLayout {
                 group: None,
@@ -144,6 +146,7 @@ pub(super) fn analyze_staves(music: &Music) -> StaffLayout<'_> {
                     with_block: with_block.clone(),
                     voices,
                     lyrics: Vec::new(),
+                    original_music: Some(inner),
                 }],
                 chord_names: Vec::new(),
                 figured_bass: Vec::new(),
@@ -198,6 +201,7 @@ pub(super) fn analyze_staves(music: &Music) -> StaffLayout<'_> {
                     with_block: with_block.clone(),
                     voices,
                     lyrics: Vec::new(),
+                    original_music: Some(inner),
                 }],
                 chord_names: Vec::new(),
                 figured_bass: Vec::new(),
@@ -240,6 +244,7 @@ pub(super) fn analyze_staves(music: &Music) -> StaffLayout<'_> {
                 with_block: None,
                 voices,
                 lyrics: Vec::new(),
+                original_music: Some(body),
             }],
             chord_names: Vec::new(),
             figured_bass: Vec::new(),
@@ -258,6 +263,7 @@ pub(super) fn analyze_staves(music: &Music) -> StaffLayout<'_> {
             with_block: None,
             voices,
             lyrics: Vec::new(),
+            original_music: Some(music),
         }],
         chord_names: Vec::new(),
         figured_bass: Vec::new(),
@@ -342,6 +348,27 @@ fn extract_staves_chords_figures_from_group(
 ) {
     match music {
         Music::Simultaneous(items) => extract_staves_chords_figures_from_simultaneous(items),
+        // Single staff inside a group (no <<>>), e.g. \new StaffGroup \new Staff { ... }
+        Music::ContextedMusic {
+            keyword,
+            context_type,
+            name,
+            with_block,
+            music: inner,
+        } if is_staff_context(context_type) || is_voice_context(context_type) => {
+            let voices = extract_voices(inner);
+            let staves = vec![StaffInfo {
+                n: 1,
+                name: name.clone(),
+                context_type: context_type.clone(),
+                keyword: Some(*keyword),
+                with_block: with_block.clone(),
+                voices,
+                lyrics: Vec::new(),
+                original_music: Some(inner),
+            }];
+            (staves, Vec::new(), Vec::new())
+        }
         _ => (Vec::new(), Vec::new(), Vec::new()),
     }
 }
@@ -378,6 +405,7 @@ fn extract_staves_chords_figures_from_simultaneous<'a>(
                     with_block: with_block.clone(),
                     voices,
                     lyrics: Vec::new(),
+                    original_music: Some(inner),
                 });
                 n += 1;
             } else if context_type == "ChordNames" {
@@ -460,8 +488,12 @@ pub(super) fn build_score_def_from_staves(
         // Set initial clef/key/time on staffDef and build event sequence
         let event_seq = build_event_sequence(&events, &mut staff_def);
 
-        // Detect relative/transpose context from the music tree
-        let pitch_ctx = detect_pitch_context_ext(&staff_info.voices);
+        // Detect relative/transpose context from the original music (before voice extraction)
+        let pitch_ctx = if let Some(orig) = staff_info.original_music {
+            detect_pitch_context_inner(orig)
+        } else {
+            detect_pitch_context_ext(&staff_info.voices)
+        };
 
         // Staff context → ext_store
         let staff_ctx = build_staff_context(staff_info);
@@ -650,6 +682,15 @@ fn detect_pitch_context_inner(music: &Music) -> Option<ExtPitchContext> {
         Music::ContextedMusic { music, .. } => detect_pitch_context_inner(music),
         // Unwrap single-item Sequential (e.g. `{ \transpose c c' { } }` from export)
         Music::Sequential(items) if items.len() == 1 => detect_pitch_context_inner(&items[0]),
+        // Look through Simultaneous children (e.g. `<< { \relative {...} } \lyricsto ... >>`)
+        Music::Simultaneous(items) => {
+            for item in items {
+                if let Some(pc) = detect_pitch_context_inner(item) {
+                    return Some(pc);
+                }
+            }
+            None
+        }
         _ => None,
     }
 }
