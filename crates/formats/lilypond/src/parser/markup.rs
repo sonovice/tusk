@@ -447,11 +447,14 @@ impl<'src> Parser<'src> {
                     }
                     break;
                 }
-                // Word/symbol: consume as final arg
-                Token::Symbol(_) | Token::NoteName(_) => {
+                // Word/symbol: consume as final arg.
+                // NoteName tokens are NOT consumed — they are music pitches
+                // that should not be eaten by markup commands (e.g. \draw-circle
+                // takes only scheme args; a following `d''` is a note, not markup).
+                Token::Symbol(_) => {
                     let tok = self.advance()?;
                     match tok.token {
-                        Token::Symbol(s) | Token::NoteName(s) => args.push(Markup::Word(s)),
+                        Token::Symbol(s) => args.push(Markup::Word(s)),
                         _ => unreachable!(),
                     }
                     break;

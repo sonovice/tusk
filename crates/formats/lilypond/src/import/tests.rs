@@ -320,14 +320,11 @@ fn import_sequential_single_layer() {
 
 #[test]
 fn import_nested_sequential_in_simultaneous() {
-    // Outer sequential wrapping simultaneous
+    // Outer sequential wrapping simultaneous: { << { c'4 } { e'4 } >> }
+    // extract_voices unwraps the single-item Sequential and finds the
+    // inner Simultaneous, splitting into 2 layers (one per voice)
     let (mei, _ext_store) = parse_and_import("{ << { c'4 } { e'4 } >> }");
-    // The outer sequential contains a simultaneous -- but find_music
-    // walks into it and finds the simultaneous at the section level
-    // The top-level is Sequential([Simultaneous([...])]) -- the
-    // collect_events will flatten both voices into one layer since
-    // extract_voices sees a Sequential at top level
-    assert_eq!(layer_count(&mei), 1);
+    assert_eq!(layer_count(&mei), 2);
 }
 
 // --- Phase 5.2: Context import tests ---
