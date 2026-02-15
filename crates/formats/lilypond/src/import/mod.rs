@@ -58,8 +58,10 @@ use tusk_model::{ToplevelMarkup, ToplevelMarkupKind};
 use context_analysis::{StaffLayout, analyze_staves, build_score_def_from_staves};
 use events::{
     GraceType, LyEvent, PitchContext, apply_grace_to_chord, apply_grace_to_note, collect_events,
+    extract_pitch_from_music,
 };
 pub use signatures::{fifths_to_key, mei_clef_to_name};
+use utils::voice_needs_pitch_context;
 
 use conversion::{
     convert_chord, convert_drum_chord, convert_drum_note, convert_mrest, convert_note,
@@ -422,6 +424,39 @@ fn build_score_from_music(
     Ok(score)
 }
 
+/// Build a PitchContext from a music tree that has pitch context wrappers.
+///
+/// Walks through `\relative`/`\fixed`/`\transpose` wrappers (and single-item
+/// Sequential) to extract the pitch context, same as `collect_events` would.
+/// Used to pre-initialize voice contexts when voices were split from inside
+/// a pitch context wrapper.
+fn build_pitch_context_from_music(music: &Music) -> Option<PitchContext> {
+    match music {
+        Music::Relative { pitch, .. } => {
+            let (ref_step, ref_oct) = if let Some(ref_pitch_music) = pitch {
+                extract_pitch_from_music(ref_pitch_music)
+                    .map(|p| (p.step, p.octave))
+                    .unwrap_or(('f', 0))
+            } else {
+                ('f', 0)
+            };
+            let mut ctx = PitchContext::new();
+            ctx.relative = Some((ref_step, ref_oct));
+            Some(ctx)
+        }
+        Music::Fixed { pitch, .. } => {
+            let ref_oct = extract_pitch_from_music(pitch)
+                .map(|p| p.octave)
+                .unwrap_or(1);
+            let mut ctx = PitchContext::new();
+            ctx.fixed = Some(ref_oct);
+            Some(ctx)
+        }
+        Music::Sequential(items) if items.len() == 1 => build_pitch_context_from_music(&items[0]),
+        _ => None,
+    }
+}
+
 /// Get the xml:id of the last note/rest/chord in a layer.
 fn get_last_layer_child_id(layer: &Layer) -> Option<String> {
     match layer.children.last() {
@@ -512,12 +547,24 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
         let mut staff = Staff::default();
         staff.n_integer.n = Some(staff_info.n.to_string());
 
+        // When voices were split from inside a pitch context wrapper (\relative/\fixed),
+        // pre-initialize PitchContext so bare voice items get correct resolution.
+        let split_pitch_ctx = if staff_info.voices.len() > 1
+            && staff_info.voices.iter().all(|v| voice_needs_pitch_context(v))
+        {
+            staff_info
+                .original_music
+                .and_then(|m| build_pitch_context_from_music(m))
+        } else {
+            None
+        };
+
         for (voice_idx, voice_music) in staff_info.voices.iter().enumerate() {
             let mut layer = Layer::default();
             layer.n_integer.n = Some((voice_idx + 1).to_string());
 
             let mut events = Vec::new();
-            let mut voice_ctx = PitchContext::new();
+            let mut voice_ctx = split_pitch_ctx.clone().unwrap_or_else(PitchContext::new);
             for m in voice_music {
                 collect_events(m, &mut events, &mut voice_ctx);
             }

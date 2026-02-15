@@ -32,11 +32,43 @@ pub(super) fn parse_tempo_from_serialized(s: &str) -> Option<crate::model::signa
 /// If the top-level music is `Simultaneous` and each child is a distinct
 /// voice (Sequential block or single event), each child becomes a separate
 /// voice (MEI layer). Otherwise, all music goes into a single voice.
+///
+/// Also unwraps `\relative`, `\transpose`, `\fixed` wrappers to find
+/// inner `Simultaneous` music. When unwrapping, only bare music items
+/// (no ContextedMusic) are accepted, since ContextedMusic contexts like
+/// `\new Voice` are handled by `analyze_staves`.
 pub(super) fn extract_voices(music: &Music) -> Vec<Vec<&Music>> {
+    // Try splitting the direct music (allows ContextedMusic like \new Voice)
+    if let Some(voices) = try_split_simultaneous(music, true) {
+        return voices;
+    }
+    // Try unwrapping pitch context wrappers, then split with strict mode
+    let inner = unwrap_pitch_context(music);
+    if !std::ptr::eq(inner, music) {
+        if let Some(voices) = try_split_simultaneous(inner, false) {
+            return voices;
+        }
+    }
+    vec![vec![music]]
+}
+
+/// Unwrap `\relative` / `\transpose` / `\fixed` / single-item Sequential
+/// to find the structurally significant inner music.
+fn unwrap_pitch_context(music: &Music) -> &Music {
     match music {
-        Music::Simultaneous(items) if items.len() > 1 => {
-            // Check if children look like separate voice streams
-            // (each is a Sequential block or a single event, NOT \new Staff)
+        Music::Relative { body, .. } | Music::Fixed { body, .. } => unwrap_pitch_context(body),
+        Music::Transpose { body, .. } => unwrap_pitch_context(body),
+        Music::Sequential(items) if items.len() == 1 => unwrap_pitch_context(&items[0]),
+        _ => music,
+    }
+}
+
+/// Try to split Simultaneous music into separate voice streams.
+/// With `allow_context=true`, ContextedMusic (Voice etc.) is accepted.
+/// With `allow_context=false`, only bare music items are accepted.
+fn try_split_simultaneous(music: &Music, allow_context: bool) -> Option<Vec<Vec<&Music>>> {
+    if let Music::Simultaneous(items) = music {
+        if items.len() > 1 {
             let all_voice_like = items.iter().all(|item| {
                 matches!(
                     item,
@@ -49,19 +81,31 @@ pub(super) fn extract_voices(music: &Music) -> Vec<Vec<&Music>> {
                         | Music::Relative { .. }
                         | Music::Fixed { .. }
                         | Music::Transpose { .. }
-                ) || matches!(
+                ) || (allow_context && matches!(
                     item,
                     Music::ContextedMusic { context_type, .. } if !is_staff_context(context_type) && !is_staff_group_context(context_type)
-                )
+                ))
             });
             if all_voice_like {
-                items.iter().map(|item| vec![item]).collect()
-            } else {
-                vec![vec![music]]
+                return Some(items.iter().map(|item| vec![item]).collect());
             }
         }
-        _ => vec![vec![music]],
     }
+    None
+}
+
+/// Check if a voice's music items are "bare" (no pitch context wrappers).
+///
+/// Returns true if none of the voice items have `\relative`/`\fixed`/`\transpose`.
+/// When true and the staff has `original_music` with pitch context, the import
+/// should pre-initialize `PitchContext` so bare voice items get correct pitch resolution.
+pub(super) fn voice_needs_pitch_context(voice: &[&Music]) -> bool {
+    voice.iter().all(|m| {
+        !matches!(
+            m,
+            Music::Relative { .. } | Music::Fixed { .. } | Music::Transpose { .. }
+        )
+    })
 }
 
 
