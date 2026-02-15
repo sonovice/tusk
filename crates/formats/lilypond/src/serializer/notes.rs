@@ -56,7 +56,20 @@ impl Serializer<'_> {
     }
 
     pub(super) fn write_lyric_event(&mut self, le: &LyricEvent) {
-        self.out.push_str(&le.text);
+        if le.text.is_empty() || le.text.contains(char::is_whitespace) {
+            // Quote empty or whitespace-containing lyrics so they re-parse correctly
+            self.out.push('"');
+            for ch in le.text.chars() {
+                match ch {
+                    '"' => self.out.push_str("\\\""),
+                    '\\' => self.out.push_str("\\\\"),
+                    _ => self.out.push(ch),
+                }
+            }
+            self.out.push('"');
+        } else {
+            self.out.push_str(&le.text);
+        }
         if let Some(dur) = &le.duration {
             self.write_duration(dur);
         }
@@ -221,7 +234,7 @@ impl Serializer<'_> {
                     match text {
                         markup::Markup::String(s) => {
                             self.out.push('"');
-                            self.out.push_str(s);
+                            self.write_escaped_string(s);
                             self.out.push('"');
                         }
                         _ => {

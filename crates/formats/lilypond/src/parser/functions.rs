@@ -75,6 +75,18 @@ impl<'src> Parser<'src> {
                     let s = self.expect_string()?;
                     args.push(FunctionArg::String(s));
                 }
+                // Bare symbol as function argument (e.g. `\omit TupletNumber`,
+                // `\keepWithTag X`, `\tag layout`). Only consumed when NOT
+                // followed by `=` (which would indicate an assignment LHS).
+                Token::Symbol(s) if s != "r" && s != "s" && s != "R" && s != "q" => {
+                    let s = s.clone();
+                    // Peek ahead: `Symbol =` is an assignment, not a function arg.
+                    if matches!(self.peek2(), Ok(Token::Equals)) {
+                        break;
+                    }
+                    self.advance()?;
+                    args.push(FunctionArg::SymbolList(vec![s]));
+                }
                 Token::Unsigned(n) => {
                     let n = *n;
                     self.advance()?;

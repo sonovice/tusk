@@ -722,3 +722,94 @@ fn roundtrip_inline_text_script_markup() {
     assert_triangle_mei_roundtrip(src);
     assert_pipeline_stable(src);
 }
+
+// ============================================================================
+// Regression tests (generated per-file from specs/lilypond/repo/input/regression/)
+// ============================================================================
+
+fn regression_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../specs/lilypond/repo/input/regression")
+}
+
+fn load_regression(name: &str) -> String {
+    let path = regression_dir().join(name);
+    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()))
+}
+
+/// Serialization roundtrip that skips on expected failures (parse errors,
+/// error-recovery AST drift, etc.).
+fn try_serialization_roundtrip(src: &str, name: &str) {
+    let Some(ast1) = try_parse(src) else { return };
+    let serialized = serializer::serialize(&ast1);
+    let Some(ast2) = try_parse(&serialized) else {
+        panic!("re-parse of serialized output failed for {name}.\nSerialized:\n{serialized}");
+    };
+    if ast1 != ast2 {
+        // Find first differing item for diagnostics
+        let max = ast1.items.len().max(ast2.items.len());
+        let mut diff_idx = None;
+        for i in 0..max {
+            let a = ast1.items.get(i);
+            let b = ast2.items.get(i);
+            if a != b {
+                diff_idx = Some(i);
+                break;
+            }
+        }
+        if let Some(i) = diff_idx {
+            panic!(
+                "Serialization roundtrip AST mismatch for {name} at item {i}.\n\
+                 AST1[{i}]: {:?}\n\
+                 AST2[{i}]: {:?}\n\
+                 Original:\n{src}\nSerialized:\n{serialized}",
+                ast1.items.get(i),
+                ast2.items.get(i),
+            );
+        } else {
+            panic!(
+                "Serialization roundtrip AST mismatch for {name} (item count: {} vs {}).\n\
+                 Original:\n{src}\nSerialized:\n{serialized}",
+                ast1.items.len(),
+                ast2.items.len(),
+            );
+        }
+    }
+}
+
+/// Triangle MEI roundtrip that skips (instead of panicking) on failures
+/// that are expected for many regression files.
+fn try_triangle_mei_roundtrip(src: &str, name: &str) {
+    let Some(file1) = try_parse(src) else { return };
+    let Ok((mei1, ext1)) = import(&file1) else { return };
+    let Ok(exported1) = export(&mei1, &ext1) else { return };
+    let ly2 = serializer::serialize(&exported1);
+    let Some(file2) = try_parse(&ly2) else { return };
+    let Ok((mei2, ext2)) = import(&file2) else { return };
+    let Ok(exported2) = export(&mei2, &ext2) else { return };
+    let ly_from_mei1 = serializer::serialize(&exported1);
+    let ly_from_mei2 = serializer::serialize(&exported2);
+    if ly_from_mei1 != ly_from_mei2 && !involves_label_metadata(&ly_from_mei1, &ly_from_mei2) {
+        panic!(
+            "Triangle MEI roundtrip failed for {name}.\n\
+             MEI₁:\n{ly_from_mei1}\nMEI₂:\n{ly_from_mei2}"
+        );
+    }
+}
+
+/// Pipeline stabilization that skips on expected failures.
+fn try_pipeline_stable(src: &str, name: &str) {
+    let Some(file1) = try_parse(src) else { return };
+    let Ok((mei1, ext1)) = import(&file1) else { return };
+    let Ok(exported1) = export(&mei1, &ext1) else { return };
+    let ly2 = serializer::serialize(&exported1);
+    let Some(file2) = try_parse(&ly2) else { return };
+    let Ok((mei2, ext2)) = import(&file2) else { return };
+    let Ok(exported2) = export(&mei2, &ext2) else { return };
+    let ly3 = serializer::serialize(&exported2);
+    if ly2 != ly3 && !involves_label_metadata(&ly2, &ly3) {
+        panic!("Pipeline not stable for {name}.\nPass 1:\n{ly2}\nPass 2:\n{ly3}");
+    }
+}
+
+// Include build-script-generated per-file regression tests.
+include!(concat!(env!("OUT_DIR"), "/regression_roundtrip.rs"));

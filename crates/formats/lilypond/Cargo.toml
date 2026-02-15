@@ -14,5 +14,7 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 
 [dev-dependencies]
+tusk-format.workspace = true
 tusk-mei = { workspace = true }
 tusk-model = { workspace = true }
+tusk-musicxml.workspace = true

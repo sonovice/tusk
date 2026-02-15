@@ -639,6 +639,7 @@ dependencies = [
  "tusk-format",
  "tusk-mei",
  "tusk-model",
+ "tusk-musicxml",
 ]
 
 [[package]]

@@ -128,7 +128,7 @@ pub fn serialize_text_script_text(text: &markup::Markup) -> String {
     match text {
         markup::Markup::String(s) => {
             ser.out.push('"');
-            ser.out.push_str(s);
+            ser.write_escaped_string(s);
             ser.out.push('"');
         }
         _ => {
@@ -563,20 +563,24 @@ impl<'a> Serializer<'a> {
         self.write_assignment_value(&a.value);
     }
 
+    /// Write a string value with proper LilyPond escape sequences.
+    fn write_escaped_string(&mut self, s: &str) {
+        for ch in s.chars() {
+            match ch {
+                '"' => self.out.push_str("\\\""),
+                '\\' => self.out.push_str("\\\\"),
+                '\n' => self.out.push_str("\\n"),
+                '\t' => self.out.push_str("\\t"),
+                _ => self.out.push(ch),
+            }
+        }
+    }
+
     fn write_assignment_value(&mut self, v: &AssignmentValue) {
         match v {
             AssignmentValue::String(s) => {
                 self.out.push('"');
-                // Escape special characters
-                for ch in s.chars() {
-                    match ch {
-                        '"' => self.out.push_str("\\\""),
-                        '\\' => self.out.push_str("\\\\"),
-                        '\n' => self.out.push_str("\\n"),
-                        '\t' => self.out.push_str("\\t"),
-                        _ => self.out.push(ch),
-                    }
-                }
+                self.write_escaped_string(s);
                 self.out.push('"');
             }
             AssignmentValue::Number(n) => {
@@ -970,7 +974,7 @@ impl<'a> Serializer<'a> {
         match m {
             markup::Markup::Word(s) => {
                 self.out.push('"');
-                self.out.push_str(s);
+                self.write_escaped_string(s);
                 self.out.push('"');
             }
             _ => {
@@ -1045,7 +1049,14 @@ impl<'a> Serializer<'a> {
             SchemeExpr::Bool(true) => self.out.push_str("#t"),
             SchemeExpr::Bool(false) => self.out.push_str("#f"),
             SchemeExpr::Integer(n) => self.out.push_str(&n.to_string()),
-            SchemeExpr::Float(f) => self.out.push_str(&f.to_string()),
+            SchemeExpr::Float(f) => {
+                let s = f.to_string();
+                self.out.push_str(&s);
+                // Ensure ".0" suffix so re-parse yields Float, not Integer.
+                if !s.contains('.') {
+                    self.out.push_str(".0");
+                }
+            }
             SchemeExpr::String(s) => {
                 self.out.push('"');
                 for ch in s.chars() {

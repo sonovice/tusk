@@ -63,11 +63,17 @@ impl<'src> Lexer<'src> {
         self.pos
     }
 
-    /// Advance past a single byte. Used by the parser for error recovery
-    /// when the lexer cannot produce a valid token at the current position.
+    /// Advance past a single character (which may be multi-byte UTF-8).
+    /// Used by the parser for error recovery when the lexer cannot produce
+    /// a valid token at the current position.
     pub fn skip_byte(&mut self) {
         if self.pos < self.bytes.len() {
+            // Advance to the next UTF-8 char boundary to avoid landing
+            // inside a multi-byte character sequence.
             self.pos += 1;
+            while self.pos < self.bytes.len() && !self.src.is_char_boundary(self.pos) {
+                self.pos += 1;
+            }
         }
     }
 
@@ -153,8 +159,13 @@ impl<'src> Lexer<'src> {
             b'_' => self.single_char(Token::Underscore, start),
 
             _ => {
-                // Try to decode a UTF-8 char for the error message.
-                let ch = self.src[self.pos..].chars().next().unwrap_or('?');
+                // Decode the UTF-8 char at this position for the error message.
+                // If pos is somehow not on a char boundary, fall back to '?'.
+                let ch = if self.src.is_char_boundary(self.pos) {
+                    self.src[self.pos..].chars().next().unwrap_or('?')
+                } else {
+                    '?'
+                };
                 Err(LexError::UnexpectedChar {
                     ch,
                     offset: self.pos,
