@@ -135,7 +135,11 @@ pub(super) fn analyze_staves(music: &Music) -> StaffLayout<'_> {
 
         // Single contexted staff or voice (e.g. \new Staff { ... }, \new Voice { ... })
         if is_staff_context(context_type) || is_voice_context(context_type) {
-            let voices = extract_voices(inner);
+            // If inner is << <<voices>> \lyricsto ... >>, extract voices
+            // from the nested Simultaneous (stripping the lyrics layer).
+            let (voice_music, orig_music) =
+                unwrap_lyricsto_simultaneous(inner).unwrap_or((inner, inner));
+            let voices = extract_voices(voice_music);
             let mut layout = StaffLayout {
                 group: None,
                 staves: vec![StaffInfo {
@@ -146,7 +150,7 @@ pub(super) fn analyze_staves(music: &Music) -> StaffLayout<'_> {
                     with_block: with_block.clone(),
                     voices,
                     lyrics: Vec::new(),
-                    original_music: Some(inner),
+                    original_music: Some(orig_music),
                 }],
                 chord_names: Vec::new(),
                 figured_bass: Vec::new(),
@@ -268,6 +272,37 @@ pub(super) fn analyze_staves(music: &Music) -> StaffLayout<'_> {
         chord_names: Vec::new(),
         figured_bass: Vec::new(),
     }
+}
+
+/// If music is `<< <<voices>> \lyricsto ... >>`, return the inner Simultaneous
+/// (containing the voices) for voice extraction. This unwraps the lyrics layer
+/// so that voices inside the nested `<<>>` can be properly split into layers.
+fn unwrap_lyricsto_simultaneous(music: &Music) -> Option<(&Music, &Music)> {
+    if let Music::Simultaneous(items) = music {
+        let mut inner_sim = None;
+        let mut has_lyrics = false;
+        for item in items {
+            if matches!(item, Music::Simultaneous(_)) {
+                if inner_sim.is_some() {
+                    return None; // multiple nested <<>>, bail
+                }
+                inner_sim = Some(item);
+            } else if lyrics::extract_lyricsto(item).is_some()
+                || matches!(
+                    item,
+                    Music::ContextedMusic { context_type, .. } if context_type == "Lyrics"
+                )
+            {
+                has_lyrics = true;
+            }
+        }
+        if has_lyrics {
+            if let Some(inner) = inner_sim {
+                return Some((inner, music));
+            }
+        }
+    }
+    None
 }
 
 /// Scan simultaneous items for `\lyricsto` constructs and attach them to
