@@ -1,9 +1,4 @@
-<table>
-<tr>
-<td width="120">
 <img src="logo.svg" alt="Tusk" width="100">
-</td>
-<td>
 
 # Tusk
 
@@ -11,10 +6,6 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 ![Language: Rust](https://img.shields.io/badge/language-Rust-orange)
-
-</td>
-</tr>
-</table>
 
 Tusk converts between MusicXML, MEI, and LilyPond. Its internal model is based on [MEI](https://music-encoding.org/) (Music Encoding Initiative) and extended where needed to cover concepts from other formats. Every conversion passes through this shared model, preserving as much musical information as possible across formats.
 
