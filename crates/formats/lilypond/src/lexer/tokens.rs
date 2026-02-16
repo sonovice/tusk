@@ -1,7 +1,7 @@
 //! Token definitions for the LilyPond lexer.
 //!
 //! Token variants mirror the terminal symbols of the LilyPond grammar
-//! (`specs/lilypond/repo/lily/parser.yy`). The lexer produces a stream of
+//! (LilyPond's `lily/parser.yy`). The lexer produces a stream of
 //! these tokens for the parser.
 
 /// Byte offset span in the source text.

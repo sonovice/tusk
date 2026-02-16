@@ -1,4 +1,4 @@
-//! LilyPond AST types mirroring the grammar in `specs/lilypond/repo/lily/parser.yy`.
+//! LilyPond AST types mirroring the grammar in LilyPond's `lily/parser.yy`.
 //!
 //! Types are added incrementally per phase (score, music, note, pitch, duration, etc.).
 

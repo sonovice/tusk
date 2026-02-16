@@ -1,7 +1,7 @@
 //! Recursive-descent parser for LilyPond syntax.
 //!
 //! Builds an AST from token stream produced by the lexer. The parser follows
-//! the productions in `specs/lilypond/repo/lily/parser.yy` but implemented as
+//! the productions in LilyPond's `lily/parser.yy` but implemented as
 //! a hand-rolled recursive-descent parser in Rust.
 
 use std::fmt;

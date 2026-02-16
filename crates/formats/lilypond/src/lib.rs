@@ -2,7 +2,7 @@
 //!
 //! This crate handles reading and writing LilyPond (`.ly`) files, as well as
 //! bidirectional conversion between LilyPond and MEI. The parser aims to
-//! validate against the full LilyPond grammar (see `specs/lilypond/repo/lily/parser.yy`).
+//! validate against the full LilyPond grammar (see LilyPond's `lily/parser.yy`).
 //!
 //! # Module Organization
 //!

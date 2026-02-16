@@ -1,6 +1,6 @@
 //! MEI roundtrip tests against official sample encodings.
 //!
-//! Tests parse MEI files from MEI sample encodings (requires `specs/mei/sample-encodings/`),
+//! Tests parse MEI files from MEI sample encodings (submodule at `tests/fixtures/mei/sample-encodings/`),
 //! serialize back to MEI XML, and verify that content is preserved.
 //!
 //! # Status
@@ -39,7 +39,7 @@ macro_rules! require_samples {
         let dir = sample_encodings_music_dir();
         if !dir.exists() {
             eprintln!(
-                "SKIP: specs/mei/sample-encodings not available ({})",
+                "SKIP: MEI sample-encodings submodule not available ({})",
                 dir.display()
             );
             return;
