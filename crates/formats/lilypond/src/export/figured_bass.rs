@@ -79,8 +79,8 @@ pub(super) fn extract_figured_bass_meta(
     for child in &score.children {
         if let ScoreChild::ScoreDef(score_def) = child {
             for sd_child in &score_def.children {
-                if let ScoreDefChild::StaffGrp(grp) = sd_child {
-                    if let Some(id) = grp.common.xml_id.as_deref() {
+                if let ScoreDefChild::StaffGrp(grp) = sd_child
+                    && let Some(id) = grp.common.xml_id.as_deref() {
                         let fb_key = format!("{id}-figuredbass");
                         if let Some(ctx) = ext_store.staff_context(&fb_key) {
                             return Some(FiguredBassMeta {
@@ -89,7 +89,6 @@ pub(super) fn extract_figured_bass_meta(
                             });
                         }
                     }
-                }
             }
         }
     }

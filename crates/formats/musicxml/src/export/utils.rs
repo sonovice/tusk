@@ -2,28 +2,6 @@
 //!
 //! Duration, pitch, and ID helper functions used across conversion modules.
 
-/// Convert MEI duration string (e.g. "4", "quarter") to quarter note units.
-#[allow(dead_code)]
-pub fn duration_str_to_quarter_notes(s: &str) -> f64 {
-    match s.trim().to_lowercase().as_str() {
-        "long" | "0" => 16.0,
-        "breve" => 8.0,
-        "whole" | "1" => 4.0,
-        "half" | "2" => 2.0,
-        "quarter" | "4" => 1.0,
-        "eighth" | "8" => 0.5,
-        "16th" | "16" => 0.25,
-        "32nd" | "32" => 0.125,
-        "64th" | "64" => 0.0625,
-        "128th" | "128" => 0.03125,
-        "256th" | "256" => 0.015625,
-        "512th" | "512" => 0.0078125,
-        "1024th" | "1024" => 0.00390625,
-        "2048th" | "2048" => 0.001953125,
-        _ => 1.0,
-    }
-}
-
 /// Convert MEI duration to quarter note units.
 pub fn duration_to_quarter_notes(dur: &tusk_model::data::DataDuration) -> f64 {
     use tusk_model::data::{DataDuration, DataDurationCmn};
@@ -48,12 +26,6 @@ pub fn duration_to_quarter_notes(dur: &tusk_model::data::DataDuration) -> f64 {
         // For mensural durations, return quarter note as fallback
         _ => 1.0,
     }
-}
-
-/// Convert MEI rest duration string to quarter note units.
-#[allow(dead_code)]
-pub fn duration_rests_str_to_quarter_notes(s: &str) -> f64 {
-    duration_str_to_quarter_notes(s)
 }
 
 /// Convert MEI rest duration (DataDurationrests) to quarter note units.
@@ -91,29 +63,6 @@ pub fn apply_dots(base_duration: f64, dots: u64) -> f64 {
         dot_value /= 2.0;
     }
     duration
-}
-
-/// Convert MEI duration string to MusicXML NoteTypeValue.
-#[allow(dead_code)]
-pub fn convert_mei_duration_str_to_note_type(s: &str) -> crate::model::note::NoteTypeValue {
-    use crate::model::note::NoteTypeValue;
-    match s.trim().to_lowercase().as_str() {
-        "long" | "0" => NoteTypeValue::Long,
-        "breve" => NoteTypeValue::Breve,
-        "whole" | "1" => NoteTypeValue::Whole,
-        "half" | "2" => NoteTypeValue::Half,
-        "quarter" | "4" => NoteTypeValue::Quarter,
-        "eighth" | "8" => NoteTypeValue::Eighth,
-        "16th" | "16" => NoteTypeValue::N16th,
-        "32nd" | "32" => NoteTypeValue::N32nd,
-        "64th" | "64" => NoteTypeValue::N64th,
-        "128th" | "128" => NoteTypeValue::N128th,
-        "256th" | "256" => NoteTypeValue::N256th,
-        "512th" | "512" => NoteTypeValue::N512th,
-        "1024th" | "1024" => NoteTypeValue::N1024th,
-        "2048th" | "2048" => NoteTypeValue::N1024th,
-        _ => NoteTypeValue::Quarter,
-    }
 }
 
 /// Convert MEI duration to MusicXML NoteTypeValue.
@@ -177,28 +126,6 @@ pub fn convert_mei_duration_rests_to_note_type(
     }
 }
 
-/// Convert MEI @mm.unit string (e.g. "quarter", "4") to MusicXML beat unit string.
-#[allow(dead_code)]
-pub fn mei_mm_unit_str_to_beat_unit(s: &str) -> String {
-    match s.trim().to_lowercase().as_str() {
-        "long" | "0" => "long".to_string(),
-        "breve" => "breve".to_string(),
-        "whole" | "1" => "whole".to_string(),
-        "half" | "2" => "half".to_string(),
-        "quarter" | "4" => "quarter".to_string(),
-        "eighth" | "8" => "eighth".to_string(),
-        "16th" | "16" => "16th".to_string(),
-        "32nd" | "32" => "32nd".to_string(),
-        "64th" | "64" => "64th".to_string(),
-        "128th" | "128" => "128th".to_string(),
-        "256th" | "256" => "256th".to_string(),
-        "512th" | "512" => "512th".to_string(),
-        "1024th" | "1024" => "1024th".to_string(),
-        "2048th" | "2048" => "2048th".to_string(),
-        _ => "quarter".to_string(),
-    }
-}
-
 /// Convert MEI duration to MusicXML beat unit string.
 pub fn convert_mei_duration_to_beat_unit(dur: &tusk_model::data::DataDuration) -> String {
     use tusk_model::data::{DataDuration, DataDurationCmn};
@@ -221,16 +148,6 @@ pub fn convert_mei_duration_to_beat_unit(dur: &tusk_model::data::DataDuration) -
             DataDurationCmn::N2048 => "2048th".to_string(),
         },
         _ => "quarter".to_string(), // Default for non-CMN durations
-    }
-}
-
-/// Convert MEI stem direction string to MusicXML StemValue.
-#[allow(dead_code)]
-pub fn convert_mei_stem_direction_str(s: &str) -> crate::model::note::StemValue {
-    use crate::model::note::StemValue;
-    match s.trim().to_lowercase().as_str() {
-        "down" => StemValue::Down,
-        _ => StemValue::Up,
     }
 }
 
@@ -261,25 +178,6 @@ pub fn parse_mei_measurement_str(s: &str) -> Option<f64> {
     if let Ok(val) = s.parse::<f64>() {
         return Some(val);
     }
-    let numeric_part: String = s
-        .chars()
-        .take_while(|c| c.is_ascii_digit() || *c == '.')
-        .collect();
-    numeric_part.parse::<f64>().ok()
-}
-
-#[allow(dead_code)]
-pub fn parse_mei_measurement(
-    measurement: &tusk_model::data::DataMeasurementunsigned,
-) -> Option<f64> {
-    let s = measurement.to_string();
-
-    // Try to parse as a simple number first
-    if let Ok(val) = s.parse::<f64>() {
-        return Some(val);
-    }
-
-    // Try to extract numeric prefix (handle "200vu", "100pt", etc.)
     let numeric_part: String = s
         .chars()
         .take_while(|c| c.is_ascii_digit() || *c == '.')

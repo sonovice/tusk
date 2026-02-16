@@ -504,17 +504,6 @@ fn convert_group_symbol(symbol: crate::model::elements::GroupSymbol) -> String {
     }
 }
 
-/// Convert MusicXML GroupBarline to MEI DataBoolean for bar.thru attribute.
-#[allow(dead_code)]
-fn convert_group_barline_to_string(barline: crate::model::elements::GroupBarline) -> String {
-    use crate::model::elements::GroupBarline;
-
-    match barline {
-        GroupBarline::Yes => "true".to_string(),
-        GroupBarline::No | GroupBarline::Mensurstrich => "false".to_string(),
-    }
-}
-
 /// Extract the first Attributes element from a MusicXML part's first measure.
 ///
 /// This is used to initialize the staffDef with correct key/time/clef from the score.
@@ -1041,7 +1030,7 @@ fn convert_multi_staff_part(
         });
 
         // Check if part-symbol has extra data for ExtensionStore
-        let has_extra = ps.top_staff.is_some()
+        let _has_extra = ps.top_staff.is_some()
             || ps.bottom_staff.is_some()
             || ps.default_x.is_some()
             || ps.color.is_some();

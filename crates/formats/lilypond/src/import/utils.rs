@@ -44,11 +44,10 @@ pub(super) fn extract_voices(music: &Music) -> Vec<Vec<&Music>> {
     }
     // Try unwrapping pitch context wrappers, then split with strict mode
     let inner = unwrap_pitch_context(music);
-    if !std::ptr::eq(inner, music) {
-        if let Some(voices) = try_split_simultaneous(inner, false) {
+    if !std::ptr::eq(inner, music)
+        && let Some(voices) = try_split_simultaneous(inner, false) {
             return voices;
         }
-    }
     vec![vec![music]]
 }
 
@@ -67,8 +66,8 @@ fn unwrap_pitch_context(music: &Music) -> &Music {
 /// With `allow_context=true`, ContextedMusic (Voice etc.) is accepted.
 /// With `allow_context=false`, only bare music items are accepted.
 fn try_split_simultaneous(music: &Music, allow_context: bool) -> Option<Vec<Vec<&Music>>> {
-    if let Music::Simultaneous(items) = music {
-        if items.len() > 1 {
+    if let Music::Simultaneous(items) = music
+        && items.len() > 1 {
             let all_voice_like = items.iter().all(|item| {
                 matches!(
                     item,
@@ -90,7 +89,6 @@ fn try_split_simultaneous(music: &Music, allow_context: bool) -> Option<Vec<Vec<
                 return Some(items.iter().map(|item| vec![item]).collect());
             }
         }
-    }
     None
 }
 

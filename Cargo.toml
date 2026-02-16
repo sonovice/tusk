@@ -7,7 +7,6 @@ members = [
     "crates/formats/musicxml",
     "crates/formats/lilypond",
     "crates/bindings/cli",
-    "crates/bindings/wasm",
 
     # Format codegen (standalone, no cross-deps)
     "crates/formats/mei/codegen",

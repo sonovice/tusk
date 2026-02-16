@@ -65,9 +65,9 @@ pub(super) fn extract_score_blocks(score: &tusk_model::elements::Score, ext_stor
     let mut items = Vec::new();
 
     for child in &score.children {
-        if let ScoreChild::ScoreDef(score_def) = child {
-            if let Some(id) = score_def.common.xml_id.as_deref() {
-                if let Some(defs) = ext_store.output_defs(id) {
+        if let ScoreChild::ScoreDef(score_def) = child
+            && let Some(id) = score_def.common.xml_id.as_deref()
+                && let Some(defs) = ext_store.output_defs(id) {
                     for def in defs {
                         match def.kind {
                             OutputDefKind::Header => {
@@ -92,8 +92,6 @@ pub(super) fn extract_score_blocks(score: &tusk_model::elements::Score, ext_stor
                         }
                     }
                 }
-            }
-        }
     }
 
     items

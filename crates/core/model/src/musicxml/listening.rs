@@ -72,7 +72,7 @@ impl Default for Sync {
 }
 
 /// The `<other-listening>` element — for listening types not covered by sync.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct OtherListening {
     /// Required type attribute
@@ -90,17 +90,6 @@ pub struct OtherListening {
     /// Text content
     #[serde(rename = "$value", default, skip_serializing_if = "String::is_empty")]
     pub value: String,
-}
-
-impl Default for OtherListening {
-    fn default() -> Self {
-        Self {
-            other_type: String::new(),
-            player: None,
-            time_only: None,
-            value: String::new(),
-        }
-    }
 }
 
 // ============================================================================

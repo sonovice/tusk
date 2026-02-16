@@ -691,8 +691,11 @@ fn assert_mei_equal(mei1: &Mei, mei2: &Mei, context: &str) {
         let xml2 = tusk_mei::export(mei2).expect("Failed to serialize MEI₂");
 
         // Write debug output for manual inspection
-        fs::write("/tmp/mei1_debug.xml", &xml1).ok();
-        fs::write("/tmp/mei2_debug.xml", &xml2).ok();
+        let tmp = std::env::temp_dir();
+        let debug1 = tmp.join("mei1_debug.xml");
+        let debug2 = tmp.join("mei2_debug.xml");
+        fs::write(&debug1, &xml1).ok();
+        fs::write(&debug2, &xml2).ok();
 
         match xml_compare::get_differences(&xml1, &xml2) {
             Ok(diffs) if diffs.is_empty() => {
@@ -711,16 +714,20 @@ fn assert_mei_equal(mei1: &Mei, mei2: &Mei, context: &str) {
                 }
                 panic!(
                     "Triangle MEI roundtrip failed for {} (import inconsistency): {} differences found.\n\
-                     Debug XML written to /tmp/mei1_debug.xml and /tmp/mei2_debug.xml",
+                     Debug XML written to {} and {}",
                     context,
-                    diffs.len()
+                    diffs.len(),
+                    debug1.display(),
+                    debug2.display(),
                 );
             }
             Err(e) => {
                 panic!(
                     "Failed to compare MEI XML for {}: {}\n\
-                     Debug XML written to /tmp/mei1_debug.xml and /tmp/mei2_debug.xml",
-                    context, e
+                     Debug XML written to {} and {}",
+                    context, e,
+                    debug1.display(),
+                    debug2.display(),
                 );
             }
         }

@@ -362,7 +362,7 @@ mod tests {
         // Write a root element with namespace
         let mut start = writer.start_element("mei").unwrap();
         writer.add_root_namespaces(&mut start);
-        start.push_attribute(("meiversion", "5.1"));
+        start.push_attribute(("meiversion", "6.0-dev"));
         writer.write_empty(start).expect("should write element");
 
         let result = String::from_utf8(buffer).unwrap();
@@ -372,7 +372,7 @@ mod tests {
             result
         );
         assert!(
-            result.contains("meiversion=\"5.1\""),
+            result.contains("meiversion=\"6.0-dev\""),
             "should have meiversion: {}",
             result
         );
@@ -391,7 +391,7 @@ mod tests {
 
         let mut start = writer.start_element("mei").unwrap();
         writer.add_root_namespaces(&mut start);
-        start.push_attribute(("meiversion", "5.1"));
+        start.push_attribute(("meiversion", "6.0-dev"));
         writer.write_empty(start).expect("should write element");
 
         let result = String::from_utf8(buffer).unwrap();

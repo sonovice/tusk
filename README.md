@@ -20,13 +20,13 @@ Tusk converts between MusicXML, MEI, and LilyPond. Its internal model is based o
 
 ## Formats
 
-| From \ To | MusicXML | MEI | LilyPond | Extensions | Versions |
-|-----------|----------|-----|----------|------------|----------|
-| **MusicXML** | ✅ | ✅ | ✅ | `.musicxml`, `.mxl` | 2.0, 3.0, 3.1, 4.0, 4.1 |
-| **MEI** | ✅ | ✅ | ✅ | `.mei` | 3.0, 4.0, 5.0, 5.1 |
-| **LilyPond** | ✅ | ✅ | ✅ | `.ly` | 2.x |
+| From \ To | MusicXML | MEI | LilyPond | Extensions |
+|-----------|----------|-----|----------|------------|
+| **MusicXML** | ✅ | ✅ | ✅ | `.musicxml`, `.mxl` |
+| **MEI** | ✅ | ✅ | ✅ | `.mei` |
+| **LilyPond** | ✅ | ✅ | ✅ | `.ly` |
 
-Older versions are upgraded on import.
+Output versions: MusicXML 4.1, MEI 6.0-dev, LilyPond 2.24. Older input versions are accepted but mileage may vary.
 
 ## CLI
 
@@ -100,8 +100,7 @@ crates/
 │   │   └── codegen/    XSD to Rust code generator
 │   └── lilypond/       LilyPond lexer, parser, serializer, MEI conversion
 └── bindings/
-    ├── cli/            Command-line interface
-    └── wasm/           WebAssembly bindings
+    └── cli/            Command-line interface
 ```
 
 The MEI model is generated from the official RNG schema at build time. No manual codegen step required.

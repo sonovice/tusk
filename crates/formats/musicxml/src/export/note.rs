@@ -359,36 +359,7 @@ fn convert_mei_accid_to_mxml(
     Ok(mxml_accid)
 }
 
-/// Convert MEI written accidental string to MusicXML AccidentalValue.
-#[allow(dead_code)]
-fn convert_mei_written_accid_str_to_mxml(s: &str) -> crate::model::note::AccidentalValue {
-    use crate::model::note::AccidentalValue;
-    match s.trim().to_lowercase().as_str() {
-        "s" => AccidentalValue::Sharp,
-        "f" => AccidentalValue::Flat,
-        "ss" => AccidentalValue::SharpSharp,
-        "x" => AccidentalValue::DoubleSharp,
-        "ff" => AccidentalValue::FlatFlat,
-        "xs" | "sx" | "ts" => AccidentalValue::TripleSharp,
-        "tf" => AccidentalValue::TripleFlat,
-        "n" => AccidentalValue::Natural,
-        "nf" => AccidentalValue::NaturalFlat,
-        "ns" => AccidentalValue::NaturalSharp,
-        "nu" => AccidentalValue::QuarterSharp,
-        "nd" => AccidentalValue::QuarterFlat,
-        "su" => AccidentalValue::ThreeQuartersSharp,
-        "sd" => AccidentalValue::SharpDown,
-        "fu" => AccidentalValue::FlatUp,
-        "fd" => AccidentalValue::ThreeQuartersFlat,
-        "xu" => AccidentalValue::DoubleSharpUp,
-        "xd" => AccidentalValue::DoubleSharpDown,
-        "ffu" => AccidentalValue::FlatFlatUp,
-        "ffd" => AccidentalValue::FlatFlatDown,
-        _ => AccidentalValue::Natural,
-    }
-}
-
-/// Convert MEI written accidental to MusicXML AccidentalValue (typed version for tests).
+/// Convert MEI written accidental to MusicXML AccidentalValue.
 fn convert_mei_written_accid_to_mxml(
     accid: &tusk_model::data::DataAccidentalWritten,
 ) -> crate::model::note::AccidentalValue {

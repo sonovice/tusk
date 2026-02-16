@@ -79,8 +79,8 @@ pub(super) fn extract_chord_names_meta(
     for child in &score.children {
         if let ScoreChild::ScoreDef(score_def) = child {
             for sd_child in &score_def.children {
-                if let ScoreDefChild::StaffGrp(grp) = sd_child {
-                    if let Some(id) = grp.common.xml_id.as_deref() {
+                if let ScoreDefChild::StaffGrp(grp) = sd_child
+                    && let Some(id) = grp.common.xml_id.as_deref() {
                         let cn_key = format!("{id}-chordnames");
                         if let Some(ctx) = ext_store.staff_context(&cn_key) {
                             return Some(ChordNamesMeta {
@@ -89,7 +89,6 @@ pub(super) fn extract_chord_names_meta(
                             });
                         }
                     }
-                }
             }
         }
     }

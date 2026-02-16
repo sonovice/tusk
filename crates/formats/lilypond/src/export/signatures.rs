@@ -41,11 +41,10 @@ pub(super) fn extract_event_sequences(
 
 /// Read event sequence from ext_store, falling back to staffDef attributes.
 fn parse_event_sequence_from_ext(staff_def: &tusk_model::elements::StaffDef, ext_store: &ExtensionStore) -> Vec<SignatureEvent> {
-    if let Some(id) = staff_def.basic.xml_id.as_deref() {
-        if let Some(seq) = ext_store.event_sequence(id) {
+    if let Some(id) = staff_def.basic.xml_id.as_deref()
+        && let Some(seq) = ext_store.event_sequence(id) {
             return convert_event_sequence(seq.clone());
         }
-    }
 
     // No event sequence -- try to reconstruct from staffDef attributes
     reconstruct_initial_signatures(staff_def)

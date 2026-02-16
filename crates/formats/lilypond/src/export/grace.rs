@@ -47,11 +47,10 @@ fn beam_child_grace_type(child: &tusk_model::elements::BeamChild, ext_store: &Ex
 
 /// Parse grace type from ext_store by element xml:id.
 fn grace_type_from_ext(xml_id: Option<&str>, ext_store: &ExtensionStore) -> ExportGraceType {
-    if let Some(id) = xml_id {
-        if let Some(info) = ext_store.grace_info(id) {
+    if let Some(id) = xml_id
+        && let Some(info) = ext_store.grace_info(id) {
             return grace_info_to_export(info);
         }
-    }
     ExportGraceType::Grace
 }
 

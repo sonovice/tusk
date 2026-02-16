@@ -101,13 +101,10 @@ pub(super) fn analyze_staves(music: &Music) -> StaffLayout<'_> {
     if let Music::Transpose { body, .. }
         | Music::Relative { body, .. }
         | Music::Fixed { body, .. } = music
-    {
-        if let Music::ContextedMusic { context_type, .. } = body.as_ref() {
-            if is_staff_group_context(context_type) {
+        && let Music::ContextedMusic { context_type, .. } = body.as_ref()
+            && is_staff_group_context(context_type) {
                 return analyze_staves(body);
             }
-        }
-    }
 
     // Check for \addlyrics wrapping (music \addlyrics { ... })
     if let Some((inner_music, lyric_infos)) = lyrics::extract_addlyrics(music) {
@@ -310,11 +307,10 @@ fn unwrap_lyricsto_simultaneous(music: &Music) -> Option<(&Music, &Music)> {
                 has_lyrics = true;
             }
         }
-        if has_lyrics {
-            if let Some(inner) = inner_sim {
+        if has_lyrics
+            && let Some(inner) = inner_sim {
                 return Some((inner, music));
             }
-        }
     }
     None
 }
@@ -570,8 +566,8 @@ pub(super) fn build_score_def_from_staves(
     }
 
     // Store chord-names context info in ext_store
-    if !layout.chord_names.is_empty() {
-        if let Some(ctx) = build_chord_names_context(&layout.chord_names) {
+    if !layout.chord_names.is_empty()
+        && let Some(ctx) = build_chord_names_context(&layout.chord_names) {
             let grp_id = staff_grp.common.xml_id.get_or_insert_with(|| {
                 grp_counter += 1;
                 format!("ly-staffgrp-{grp_counter}")
@@ -579,18 +575,16 @@ pub(super) fn build_score_def_from_staves(
             // Use a separate key to avoid overwriting group context
             ext_store.insert_staff_context(format!("{grp_id}-chordnames"), ctx);
         }
-    }
 
     // Store figured-bass context info in ext_store
-    if !layout.figured_bass.is_empty() {
-        if let Some(ctx) = build_figured_bass_context(&layout.figured_bass) {
+    if !layout.figured_bass.is_empty()
+        && let Some(ctx) = build_figured_bass_context(&layout.figured_bass) {
             let grp_id = staff_grp.common.xml_id.get_or_insert_with(|| {
                 grp_counter += 1;
                 format!("ly-staffgrp-{grp_counter}")
             }).clone();
             ext_store.insert_staff_context(format!("{grp_id}-figuredbass"), ctx);
         }
-    }
 
     let mut score_def = ScoreDef::default();
     score_def

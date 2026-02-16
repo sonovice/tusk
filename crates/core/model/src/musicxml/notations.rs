@@ -402,22 +402,17 @@ pub struct StrongAccent {
 }
 
 /// Breath mark values.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum BreathMarkValue {
     /// No breath mark value (empty element).
     #[serde(rename = "")]
+    #[default]
     Empty,
     Comma,
     Tick,
     Upbow,
     Salzedo,
-}
-
-impl Default for BreathMarkValue {
-    fn default() -> Self {
-        Self::Empty
-    }
 }
 
 /// Breath mark element.
@@ -433,11 +428,12 @@ pub struct BreathMark {
 }
 
 /// Caesura values.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CaesuraValue {
     /// Empty caesura value (default).
     #[serde(rename = "")]
+    #[default]
     Empty,
     /// Normal caesura.
     Normal,
@@ -446,12 +442,6 @@ pub enum CaesuraValue {
     Curved,
     /// Single caesura.
     Single,
-}
-
-impl Default for CaesuraValue {
-    fn default() -> Self {
-        Self::Empty
-    }
 }
 
 /// Caesura element.
@@ -879,7 +869,7 @@ pub struct Ornaments {
 // ============================================================================
 
 /// Fermata shape values.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum FermataShape {
     /// Normal (default when empty).
     #[serde(rename = "normal")]
@@ -900,13 +890,8 @@ pub enum FermataShape {
     Curlew,
     /// Empty value (equivalent to normal).
     #[serde(rename = "")]
+    #[default]
     Empty,
-}
-
-impl Default for FermataShape {
-    fn default() -> Self {
-        Self::Empty
-    }
 }
 
 /// Fermata notation element.

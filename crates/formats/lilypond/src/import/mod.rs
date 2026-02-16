@@ -554,7 +554,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
         {
             staff_info
                 .original_music
-                .and_then(|m| build_pitch_context_from_music(m))
+                .and_then(build_pitch_context_from_music)
         } else {
             None
         };
@@ -904,11 +904,10 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
                 last_note_id = Some(current_id.clone());
 
                 // Apply cross-staff context change if active
-                if let Some(ref cc) = cross_staff_override {
-                    if let Some(id) = get_last_layer_child_id(&layer) {
+                if let Some(ref cc) = cross_staff_override
+                    && let Some(id) = get_last_layer_child_id(&layer) {
                         ext_store.insert_context_change(id, cc.clone());
                     }
-                }
 
                 // Flush pending inline chord names
                 for (ce, staff_n) in pending_chord_names.drain(..) {

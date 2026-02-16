@@ -15,7 +15,7 @@
 //! 2. Define a unit struct (e.g. `pub struct HumdrumFormat;`).
 //! 3. Implement [`Format`] with metadata and content detection.
 //! 4. Implement [`Importer`] and/or [`Exporter`] as appropriate.
-//! 5. Register the format in the CLI and WASM bindings.
+//! 5. Register the format in the CLI bindings.
 //!
 //! # Example
 //!
@@ -43,7 +43,7 @@ pub use tusk_model::extensions::ExtensionStore;
 /// Unified error type for format operations.
 ///
 /// Wraps format-specific errors into broad categories so that callers
-/// (CLI, WASM, etc.) can handle them uniformly.
+/// (CLI, etc.) can handle them uniformly.
 #[derive(Debug, Error)]
 pub enum FormatError {
     /// Error parsing the input into the format's native representation.

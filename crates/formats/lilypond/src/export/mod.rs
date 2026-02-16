@@ -228,11 +228,10 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
 
                             // Inject signature events into first layer only, after
                             // wrapping (so signatures stay outside wrappers).
-                            if let Some(seq) = event_sequences.get(staff_idx) {
-                                if let Some(first_layer) = layers.first_mut() {
+                            if let Some(seq) = event_sequences.get(staff_idx)
+                                && let Some(first_layer) = layers.first_mut() {
                                     inject_signature_events(first_layer, seq);
                                 }
-                            }
 
                             staff_music.push(layers);
                             staff_layer_children.push(raw_layers);
@@ -278,9 +277,9 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
 /// through the LilyPond parser.
 fn extract_assignments(score: &tusk_model::elements::Score, ext_store: &ExtensionStore) -> Vec<crate::model::Assignment> {
     for child in &score.children {
-        if let ScoreChild::ScoreDef(score_def) = child {
-            if let Some(id) = score_def.common.xml_id.as_deref() {
-                if let Some(vars) = ext_store.variable_assignments(id) {
+        if let ScoreChild::ScoreDef(score_def) = child
+            && let Some(id) = score_def.common.xml_id.as_deref()
+                && let Some(vars) = ext_store.variable_assignments(id) {
                     return vars
                         .assignments
                         .iter()
@@ -288,8 +287,6 @@ fn extract_assignments(score: &tusk_model::elements::Score, ext_store: &Extensio
                         .filter_map(ext_assignment_to_model)
                         .collect();
                 }
-            }
-        }
     }
     Vec::new()
 }
@@ -316,13 +313,11 @@ fn extract_toplevel_markups(
 /// Read raw ToplevelMarkup vec from ext_store via scoreDef xml:id.
 fn extract_raw_toplevel_markups(score: &tusk_model::elements::Score, ext_store: &ExtensionStore) -> Vec<ToplevelMarkup> {
     for child in &score.children {
-        if let ScoreChild::ScoreDef(score_def) = child {
-            if let Some(id) = score_def.common.xml_id.as_deref() {
-                if let Some(markups) = ext_store.toplevel_markups(id) {
+        if let ScoreChild::ScoreDef(score_def) = child
+            && let Some(id) = score_def.common.xml_id.as_deref()
+                && let Some(markups) = ext_store.toplevel_markups(id) {
                     return markups.clone();
                 }
-            }
-        }
     }
     Vec::new()
 }
@@ -515,15 +510,14 @@ fn extract_group_meta(score: &tusk_model::elements::Score, ext_store: &Extension
             for sd_child in &score_def.children {
                 if let ScoreDefChild::StaffGrp(grp) = sd_child {
                     // Check ext_store for typed group context
-                    if let Some(id) = grp.common.xml_id.as_deref() {
-                        if let Some(ctx) = ext_store.staff_context(id) {
+                    if let Some(id) = grp.common.xml_id.as_deref()
+                        && let Some(ctx) = ext_store.staff_context(id) {
                             return Some(GroupMeta {
                                 context_type: ctx.context_type.clone(),
                                 name: ctx.name.clone(),
                                 with_block_str: ctx.with_block.clone(),
                             });
                         }
-                    }
                     // Fallback: infer from symbol
                     if let Some(symbol) = &grp.staff_grp_vis.symbol {
                         let context_type = match symbol.as_str() {
@@ -566,8 +560,8 @@ fn extract_staff_metas(score: &tusk_model::elements::Score, ext_store: &Extensio
 
 /// Extract a single staff's metadata from ext_store.
 fn extract_staff_meta_from_ext(sdef: &tusk_model::elements::StaffDef, ext_store: &ExtensionStore) -> StaffMeta {
-    if let Some(id) = sdef.basic.xml_id.as_deref() {
-        if let Some(ctx) = ext_store.staff_context(id) {
+    if let Some(id) = sdef.basic.xml_id.as_deref()
+        && let Some(ctx) = ext_store.staff_context(id) {
             return StaffMeta {
                 context_type: ctx.context_type.clone(),
                 name: ctx.name.clone(),
@@ -575,7 +569,6 @@ fn extract_staff_meta_from_ext(sdef: &tusk_model::elements::StaffDef, ext_store:
                 has_explicit_context: ctx.keyword.is_some(),
             };
         }
-    }
     StaffMeta {
         context_type: "Staff".to_string(),
         name: None,
@@ -1439,12 +1432,11 @@ fn collect_ornament_post_events(
 
 /// Parse name and direction from ext_store ornament info.
 fn parse_ornament_from_ext(xml_id: Option<&str>, fallback_name: &str, ext_store: &ExtensionStore) -> (String, Direction) {
-    if let Some(id) = xml_id {
-        if let Some(info) = ext_store.ornament_info(id) {
+    if let Some(id) = xml_id
+        && let Some(info) = ext_store.ornament_info(id) {
             let dir = direction_ext_to_ly(info.direction);
             return (info.name.clone(), dir);
         }
-    }
     (fallback_name.to_string(), Direction::Neutral)
 }
 

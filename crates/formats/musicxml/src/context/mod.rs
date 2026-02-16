@@ -175,14 +175,19 @@ pub struct ConversionContext {
 /// When importing MusicXML, the first measure's attributes go into the MEI
 /// scoreDef/staffDef. Subsequent attribute changes need to be emitted as
 /// inline MEI elements (clef, keySig, meterSig) in the layer.
+/// Time signature: (beats, beat-type, symbol).
+pub type TimeSigTuple = (Option<String>, Option<String>, Option<String>);
+/// Clef: (sign, line, octave-change).
+pub type ClefTuple = (String, Option<u32>, Option<i32>);
+
 #[derive(Debug, Clone, Default)]
 pub struct TrackedAttributes {
     /// Last-known key fifths per part (key is part_id).
     pub key_fifths: HashMap<String, i8>,
-    /// Last-known time signature per part: (count, unit, sym_str).
-    pub time_sig: HashMap<String, (Option<String>, Option<String>, Option<String>)>,
-    /// Last-known clef per (part_id, staff_number): (sign, line, octave_change).
-    pub clef: HashMap<(String, u32), (String, Option<u32>, Option<i32>)>,
+    /// Last-known time signature per part.
+    pub time_sig: HashMap<String, TimeSigTuple>,
+    /// Last-known clef per (part_id, staff_number).
+    pub clef: HashMap<(String, u32), ClefTuple>,
     /// Whether initial attributes have been set (prevents emitting inline for first attrs).
     pub initialized: bool,
 }
