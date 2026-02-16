@@ -1,6 +1,6 @@
 //! MEI roundtrip tests against official sample encodings.
 //!
-//! Tests parse MEI files from `specs/mei/sample-encodings/MEI_5.1/Music/`,
+//! Tests parse MEI files from MEI sample encodings (requires `specs/mei/sample-encodings/`),
 //! serialize back to MEI XML, and verify that content is preserved.
 //!
 //! # Status
@@ -33,6 +33,20 @@ use std::path::{Path, PathBuf};
 use tusk_mei::xml_compare::{CompareError, compare_xml, get_differences};
 use tusk_mei::{export, import};
 
+/// Return early from a test if the sample encodings directory is not available.
+macro_rules! require_samples {
+    () => {
+        let dir = sample_encodings_music_dir();
+        if !dir.exists() {
+            eprintln!(
+                "SKIP: specs/mei/sample-encodings not available ({})",
+                dir.display()
+            );
+            return;
+        }
+    };
+}
+
 /// Find the workspace root by looking for Cargo.toml with [workspace] section.
 fn find_workspace_root() -> Result<PathBuf, String> {
     let mut dir = std::env::current_dir().map_err(|e| e.to_string())?;
@@ -51,10 +65,11 @@ fn find_workspace_root() -> Result<PathBuf, String> {
 }
 
 /// Get path to MEI 5.1 sample encodings Music directory.
+/// Requires the `tests/fixtures/mei/sample-encodings` submodule to be initialized.
 fn sample_encodings_music_dir() -> PathBuf {
     find_workspace_root()
         .expect("find workspace root")
-        .join("specs/mei/sample-encodings/MEI_5.1/Music")
+        .join("tests/fixtures/mei/sample-encodings/MEI_5.1/Music")
 }
 
 /// Perform roundtrip test on an MEI file.
@@ -158,6 +173,7 @@ fn test_harness_can_find_workspace_root() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_harness_can_find_sample_encodings() {
+    require_samples!();
     let music_dir = sample_encodings_music_dir();
     assert!(
         music_dir.exists(),
@@ -206,6 +222,7 @@ fn test_roundtrip_helper_works_on_simple_mei() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_aguado_walzer_g_major() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Aguado_Walzer_G-major.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -244,6 +261,7 @@ fn test_roundtrip_altenburg_concerto_c_major() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_altenburg_ein_feste_burg() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Altenburg_Ein_feste_Burg.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -269,6 +287,7 @@ fn test_roundtrip_altenburg_macht_auf_die_tor() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_bach_jc_fughette_no2() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Bach-JC_Fughette_No2.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -281,6 +300,7 @@ fn test_roundtrip_bach_jc_fughette_no2() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_bach_jc_fughette_for_brass_quartet_g_major() {
+    require_samples!();
     let path = sample_encodings_music_dir()
         .join("Complete_examples/Bach-JC_Fughette_for_BrassQuartet_G-major.mei");
     let result = roundtrip_mei_file(&path);
@@ -294,6 +314,7 @@ fn test_roundtrip_bach_jc_fughette_for_brass_quartet_g_major() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_bach_js_brandenburg_concerto_no2_i_bwv1047() {
+    require_samples!();
     let path = sample_encodings_music_dir()
         .join("Complete_examples/Bach-JS_BrandenburgConcert_No2_I_BWV1047.mei");
     let result = roundtrip_mei_file(&path);
@@ -307,6 +328,7 @@ fn test_roundtrip_bach_js_brandenburg_concerto_no2_i_bwv1047() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_bach_js_brandenburg_concerto_no2_ii_bwv1047() {
+    require_samples!();
     let path = sample_encodings_music_dir()
         .join("Complete_examples/Bach-JS_BrandenburgConcert_No2_II_BWV1047.mei");
     let result = roundtrip_mei_file(&path);
@@ -320,6 +342,7 @@ fn test_roundtrip_bach_js_brandenburg_concerto_no2_ii_bwv1047() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_bach_js_brandenburg_concerto_no2_iii_bwv1047() {
+    require_samples!();
     let path = sample_encodings_music_dir()
         .join("Complete_examples/Bach-JS_BrandenburgConcert_No2_III_BWV1047.mei");
     let result = roundtrip_mei_file(&path);
@@ -333,6 +356,7 @@ fn test_roundtrip_bach_js_brandenburg_concerto_no2_iii_bwv1047() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_bach_js_brandenburg_concerto_no4_i_bwv1049() {
+    require_samples!();
     let path = sample_encodings_music_dir()
         .join("Complete_examples/Bach-JS_BrandenburgConcert_No4_I_BWV1049.mei");
     let result = roundtrip_mei_file(&path);
@@ -346,6 +370,7 @@ fn test_roundtrip_bach_js_brandenburg_concerto_no4_i_bwv1049() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_bach_js_brandenburg_concerto_no4_ii_bwv1049() {
+    require_samples!();
     let path = sample_encodings_music_dir()
         .join("Complete_examples/Bach-JS_BrandenburgConcert_No4_II_BWV1049.mei");
     let result = roundtrip_mei_file(&path);
@@ -359,6 +384,7 @@ fn test_roundtrip_bach_js_brandenburg_concerto_no4_ii_bwv1049() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_bach_js_ein_feste_burg() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Bach-JS_Ein_feste_Burg.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -371,6 +397,7 @@ fn test_roundtrip_bach_js_ein_feste_burg() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_bach_js_herzliebster_jesu_bwv244_46() {
+    require_samples!();
     let path = sample_encodings_music_dir()
         .join("Complete_examples/Bach-JS_Herzliebster_Jesu_BWV244-46.mei");
     let result = roundtrip_mei_file(&path);
@@ -397,6 +424,7 @@ fn test_roundtrip_bach_js_hilf_herr_jesu_bwv344() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_bach_js_musikalisches_opfer_trio_bwv1079() {
+    require_samples!();
     let path = sample_encodings_music_dir()
         .join("Complete_examples/Bach-JS_Musikalisches_Opfer_Trio_BWV1079.mei");
     let result = roundtrip_mei_file(&path);
@@ -410,6 +438,7 @@ fn test_roundtrip_bach_js_musikalisches_opfer_trio_bwv1079() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_bach_js_wie_bist_du_meine_seele_bwv435() {
+    require_samples!();
     let path = sample_encodings_music_dir()
         .join("Complete_examples/Bach-JS_Wie_bist_du_meine_Seele_BWV435.mei");
     let result = roundtrip_mei_file(&path);
@@ -423,6 +452,7 @@ fn test_roundtrip_bach_js_wie_bist_du_meine_seele_bwv435() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_beethoven_hymn_to_joy() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Beethoven_Hymn_to_joy.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -435,6 +465,7 @@ fn test_roundtrip_beethoven_hymn_to_joy() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_beethoven_song_op98() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Beethoven_Song_Op98.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -460,6 +491,7 @@ fn test_roundtrip_beethoven_string_quartet_op18_no1() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_berlioz_symphony_op25() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Berlioz_Symphony_Op25.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -511,6 +543,7 @@ fn test_roundtrip_brahms_wie_melodien_zieht_es_mir() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_chopin_etude_op10_no9() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Chopin_Etude_Op10_No9.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -523,6 +556,7 @@ fn test_roundtrip_chopin_etude_op10_no9() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_chopin_mazurka_op6_no1() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Chopin_Mazurka_Op6_No1.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -535,6 +569,7 @@ fn test_roundtrip_chopin_mazurka_op6_no1() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_czerny_praeludium_et_fuga_op603_no6() {
+    require_samples!();
     let path = sample_encodings_music_dir()
         .join("Complete_examples/Czerny_Praeludium_et_Fuga_Op603_No6.mei");
     let result = roundtrip_mei_file(&path);
@@ -574,6 +609,7 @@ fn test_roundtrip_debussy_golliwoggs_cakewalk() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_debussy_mandoline() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Debussy_Mandoline.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -586,6 +622,7 @@ fn test_roundtrip_debussy_mandoline() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_echigo_jishi() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Echigo-Jishi.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -611,6 +648,7 @@ fn test_roundtrip_gluck_che_faro_senza_euridice() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_grieg_butterfly_op43_no1() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Grieg_Butterfly_Op43_No1.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -636,6 +674,7 @@ fn test_roundtrip_grieg_little_bird_op43_no4() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_handel_arie() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Handel_Arie.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -648,6 +687,7 @@ fn test_roundtrip_handel_arie() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_handel_concerto_grosso() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Handel_Concerto_grosso.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -660,6 +700,7 @@ fn test_roundtrip_handel_concerto_grosso() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_handel_messias() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Handel_Messias.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -685,6 +726,7 @@ fn test_roundtrip_haydn_string_quartet_op1_no1() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_hopkins_gather_round_the_christmas_tree() {
+    require_samples!();
     let path = sample_encodings_music_dir()
         .join("Complete_examples/Hopkins_GatherRoundTheChristmasTree.mei");
     let result = roundtrip_mei_file(&path);
@@ -698,6 +740,7 @@ fn test_roundtrip_hopkins_gather_round_the_christmas_tree() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_hummel_concerto_for_trumpet_e_major() {
+    require_samples!();
     let path = sample_encodings_music_dir()
         .join("Complete_examples/Hummel_Concerto_for_trumpet_E-major.mei");
     let result = roundtrip_mei_file(&path);
@@ -711,6 +754,7 @@ fn test_roundtrip_hummel_concerto_for_trumpet_e_major() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_hummel_preludes_op67_no11() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Hummel_Preludes_Op67_No11.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -723,6 +767,7 @@ fn test_roundtrip_hummel_preludes_op67_no11() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_ives_the_cage() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Ives_TheCage.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -735,6 +780,7 @@ fn test_roundtrip_ives_the_cage() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_joplin_elite_syncopations() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Joplin_Elite_Syncopations.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -747,6 +793,7 @@ fn test_roundtrip_joplin_elite_syncopations() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_joplin_maple_leaf_rag() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Joplin_Maple_leaf_Rag.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -759,6 +806,7 @@ fn test_roundtrip_joplin_maple_leaf_rag() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_kirnberger_fugue_for_brass_quartet_eb_major() {
+    require_samples!();
     let path = sample_encodings_music_dir()
         .join("Complete_examples/Kirnberger_Fugue_for_BrassQuartet_Eb-major.mei");
     let result = roundtrip_mei_file(&path);
@@ -811,6 +859,7 @@ fn test_roundtrip_liszt_four_little_pieces_no1() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_lully_la_descente_de_mars() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Lully_LaDescenteDeMars.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -823,6 +872,7 @@ fn test_roundtrip_lully_la_descente_de_mars() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_mahler_song() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Mahler_Song.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -848,6 +898,7 @@ fn test_roundtrip_marney_break_thou_the_bread_of_life() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_mcferrin_dont_worry() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/McFerrin_Don't_worry.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -860,6 +911,7 @@ fn test_roundtrip_mcferrin_dont_worry() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_mozart_das_veilchen_kv476() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Mozart_Das_Veilchen_KV476.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -885,6 +937,7 @@ fn test_roundtrip_mozart_fugue_g_minor_kv401() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_mozart_quintett_kv581() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Mozart_Quintett_KV581.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -897,6 +950,7 @@ fn test_roundtrip_mozart_quintett_kv581() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_pachelbel_canon_in_d() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Pachelbel_Canon_in_D.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -909,6 +963,7 @@ fn test_roundtrip_pachelbel_canon_in_d() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_parker_gillespie_shawnuff() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Parker-Gillespie_ShawNuff.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -921,6 +976,7 @@ fn test_roundtrip_parker_gillespie_shawnuff() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_ponchielli_larrivo_del_re() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Ponchielli_LarrivoDelRe.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -946,6 +1002,7 @@ fn test_roundtrip_praetorius_puer_nobis_nascitur() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_ravel_le_tombeau() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Ravel_Le_tombeau.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -958,6 +1015,7 @@ fn test_roundtrip_ravel_le_tombeau() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_rimsky_korsakov_string_quartet_b_la_f() {
+    require_samples!();
     let path = sample_encodings_music_dir()
         .join("Complete_examples/Rimsky-Korsakov_StringQuartet_B-LA-F.mei");
     let result = roundtrip_mei_file(&path);
@@ -997,6 +1055,7 @@ fn test_roundtrip_scarlatti_sonata_in_c_major() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_schubert_erlkoenig() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Schubert_Erlkoenig.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -1009,6 +1068,7 @@ fn test_roundtrip_schubert_erlkoenig() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_schubert_lindenbaum() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Schubert_Lindenbaum.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -1021,6 +1081,7 @@ fn test_roundtrip_schubert_lindenbaum() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_schuetz_domine_deus() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Schuetz_DomineDeus.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -1033,6 +1094,7 @@ fn test_roundtrip_schuetz_domine_deus() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_schuetz_jubilate_deo() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Schuetz_Jubilate_Deo.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -1058,6 +1120,7 @@ fn test_roundtrip_schumann_landmann_op68_no10() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_schumann_song_op48_no1() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Schumann_Song_Op48_No1.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -1083,6 +1146,7 @@ fn test_roundtrip_schumann_string_quartet_op41_no1() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_telemann_concert() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Telemann_Concert.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -1095,6 +1159,7 @@ fn test_roundtrip_telemann_concert() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_telemann_suite() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Telemann_Suite.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -1120,6 +1185,7 @@ fn test_roundtrip_vivaldi_violin_concert_op8_no2() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_weber_arie() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Complete_examples/Weber_Arie.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -1132,6 +1198,7 @@ fn test_roundtrip_weber_arie() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_webern_variations_for_piano_op27_no2() {
+    require_samples!();
     let path = sample_encodings_music_dir()
         .join("Complete_examples/Webern_Variations_for_Piano_Op27_No2.mei");
     let result = roundtrip_mei_file(&path);
@@ -1149,6 +1216,7 @@ fn test_roundtrip_webern_variations_for_piano_op27_no2() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_lyrics_attribute_syl() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Lyrics/attribute_syl.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -1161,6 +1229,7 @@ fn test_roundtrip_lyrics_attribute_syl() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_lyrics_element_syl() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Lyrics/element_syl.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -1173,6 +1242,7 @@ fn test_roundtrip_lyrics_element_syl() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_lyrics_lyrics() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Lyrics/lyrics.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -1185,6 +1255,7 @@ fn test_roundtrip_lyrics_lyrics() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_lyrics_multiple_verses() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Lyrics/multiple_verses.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -1201,6 +1272,7 @@ fn test_roundtrip_lyrics_multiple_verses() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_encoding_alternatives_das_veilchen_0parameters() {
+    require_samples!();
     let path = sample_encodings_music_dir()
         .join("Encoding_alternatives/Mozart_Veilchen/Das_Veilchen_0Parameters.mei");
     let result = roundtrip_mei_file(&path);
@@ -1214,6 +1286,7 @@ fn test_roundtrip_encoding_alternatives_das_veilchen_0parameters() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_encoding_alternatives_das_veilchen_all_parameters() {
+    require_samples!();
     let path = sample_encodings_music_dir()
         .join("Encoding_alternatives/Mozart_Veilchen/Das_Veilchen_all_Parameters.mei");
     let result = roundtrip_mei_file(&path);
@@ -1227,6 +1300,7 @@ fn test_roundtrip_encoding_alternatives_das_veilchen_all_parameters() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_encoding_alternatives_das_veilchen_artic_attribute() {
+    require_samples!();
     let path = sample_encodings_music_dir()
         .join("Encoding_alternatives/Mozart_Veilchen/Das_Veilchen_artic_attribute.mei");
     let result = roundtrip_mei_file(&path);
@@ -1240,6 +1314,7 @@ fn test_roundtrip_encoding_alternatives_das_veilchen_artic_attribute() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_encoding_alternatives_das_veilchen_artic_element() {
+    require_samples!();
     let path = sample_encodings_music_dir()
         .join("Encoding_alternatives/Mozart_Veilchen/Das_Veilchen_artic_element.mei");
     let result = roundtrip_mei_file(&path);
@@ -1253,6 +1328,7 @@ fn test_roundtrip_encoding_alternatives_das_veilchen_artic_element() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_encoding_alternatives_das_veilchen_keep_attributes() {
+    require_samples!();
     let path = sample_encodings_music_dir()
         .join("Encoding_alternatives/Mozart_Veilchen/Das_Veilchen_keep_attributes.mei");
     let result = roundtrip_mei_file(&path);
@@ -1266,6 +1342,7 @@ fn test_roundtrip_encoding_alternatives_das_veilchen_keep_attributes() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_encoding_alternatives_das_veilchen_layout() {
+    require_samples!();
     let path = sample_encodings_music_dir()
         .join("Encoding_alternatives/Mozart_Veilchen/Das_Veilchen_layout.mei");
     let result = roundtrip_mei_file(&path);
@@ -1283,6 +1360,7 @@ fn test_roundtrip_encoding_alternatives_das_veilchen_layout() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_music_structure_group_element() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Music_structure/group_element.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -1295,6 +1373,7 @@ fn test_roundtrip_music_structure_group_element() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_music_structure_tschaikovsky_multiple_mdivs() {
+    require_samples!();
     let path = sample_encodings_music_dir().join(
         "Music_structure/mdivs_Tschaikovsky/Tschaikovsky_Symphony_No5_Op64_mulitple_mdivs.mei",
     );
@@ -1309,6 +1388,7 @@ fn test_roundtrip_music_structure_tschaikovsky_multiple_mdivs() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_music_structure_vivaldi_multiple_mdivs() {
+    require_samples!();
     let path = sample_encodings_music_dir()
         .join("Music_structure/mdivs_Vivaldi/Vivaldi_ViolinConcert_Op8_No1_multiple_mdivs.mei");
     let result = roundtrip_mei_file(&path);
@@ -1322,6 +1402,7 @@ fn test_roundtrip_music_structure_vivaldi_multiple_mdivs() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_music_structure_multiple_sections_i() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Music_structure/multiple_sectionsI.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -1334,6 +1415,7 @@ fn test_roundtrip_music_structure_multiple_sections_i() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_music_structure_multiple_sections_ii() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Music_structure/multiple_sectionsII.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -1346,6 +1428,7 @@ fn test_roundtrip_music_structure_multiple_sections_ii() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_music_structure_opera() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Music_structure/opera.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -1358,6 +1441,7 @@ fn test_roundtrip_music_structure_opera() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_music_structure_part_element() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Music_structure/part_element.mei");
     let result = roundtrip_mei_file(&path);
     assert!(
@@ -1397,6 +1481,7 @@ fn test_roundtrip_editorial_markup_weber_op73() {
 #[ignore = "MEI roundtrip tests fail until deserializer aligns with MEI 5.1 samples"]
 #[test]
 fn test_roundtrip_layout_information() {
+    require_samples!();
     let path = sample_encodings_music_dir().join("Layout_information/Layout_information.mei");
     let result = roundtrip_mei_file(&path);
     assert!(

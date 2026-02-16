@@ -20,7 +20,7 @@ fn fixture_dir() -> PathBuf {
 }
 
 fn regression_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../specs/lilypond/repo/input/regression")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../tests/fixtures/lilypond/lilypond-repo/input/regression")
 }
 
 fn load_regression(name: &str) -> String {

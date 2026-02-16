@@ -1,5 +1,5 @@
 /// Build script that generates per-file regression tests from
-/// `specs/lilypond/repo/input/regression/*.ly`.
+/// `tests/fixtures/lilypond/regression/*.ly`.
 ///
 /// Each standalone `.ly` file (no `\include`) gets four tests:
 ///   - `reg_ser_<name>` — serialization roundtrip (parse → serialize → re-parse)
@@ -13,7 +13,7 @@ use std::fs;
 use std::path::Path;
 
 fn main() {
-    let reg_dir = Path::new("../../../specs/lilypond/repo/input/regression");
+    let reg_dir = Path::new("../../../tests/fixtures/lilypond/lilypond-repo/input/regression");
     let out_dir = std::env::var("OUT_DIR").unwrap();
 
     // Tell Cargo to re-run if the regression dir contents change.

@@ -921,14 +921,14 @@ fn test_voice_and_forward_in_output() {
 }
 
 // ============================================================================
-// Spec Examples Tests (from specs/musicxml/examples/)
+// Spec Examples Tests (from tests/fixtures/musicxml/spec_full_examples/)
 // ============================================================================
 
 /// Load a spec example file.
 fn load_spec_example(example_name: &str) -> Result<String, String> {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let fixture_path = format!(
-        "{}/../../../specs/musicxml/examples/{}",
+        "{}/../../../tests/fixtures/musicxml/spec_full_examples/{}",
         manifest_dir, example_name
     );
     read_xml_file(&fixture_path)

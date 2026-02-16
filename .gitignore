@@ -26,6 +26,10 @@ target
 
 # Project
 specs/
+tools/
+scripts/
+docs/
+ralph/
 .jj/
 TEMP.md
 books/
@@ -44,7 +48,6 @@ crates/formats/mei/src/versions/v*/
 
 # Generated/copied schema (codegen downloads or extracts these)
 crates/formats/musicxml/codegen/schema/versions/
-crates/formats/mei/codegen/schema/versions/
 
 # Cursor IDE
 .cursor/

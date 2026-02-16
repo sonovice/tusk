@@ -724,11 +724,11 @@ fn roundtrip_inline_text_script_markup() {
 }
 
 // ============================================================================
-// Regression tests (generated per-file from specs/lilypond/repo/input/regression/)
+// Regression tests (generated per-file from tests/fixtures/lilypond/lilypond-repo/)
 // ============================================================================
 
 fn regression_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../specs/lilypond/repo/input/regression")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../tests/fixtures/lilypond/lilypond-repo/input/regression")
 }
 
 fn load_regression(name: &str) -> String {

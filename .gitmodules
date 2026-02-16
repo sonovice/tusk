@@ -1,0 +1,6 @@
+[submodule "tests/fixtures/mei/sample-encodings"]
+	path = tests/fixtures/mei/sample-encodings
+	url = https://github.com/music-encoding/sample-encodings.git
+[submodule "tests/fixtures/lilypond/lilypond-repo"]
+	path = tests/fixtures/lilypond/lilypond-repo
+	url = https://github.com/lilypond/lilypond.git

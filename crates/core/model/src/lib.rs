@@ -16,9 +16,9 @@
 //! - `elements/` - Elements from `elementSpec`
 //! - `validation` - Validation support
 //!
-//! All types are generated from the MEI RNG schema by `tools/mei-codegen`.
+//! All types are generated from the MEI RNG schema by `tusk-mei-codegen`.
 //!
-//! DO NOT EDIT generated/ - regenerate with: cargo run -p mei-codegen -- --input specs/mei/modules --output crates/core/model/src/generated
+//! DO NOT EDIT generated/ - regenerated automatically by build.rs from crates/formats/mei/codegen/schema/versions/mei-all_v6.0-dev.rng
 
 pub mod extensions;
 pub mod generated;
