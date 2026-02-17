@@ -1464,3 +1464,58 @@ fn roundtrip_fixed_fixture() {
     assert!(output.contains("\\fixed"), "should use \\fixed: {output}");
     assert!(output.contains("c4"), "output: {output}");
 }
+
+// ============================================================================
+// dur.default / oct.default Tests
+// ============================================================================
+
+#[test]
+fn dur_default_applied_to_note_without_dur() {
+    use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
+    use tusk_model::elements::Note as MeiNote;
+    use tusk_model::extensions::ExtensionStore;
+
+    let defaults = conversion::MeiDefaults {
+        dur: conversion::mei_data_dur_to_ly(&DataDuration::MeiDataDurationCmn(DataDurationCmn::N8)),
+        oct: None,
+    };
+    let ext_store = ExtensionStore::new();
+
+    let mut mei_note = MeiNote::default();
+    mei_note.note_log.pname = Some(DataPitchname::from("c".to_string()));
+    mei_note.note_log.oct = Some(DataOctave::from(4u64));
+    // No @dur set
+
+    let music = conversion::convert_mei_note(&mei_note, &ext_store, &defaults);
+    if let crate::model::Music::Note(ne) = music {
+        assert!(ne.duration.is_some(), "should have duration from dur.default");
+        assert_eq!(ne.duration.unwrap().base, 8, "should be eighth note");
+    } else {
+        panic!("expected Note");
+    }
+}
+
+#[test]
+fn oct_default_applied_to_note_without_oct() {
+    use tusk_model::data::{DataDuration, DataDurationCmn, DataPitchname};
+    use tusk_model::extensions::ExtensionStore;
+
+    let defaults = conversion::MeiDefaults {
+        dur: None,
+        oct: Some(5),
+    };
+    let ext_store = ExtensionStore::new();
+
+    let mut mei_note = tusk_model::elements::Note::default();
+    mei_note.note_log.pname = Some(DataPitchname::from("c".to_string()));
+    mei_note.note_log.dur = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N4));
+    // No @oct set
+
+    let music = conversion::convert_mei_note(&mei_note, &ext_store, &defaults);
+    if let crate::model::Music::Note(ne) = music {
+        // oct.default=5 → LilyPond octave marks = 5-3 = 2 (two apostrophes)
+        assert_eq!(ne.pitch.octave, 2, "should have octave from oct.default");
+    } else {
+        panic!("expected Note");
+    }
+}

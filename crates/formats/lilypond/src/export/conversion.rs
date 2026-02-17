@@ -11,6 +11,15 @@ use crate::model::{
     SchemeExpr, SkipEvent,
 };
 
+/// MEI defaults extracted from scoreDef/staffDef for dur.default and oct.default.
+#[derive(Debug, Clone, Default)]
+pub(super) struct MeiDefaults {
+    /// Default duration from @dur.default, pre-converted to LilyPond Duration.
+    pub dur: Option<Duration>,
+    /// Default octave from @oct.default (raw MEI octave value, 0-based).
+    pub oct: Option<u64>,
+}
+
 /// Convert MEI DataDurationCmn to LilyPond duration base.
 fn mei_dur_to_base(dur: &DataDurationCmn) -> u32 {
     match dur {
@@ -25,6 +34,18 @@ fn mei_dur_to_base(dur: &DataDurationCmn) -> u32 {
         DataDurationCmn::Long => 1, // fallback
         DataDurationCmn::Breve => 1,
         _ => 4,
+    }
+}
+
+/// Convert MEI DataDuration to LilyPond Duration (for dur.default).
+pub(super) fn mei_data_dur_to_ly(dur: &tusk_model::generated::data::DataDuration) -> Option<Duration> {
+    match dur {
+        tusk_model::generated::data::DataDuration::MeiDataDurationCmn(cmn) => Some(Duration {
+            base: mei_dur_to_base(cmn),
+            dots: 0,
+            multipliers: Vec::new(),
+        }),
+        _ => None,
     }
 }
 
@@ -45,36 +66,42 @@ fn mei_oct_to_marks(oct: u64) -> i8 {
     (oct as i8) - 3
 }
 
-/// Extract duration from an MEI note.
-fn extract_note_duration(note: &tusk_model::elements::Note) -> Option<Duration> {
-    let dur = note.note_log.dur.as_ref()?;
-    let base = match dur {
-        tusk_model::generated::data::DataDuration::MeiDataDurationCmn(cmn) => mei_dur_to_base(cmn),
-        _ => return None,
-    };
-    let dots = note.note_log.dots.as_ref().map(|d| d.0 as u8).unwrap_or(0);
-    Some(Duration {
-        base,
-        dots,
-        multipliers: Vec::new(),
-    })
+/// Extract duration from an MEI note, falling back to dur.default.
+fn extract_note_duration(note: &tusk_model::elements::Note, defaults: &MeiDefaults) -> Option<Duration> {
+    if let Some(ref dur) = note.note_log.dur {
+        let base = match dur {
+            tusk_model::generated::data::DataDuration::MeiDataDurationCmn(cmn) => mei_dur_to_base(cmn),
+            _ => return None,
+        };
+        let dots = note.note_log.dots.as_ref().map(|d| d.0 as u8).unwrap_or(0);
+        Some(Duration {
+            base,
+            dots,
+            multipliers: Vec::new(),
+        })
+    } else {
+        defaults.dur.clone()
+    }
 }
 
-/// Extract duration from an MEI rest.
-fn extract_rest_duration(rest: &tusk_model::elements::Rest) -> Option<Duration> {
-    let dur = rest.rest_log.dur.as_ref()?;
-    let base = match dur {
-        tusk_model::generated::data::DataDurationrests::MeiDataDurationCmn(cmn) => {
-            mei_dur_to_base(cmn)
-        }
-        _ => return None,
-    };
-    let dots = rest.rest_log.dots.as_ref().map(|d| d.0 as u8).unwrap_or(0);
-    Some(Duration {
-        base,
-        dots,
-        multipliers: Vec::new(),
-    })
+/// Extract duration from an MEI rest, falling back to dur.default.
+fn extract_rest_duration(rest: &tusk_model::elements::Rest, defaults: &MeiDefaults) -> Option<Duration> {
+    if let Some(ref dur) = rest.rest_log.dur {
+        let base = match dur {
+            tusk_model::generated::data::DataDurationrests::MeiDataDurationCmn(cmn) => {
+                mei_dur_to_base(cmn)
+            }
+            _ => return None,
+        };
+        let dots = rest.rest_log.dots.as_ref().map(|d| d.0 as u8).unwrap_or(0);
+        Some(Duration {
+            base,
+            dots,
+            multipliers: Vec::new(),
+        })
+    } else {
+        defaults.dur.clone()
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -82,7 +109,7 @@ fn extract_rest_duration(rest: &tusk_model::elements::Rest) -> Option<Duration> 
 // ---------------------------------------------------------------------------
 
 /// Extract a LilyPond Pitch from an MEI Note (for use inside chords -- no duration).
-fn extract_pitch_from_note(note: &tusk_model::elements::Note) -> Pitch {
+fn extract_pitch_from_note(note: &tusk_model::elements::Note, defaults: &MeiDefaults) -> Pitch {
     let step = note
         .note_log
         .pname
@@ -95,7 +122,9 @@ fn extract_pitch_from_note(note: &tusk_model::elements::Note) -> Pitch {
         .oct
         .as_ref()
         .map(|o| mei_oct_to_marks(o.0))
-        .unwrap_or(0);
+        .unwrap_or_else(|| {
+            defaults.oct.map(mei_oct_to_marks).unwrap_or(0)
+        });
 
     let alter = note
         .note_ges
@@ -136,8 +165,8 @@ fn extract_pitch_from_note(note: &tusk_model::elements::Note) -> Pitch {
 /// If the chord has a chord_repetition in ext_store, it originated from a `q`
 /// (chord repetition) and is emitted as `Music::ChordRepetition` for lossless
 /// roundtrip.
-pub(super) fn convert_mei_chord(chord: &tusk_model::elements::Chord, ext_store: &ExtensionStore) -> Music {
-    let duration = extract_chord_duration(chord);
+pub(super) fn convert_mei_chord(chord: &tusk_model::elements::Chord, ext_store: &ExtensionStore, defaults: &MeiDefaults) -> Music {
+    let duration = extract_chord_duration(chord, defaults);
 
     // Chord tie: if any child note has @tie="i" or "m", the chord has a tie
     let mut post_events = Vec::new();
@@ -168,7 +197,7 @@ pub(super) fn convert_mei_chord(chord: &tusk_model::elements::Chord, ext_store: 
         .iter()
         .map(|child| {
             let ChordChild::Note(note) = child;
-            extract_pitch_from_note(note)
+            extract_pitch_from_note(note, defaults)
         })
         .collect();
 
@@ -179,35 +208,38 @@ pub(super) fn convert_mei_chord(chord: &tusk_model::elements::Chord, ext_store: 
     })
 }
 
-/// Extract duration from an MEI chord.
-fn extract_chord_duration(chord: &tusk_model::elements::Chord) -> Option<Duration> {
-    let dur = chord.chord_log.dur.as_ref()?;
-    let base = match dur {
-        tusk_model::generated::data::DataDuration::MeiDataDurationCmn(cmn) => mei_dur_to_base(cmn),
-        _ => return None,
-    };
-    let dots = chord
-        .chord_log
-        .dots
-        .as_ref()
-        .map(|d| d.0 as u8)
-        .unwrap_or(0);
-    Some(Duration {
-        base,
-        dots,
-        multipliers: Vec::new(),
-    })
+/// Extract duration from an MEI chord, falling back to dur.default.
+fn extract_chord_duration(chord: &tusk_model::elements::Chord, defaults: &MeiDefaults) -> Option<Duration> {
+    if let Some(ref dur) = chord.chord_log.dur {
+        let base = match dur {
+            tusk_model::generated::data::DataDuration::MeiDataDurationCmn(cmn) => mei_dur_to_base(cmn),
+            _ => return None,
+        };
+        let dots = chord
+            .chord_log
+            .dots
+            .as_ref()
+            .map(|d| d.0 as u8)
+            .unwrap_or(0);
+        Some(Duration {
+            base,
+            dots,
+            multipliers: Vec::new(),
+        })
+    } else {
+        defaults.dur.clone()
+    }
 }
 
 /// Convert an MEI Note to a LilyPond NoteEvent (or DrumNote/DrumChord if labeled).
-pub(super) fn convert_mei_note(note: &tusk_model::elements::Note, ext_store: &ExtensionStore) -> Music {
+pub(super) fn convert_mei_note(note: &tusk_model::elements::Note, ext_store: &ExtensionStore, defaults: &MeiDefaults) -> Music {
     // Check for drum event in ext_store first
     if let Some(drum_music) = try_convert_drum_ext(note, ext_store) {
         return drum_music;
     }
 
-    let pitch = extract_pitch_from_note(note);
-    let duration = extract_note_duration(note);
+    let pitch = extract_pitch_from_note(note, defaults);
+    let duration = extract_note_duration(note, defaults);
     let mut post_events = Vec::new();
 
     // @tie="i" or "m" -> PostEvent::Tie (start or continuation)
@@ -265,11 +297,11 @@ fn parse_drum_event_str(s: &str) -> Option<Music> {
 }
 
 /// Convert an MEI Rest to a LilyPond RestEvent or pitched rest.
-pub(super) fn convert_mei_rest(rest: &tusk_model::elements::Rest, ext_store: &ExtensionStore) -> Music {
+pub(super) fn convert_mei_rest(rest: &tusk_model::elements::Rest, ext_store: &ExtensionStore, defaults: &MeiDefaults) -> Music {
     // Check for pitched rest in ext_store
     if let Some(id) = rest.common.xml_id.as_deref()
         && let Some(pr) = ext_store.pitched_rest(id)
-        && let Some(mut note_event) = parse_pitched_rest_label(&pr.pitch, rest)
+        && let Some(mut note_event) = parse_pitched_rest_label(&pr.pitch, rest, defaults)
     {
         emit_id_tweak_if_needed(rest.common.xml_id.as_deref(), &mut note_event.post_events);
         return Music::Note(note_event);
@@ -279,7 +311,7 @@ pub(super) fn convert_mei_rest(rest: &tusk_model::elements::Rest, ext_store: &Ex
     emit_id_tweak_if_needed(rest.common.xml_id.as_deref(), &mut post_events);
 
     Music::Rest(RestEvent {
-        duration: extract_rest_duration(rest),
+        duration: extract_rest_duration(rest, defaults),
         post_events,
     })
 }
@@ -288,6 +320,7 @@ pub(super) fn convert_mei_rest(rest: &tusk_model::elements::Rest, ext_store: &Ex
 fn parse_pitched_rest_label(
     pitch_str: &str,
     rest: &tusk_model::elements::Rest,
+    defaults: &MeiDefaults,
 ) -> Option<NoteEvent> {
     // Split into note name and octave marks
     let mut note_end = 0;
@@ -316,7 +349,7 @@ fn parse_pitched_rest_label(
             cautionary: false,
             octave_check: None,
         },
-        duration: extract_rest_duration(rest),
+        duration: extract_rest_duration(rest, defaults),
         pitched_rest: true,
         post_events: vec![],
     })

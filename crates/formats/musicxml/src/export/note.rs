@@ -90,9 +90,11 @@ pub fn convert_mei_note(
         ctx.map_id(xml_id, xml_id.clone());
     }
 
-    // Convert note type (graphical duration)
+    // Convert note type (graphical duration) — use dur.default if @dur absent
     if let Some(ref dur) = mei_note.note_log.dur {
         mxml_note.note_type = Some(NoteType::new(convert_mei_duration_to_note_type(dur)));
+    } else if let Some(dur_def) = ctx.dur_default() {
+        mxml_note.note_type = Some(NoteType::new(convert_mei_duration_to_note_type(dur_def)));
     }
 
     // Convert dots
@@ -194,7 +196,7 @@ fn convert_mei_loc_to_unpitched(
 /// Convert MEI pitch attributes to MusicXML Pitch.
 fn convert_mei_pitch(
     mei_note: &tusk_model::elements::Note,
-    _ctx: &mut ConversionContext,
+    ctx: &mut ConversionContext,
 ) -> ConversionResult<crate::model::note::Pitch> {
     use crate::model::data::Step;
     use crate::model::note::Pitch;
@@ -207,9 +209,11 @@ fn convert_mei_pitch(
         Step::C
     };
 
-    // Get octave
+    // Get octave — use oct.default from context if @oct absent
     let octave = if let Some(ref oct) = mei_note.note_log.oct {
         oct.0 as u8
+    } else if let Some(oct_def) = ctx.oct_default() {
+        oct_def.0 as u8
     } else {
         4 // Default octave
     };
@@ -287,10 +291,12 @@ fn calculate_mei_note_duration(
         }
     }
 
-    // Calculate from written duration
+    // Calculate from written duration, falling back to dur.default from context
     let divisions = ctx.divisions();
     let base_duration = if let Some(ref dur) = mei_note.note_log.dur {
         duration_to_quarter_notes(dur)
+    } else if let Some(dur_def) = ctx.dur_default() {
+        duration_to_quarter_notes(dur_def)
     } else {
         1.0 // Default to quarter note
     };
@@ -1007,11 +1013,13 @@ pub fn convert_mei_rest(
         ctx.map_id(xml_id, xml_id.clone());
     }
 
-    // Convert note type (graphical duration)
+    // Convert note type (graphical duration) — use dur.default if @dur absent
     if let Some(ref dur) = mei_rest.rest_log.dur {
         if let Some(nv) = convert_mei_duration_rests_to_note_type(dur) {
             mxml_note.note_type = Some(NoteType::new(nv));
         }
+    } else if let Some(dur_def) = ctx.dur_default() {
+        mxml_note.note_type = Some(NoteType::new(convert_mei_duration_to_note_type(dur_def)));
     }
 
     // Convert dots - check both @dots attribute and <dot> children
@@ -1043,10 +1051,12 @@ fn calculate_mei_rest_duration(
         }
     }
 
-    // Calculate from written duration
+    // Calculate from written duration, falling back to dur.default from context
     let divisions = ctx.divisions();
     let base_duration = if let Some(ref dur) = mei_rest.rest_log.dur {
         duration_rests_to_quarter_notes(dur)
+    } else if let Some(dur_def) = ctx.dur_default() {
+        duration_to_quarter_notes(dur_def)
     } else {
         1.0 // Default to quarter note
     };
@@ -1293,11 +1303,12 @@ pub fn convert_mei_chord(
         .map(|d| d.to_string().parse::<u64>().unwrap_or(0))
         .unwrap_or(0);
 
-    // Get note type from chord duration
+    // Get note type from chord duration, falling back to dur.default
     let chord_note_type = mei_chord
         .chord_log
         .dur
         .as_ref()
+        .or(ctx.dur_default())
         .map(convert_mei_duration_to_note_type);
 
     // Check for cue chord
@@ -1454,10 +1465,12 @@ fn calculate_mei_chord_duration(
         }
     }
 
-    // Calculate from written duration
+    // Calculate from written duration, falling back to dur.default from context
     let divisions = ctx.divisions();
     let base_duration = if let Some(ref dur) = mei_chord.chord_log.dur {
         duration_to_quarter_notes(dur)
+    } else if let Some(dur_def) = ctx.dur_default() {
+        duration_to_quarter_notes(dur_def)
     } else {
         1.0 // Default to quarter note
     };
@@ -2589,5 +2602,136 @@ mod tests {
 
         // Should have warnings about timing attributes
         assert!(ctx.has_warnings());
+    }
+
+    // ========================================================================
+    // dur.default / oct.default Tests
+    // ========================================================================
+
+    #[test]
+    fn test_note_uses_dur_default_when_no_explicit_dur() {
+        use crate::model::note::NoteTypeValue;
+        use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
+        use tusk_model::elements::Note as MeiNote;
+
+        let mut mei_note = MeiNote::default();
+        mei_note.note_log.pname = Some(DataPitchname::from("c".to_string()));
+        mei_note.note_log.oct = Some(DataOctave::from(4u64));
+        // No @dur on note
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+        ctx.set_dur_default(Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N8)));
+
+        let mxml_note = convert_mei_note(&mei_note, &mut ctx).unwrap();
+
+        // Should get eighth note type from dur.default
+        assert_eq!(
+            mxml_note.note_type.as_ref().unwrap().value,
+            NoteTypeValue::Eighth
+        );
+        // Duration in divisions: eighth = 0.5 quarters = 2 divisions
+        assert_eq!(mxml_note.duration.unwrap(), 2.0);
+    }
+
+    #[test]
+    fn test_note_explicit_dur_overrides_dur_default() {
+        use crate::model::note::NoteTypeValue;
+        use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
+        use tusk_model::elements::Note as MeiNote;
+
+        let mut mei_note = MeiNote::default();
+        mei_note.note_log.pname = Some(DataPitchname::from("c".to_string()));
+        mei_note.note_log.oct = Some(DataOctave::from(4u64));
+        mei_note.note_log.dur = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N2));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+        ctx.set_dur_default(Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N8)));
+
+        let mxml_note = convert_mei_note(&mei_note, &mut ctx).unwrap();
+
+        // Explicit @dur=2 should override dur.default=8
+        assert_eq!(
+            mxml_note.note_type.as_ref().unwrap().value,
+            NoteTypeValue::Half
+        );
+        assert_eq!(mxml_note.duration.unwrap(), 8.0);
+    }
+
+    #[test]
+    fn test_rest_uses_dur_default_when_no_explicit_dur() {
+        use crate::model::note::NoteTypeValue;
+        use tusk_model::data::{DataDuration, DataDurationCmn};
+        use tusk_model::elements::Rest as MeiRest;
+
+        let mei_rest = MeiRest::default();
+        // No @dur on rest
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+        ctx.set_dur_default(Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N4)));
+
+        let mxml_note = convert_mei_rest(&mei_rest, &mut ctx).unwrap();
+
+        assert_eq!(
+            mxml_note.note_type.as_ref().unwrap().value,
+            NoteTypeValue::Quarter
+        );
+        assert_eq!(mxml_note.duration.unwrap(), 4.0);
+    }
+
+    #[test]
+    fn test_note_uses_oct_default_when_no_explicit_oct() {
+        use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
+        use tusk_model::elements::Note as MeiNote;
+
+        let mut mei_note = MeiNote::default();
+        mei_note.note_log.pname = Some(DataPitchname::from("c".to_string()));
+        mei_note.note_log.dur = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N4));
+        // No @oct on note
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(1.0);
+        ctx.set_oct_default(Some(DataOctave::from(5u64)));
+
+        let mxml_note = convert_mei_note(&mei_note, &mut ctx).unwrap();
+
+        // Should get octave 5 from oct.default
+        assert_eq!(mxml_note.pitch().unwrap().octave, 5);
+    }
+
+    #[test]
+    fn test_chord_uses_dur_default_when_no_explicit_dur() {
+        use crate::model::note::NoteTypeValue;
+        use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
+        use tusk_model::elements::{Chord as MeiChord, ChordChild, Note as MeiNote};
+
+        let mut mei_chord = MeiChord::default();
+        // No @dur on chord
+
+        let mut note1 = MeiNote::default();
+        note1.note_log.pname = Some(DataPitchname::from("c".to_string()));
+        note1.note_log.oct = Some(DataOctave::from(4u64));
+        mei_chord.children.push(ChordChild::Note(Box::new(note1)));
+
+        let mut note2 = MeiNote::default();
+        note2.note_log.pname = Some(DataPitchname::from("e".to_string()));
+        note2.note_log.oct = Some(DataOctave::from(4u64));
+        mei_chord.children.push(ChordChild::Note(Box::new(note2)));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+        ctx.set_dur_default(Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N2)));
+
+        let mxml_notes = convert_mei_chord(&mei_chord, &mut ctx).unwrap();
+
+        assert_eq!(mxml_notes.len(), 2);
+        // Both notes should get half note type from dur.default
+        assert_eq!(
+            mxml_notes[0].note_type.as_ref().unwrap().value,
+            NoteTypeValue::Half
+        );
+        assert_eq!(mxml_notes[0].duration.unwrap(), 8.0);
     }
 }

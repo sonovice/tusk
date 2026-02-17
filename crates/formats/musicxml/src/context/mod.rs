@@ -168,6 +168,14 @@ pub struct ConversionContext {
     /// Tracked attribute state for detecting mid-score changes during import.
     /// Initialized from first-measure attributes; compared against subsequent attributes.
     pub(super) tracked_attrs: TrackedAttributes,
+
+    /// Default duration from scoreDef/staffDef @dur.default (MEI→MusicXML export).
+    /// Hierarchy: layerDef > staffDef > scoreDef.
+    dur_default: Option<tusk_model::data::DataDuration>,
+
+    /// Default octave from scoreDef/staffDef @oct.default (MEI→MusicXML export).
+    /// Hierarchy: layerDef > staffDef > scoreDef.
+    oct_default: Option<tusk_model::data::DataOctave>,
 }
 
 /// Tracked attribute state for detecting mid-score attribute changes.
@@ -234,6 +242,8 @@ impl ConversionContext {
             part_symbols: HashMap::new(),
             ext_store: ExtensionStore::new(),
             tracked_attrs: TrackedAttributes::default(),
+            dur_default: None,
+            oct_default: None,
         }
     }
 
@@ -411,6 +421,8 @@ impl ConversionContext {
         self.measure_accidentals.clear();
         self.ext_store = ExtensionStore::new();
         self.tracked_attrs = TrackedAttributes::default();
+        self.dur_default = None;
+        self.oct_default = None;
     }
 
     // ========================================================================
@@ -425,6 +437,30 @@ impl ConversionContext {
     /// Get a reference to tracked attributes.
     pub fn tracked_attrs(&self) -> &TrackedAttributes {
         &self.tracked_attrs
+    }
+
+    // ========================================================================
+    // MEI Default Duration/Octave (dur.default, oct.default)
+    // ========================================================================
+
+    /// Set the default duration from MEI scoreDef/staffDef @dur.default.
+    pub fn set_dur_default(&mut self, dur: Option<tusk_model::data::DataDuration>) {
+        self.dur_default = dur;
+    }
+
+    /// Get the current default duration (from scoreDef/staffDef @dur.default).
+    pub fn dur_default(&self) -> Option<&tusk_model::data::DataDuration> {
+        self.dur_default.as_ref()
+    }
+
+    /// Set the default octave from MEI scoreDef/staffDef @oct.default.
+    pub fn set_oct_default(&mut self, oct: Option<tusk_model::data::DataOctave>) {
+        self.oct_default = oct;
+    }
+
+    /// Get the current default octave (from scoreDef/staffDef @oct.default).
+    pub fn oct_default(&self) -> Option<&tusk_model::data::DataOctave> {
+        self.oct_default.as_ref()
     }
 }
 

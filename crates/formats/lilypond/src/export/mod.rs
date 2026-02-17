@@ -169,6 +169,8 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
     let pitch_contexts = extract_pitch_contexts(score, ext_store);
     let lyrics_infos = extract_lyrics_infos(score, ext_store);
 
+    let mei_defaults = extract_mei_defaults(score);
+
     let mut staff_music: Vec<Vec<Vec<Music>>> = Vec::new();
     let mut staff_layer_children: Vec<Vec<&[LayerChild]>> = Vec::new();
 
@@ -203,7 +205,7 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                                 let mut item_ids = Vec::new();
                                 for lc in &layer.children {
                                     let start = items.len();
-                                    convert_layer_child_to_items(lc, &post_event_map, &mut items, ext_store);
+                                    convert_layer_child_to_items(lc, &post_event_map, &mut items, ext_store, &mei_defaults);
                                     collect_layer_child_ids(lc, &mut item_ids, items.len() - start);
                                 }
                                 let log1 = inject_property_ops(&mut items, &mut item_ids, &property_ops);
@@ -985,6 +987,40 @@ fn apply_insertion_log<T>(vec: &mut Vec<Option<T>>, log: &InsertionLog) {
     }
 }
 
+/// Extract dur.default and oct.default from MEI scoreDef/staffDef hierarchy.
+fn extract_mei_defaults(score: &tusk_model::elements::Score) -> conversion::MeiDefaults {
+    let mut defaults = conversion::MeiDefaults::default();
+    for child in &score.children {
+        if let ScoreChild::ScoreDef(score_def) = child {
+            // Score-level defaults
+            if let Some(ref dur) = score_def.score_def_log.dur_default {
+                defaults.dur = conversion::mei_data_dur_to_ly(dur);
+            }
+            if let Some(ref oct) = score_def.score_def_log.oct_default {
+                defaults.oct = Some(oct.0);
+            }
+            // StaffDef-level overrides (use first staffDef as representative)
+            for sd_child in &score_def.children {
+                if let ScoreDefChild::StaffGrp(grp) = sd_child {
+                    for grp_child in &grp.children {
+                        if let StaffGrpChild::StaffDef(sdef) = grp_child {
+                            if let Some(ref dur) = sdef.staff_def_log.dur_default {
+                                defaults.dur = conversion::mei_data_dur_to_ly(dur);
+                            }
+                            if let Some(ref oct) = sdef.staff_def_log.oct_default {
+                                defaults.oct = Some(oct.0);
+                            }
+                            return defaults;
+                        }
+                    }
+                }
+            }
+            return defaults;
+        }
+    }
+    defaults
+}
+
 /// Find the Score element in the MEI hierarchy.
 fn find_score(mei: &Mei) -> Option<&tusk_model::elements::Score> {
     for child in &mei.children {
@@ -1006,12 +1042,13 @@ fn convert_layer_child_to_items(
     slur_map: &HashMap<String, Vec<PostEvent>>,
     items: &mut Vec<Music>,
     ext_store: &ExtensionStore,
+    defaults: &conversion::MeiDefaults,
 ) {
     match child {
         LayerChild::Beam(beam) => {
             let count = beam.children.len();
             for (i, bc) in beam.children.iter().enumerate() {
-                if let Some(mut m) = convert_beam_child(bc, ext_store) {
+                if let Some(mut m) = convert_beam_child(bc, ext_store, defaults) {
                     // Apply slur post-events by xml:id
                     if let Some(id) = beam_child_xml_id(bc)
                         && let Some(events) = slur_map.get(id)
@@ -1034,7 +1071,7 @@ fn convert_layer_child_to_items(
             if let Some(change) = extract_context_change(child, ext_store) {
                 items.push(change);
             }
-            if let Some(mut m) = convert_layer_child(child, ext_store) {
+            if let Some(mut m) = convert_layer_child(child, ext_store, defaults) {
                 if let Some(id) = layer_child_xml_id(child)
                     && let Some(events) = slur_map.get(id)
                 {
@@ -1062,32 +1099,32 @@ fn extract_context_change(child: &LayerChild, ext_store: &ExtensionStore) -> Opt
 }
 
 /// Convert a single MEI LayerChild to a LilyPond Music expression.
-fn convert_layer_child(child: &LayerChild, ext_store: &ExtensionStore) -> Option<Music> {
+fn convert_layer_child(child: &LayerChild, ext_store: &ExtensionStore, defaults: &conversion::MeiDefaults) -> Option<Music> {
     match child {
-        LayerChild::Note(note) => Some(convert_mei_note(note, ext_store)),
-        LayerChild::Rest(rest) => Some(convert_mei_rest(rest, ext_store)),
+        LayerChild::Note(note) => Some(convert_mei_note(note, ext_store, defaults)),
+        LayerChild::Rest(rest) => Some(convert_mei_rest(rest, ext_store, defaults)),
         LayerChild::MRest(mrest) => Some(convert_mei_mrest(mrest, ext_store)),
-        LayerChild::Chord(chord) => Some(convert_mei_chord(chord, ext_store)),
-        LayerChild::BTrem(btrem) => Some(convert_mei_btrem(btrem, ext_store)),
+        LayerChild::Chord(chord) => Some(convert_mei_chord(chord, ext_store, defaults)),
+        LayerChild::BTrem(btrem) => Some(convert_mei_btrem(btrem, ext_store, defaults)),
         LayerChild::Space(space) => Some(convert_mei_space(space)),
         _ => None,
     }
 }
 
 /// Convert a BeamChild to a LilyPond Music expression.
-fn convert_beam_child(child: &tusk_model::elements::BeamChild, ext_store: &ExtensionStore) -> Option<Music> {
+fn convert_beam_child(child: &tusk_model::elements::BeamChild, ext_store: &ExtensionStore, defaults: &conversion::MeiDefaults) -> Option<Music> {
     use tusk_model::elements::BeamChild;
     match child {
-        BeamChild::Note(note) => Some(convert_mei_note(note, ext_store)),
-        BeamChild::Rest(rest) => Some(convert_mei_rest(rest, ext_store)),
-        BeamChild::Chord(chord) => Some(convert_mei_chord(chord, ext_store)),
+        BeamChild::Note(note) => Some(convert_mei_note(note, ext_store, defaults)),
+        BeamChild::Rest(rest) => Some(convert_mei_rest(rest, ext_store, defaults)),
+        BeamChild::Chord(chord) => Some(convert_mei_chord(chord, ext_store, defaults)),
         BeamChild::Beam(beam) => {
             // Nested beams: flatten recursively (nested beams just continue the beam)
             // This shouldn't produce beam markers for the inner beam since
             // LilyPond uses a flat [ ... ] without nesting
             let mut nested = Vec::new();
             for bc in &beam.children {
-                if let Some(m) = convert_beam_child(bc, ext_store) {
+                if let Some(m) = convert_beam_child(bc, ext_store, defaults) {
                     nested.push(m);
                 }
             }
@@ -1453,7 +1490,7 @@ fn direction_ext_to_ly(dir: Option<tusk_model::DirectionExt>) -> Direction {
 ///
 /// Extracts the inner note/chord and adds a `PostEvent::Tremolo` with the
 /// subdivision value restored from ext_store.
-fn convert_mei_btrem(btrem: &tusk_model::elements::BTrem, ext_store: &ExtensionStore) -> Music {
+fn convert_mei_btrem(btrem: &tusk_model::elements::BTrem, ext_store: &ExtensionStore, defaults: &conversion::MeiDefaults) -> Music {
     // Restore subdivision value from ext_store
     let value = btrem
         .common
@@ -1481,8 +1518,8 @@ fn convert_mei_btrem(btrem: &tusk_model::elements::BTrem, ext_store: &ExtensionS
         .children
         .first()
         .map(|child| match child {
-            tusk_model::elements::BTremChild::Note(n) => convert_mei_note(n, ext_store),
-            tusk_model::elements::BTremChild::Chord(c) => convert_mei_chord(c, ext_store),
+            tusk_model::elements::BTremChild::Note(n) => convert_mei_note(n, ext_store, defaults),
+            tusk_model::elements::BTremChild::Chord(c) => convert_mei_chord(c, ext_store, defaults),
         })
         .unwrap_or_else(|| {
             Music::Rest(crate::model::RestEvent {

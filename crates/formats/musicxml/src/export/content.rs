@@ -343,6 +343,21 @@ pub fn convert_mei_score_content(
     let divs = initial_divs.unwrap_or_else(|| calculate_smart_divisions(&mei_measures));
     ctx.set_divisions(divs);
 
+    // Extract dur.default and oct.default from scoreDef → staffDef hierarchy.
+    // staffDef overrides scoreDef; we use the first staffDef as representative.
+    let mut dur_default = score_def.and_then(|sd| sd.score_def_log.dur_default.clone());
+    let mut oct_default = score_def.and_then(|sd| sd.score_def_log.oct_default.clone());
+    if let Some(sd) = staff_defs.first() {
+        if sd.staff_def_log.dur_default.is_some() {
+            dur_default = sd.staff_def_log.dur_default.clone();
+        }
+        if sd.staff_def_log.oct_default.is_some() {
+            oct_default = sd.staff_def_log.oct_default.clone();
+        }
+    }
+    ctx.set_dur_default(dur_default);
+    ctx.set_oct_default(oct_default);
+
     // Track previous measures per part for cross-measure slur resolution.
     // Key: part index, Value: accumulated measures for that part.
     //
