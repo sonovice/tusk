@@ -22,20 +22,26 @@ Output versions: MusicXML 4.1, MEI 6.0-dev, LilyPond 2.24. Older input versions 
 ## CLI
 
 ```
-tusk <INPUT> <OUTPUT>
+tusk convert <INPUT> <OUTPUT>
 ```
 
-The input and output formats are determined by file extension, with content-based fallback for the input.
+Formats are detected from file extensions, with content-based fallback for the input. Use `--from` / `--to` to override detection, and `-` for stdin/stdout.
 
 ```bash
-$ tusk score.musicxml score.mei
-Converted "score.musicxml" (MusicXML) -> "score.mei" (MEI)
+$ tusk convert score.musicxml score.mei
+score.musicxml (MusicXML) → score.mei (MEI)
 
-$ tusk score.mei score.ly
-Converted "score.mei" (MEI) -> "score.ly" (LilyPond)
+$ tusk convert score.mei score.ly
+score.mei (MEI) → score.ly (LilyPond)
 
-$ tusk concert.mxl concert.ly
-Converted "concert.mxl" (MusicXML) -> "concert.ly" (LilyPond)
+$ tusk convert concert.mxl concert.mei
+concert.mxl (MusicXML (.mxl)) → concert.mei (MEI)
+
+# Pipe through stdin/stdout
+$ cat score.mei | tusk convert - -t musicxml > score.musicxml
+
+# List supported formats
+$ tusk formats
 ```
 
 ## Library
@@ -59,7 +65,7 @@ cd tusk
 cargo build --release
 ```
 
-Binary ends up at `target/release/tusk-cli`.
+Binary ends up at `target/release/tusk`.
 
 ## Tests
 

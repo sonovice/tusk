@@ -646,7 +646,7 @@ dependencies = [
 
 [[package]]
 name = "tusk-cli"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -660,7 +660,7 @@ dependencies = [
 
 [[package]]
 name = "tusk-format"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "thiserror",
  "tusk-model",
@@ -668,7 +668,7 @@ dependencies = [
 
 [[package]]
 name = "tusk-lilypond"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "thiserror",
  "tracing",
@@ -680,7 +680,7 @@ dependencies = [
 
 [[package]]
 name = "tusk-mei"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "quick-xml 0.39.1",
  "regex",
@@ -696,7 +696,7 @@ dependencies = [
 
 [[package]]
 name = "tusk-mei-codegen"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -711,7 +711,7 @@ dependencies = [
 
 [[package]]
 name = "tusk-model"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "derive_more",
  "indexmap",
@@ -726,7 +726,7 @@ dependencies = [
 
 [[package]]
 name = "tusk-musicxml"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "quick-xml 0.39.1",
@@ -743,7 +743,7 @@ dependencies = [
 
 [[package]]
 name = "tusk-musicxml-codegen"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "clap",
