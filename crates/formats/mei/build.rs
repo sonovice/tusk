@@ -83,11 +83,16 @@ fn main() {
     for &(label, rng_file) in VERSIONED_MODELS {
         let version_rng = versions_dir.join(rng_file);
         if !version_rng.exists() {
-            println!(
-                "cargo::warning=Skipping versioned model '{}': RNG file not found at '{}'",
-                label,
-                version_rng.display()
-            );
+            // Only warn if the generated output is also missing (codegen truly needed).
+            // On CI / fresh checkouts the RNG files are absent but generated code is committed.
+            let output = mei_src.join("versions").join(label);
+            if !output.exists() {
+                println!(
+                    "cargo::warning=Skipping versioned model '{}': RNG file not found at '{}'",
+                    label,
+                    version_rng.display()
+                );
+            }
             continue;
         }
 

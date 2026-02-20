@@ -63,11 +63,15 @@ fn main() {
     for &(label, rel_path) in VERSIONED_XSD {
         let xsd_path = versions_dir.join(rel_path);
         if !xsd_path.exists() {
-            println!(
-                "cargo::warning=tusk-musicxml: skipping versioned model '{}': XSD not found at {}",
-                label,
-                xsd_path.display()
-            );
+            // Only warn if the generated output is also missing (codegen truly needed).
+            // On CI / fresh checkouts the XSDs are absent but generated code is committed.
+            if !musicxml_src.join(label).exists() {
+                println!(
+                    "cargo::warning=tusk-musicxml: skipping versioned model '{}': XSD not found at {}",
+                    label,
+                    xsd_path.display()
+                );
+            }
             continue;
         }
 
