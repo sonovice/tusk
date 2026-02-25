@@ -139,6 +139,30 @@ fn chord_to_text(chord: &HarmonyChord) -> String {
     // Kind abbreviation
     text.push_str(kind_abbreviation(chord.kind.value));
 
+    // Degree modifications (add9, #5, no3, etc.)
+    for degree in &chord.degrees {
+        use crate::model::harmony::DegreeTypeValue;
+        let val = degree.degree_value.value;
+        let alter = degree.degree_alter.value;
+        match degree.degree_type.value {
+            DegreeTypeValue::Add => {
+                text.push_str("add");
+                push_alter_prefix(&mut text, alter);
+                text.push_str(&val.to_string());
+            }
+            DegreeTypeValue::Subtract => {
+                text.push_str("no");
+                text.push_str(&val.to_string());
+            }
+            DegreeTypeValue::Alter => {
+                text.push('(');
+                push_alter_prefix(&mut text, alter);
+                text.push_str(&val.to_string());
+                text.push(')');
+            }
+        }
+    }
+
     // Bass note (slash chord)
     if let Some(ref bass) = chord.bass {
         text.push('/');
@@ -153,6 +177,15 @@ fn chord_to_text(chord: &HarmonyChord) -> String {
     }
 
     text
+}
+
+/// Push accidental prefix for a degree alteration value.
+fn push_alter_prefix(text: &mut String, alter: f64) {
+    if alter <= -1.0 {
+        text.push('b');
+    } else if alter >= 1.0 {
+        text.push('#');
+    }
 }
 
 /// Convert a Root to its text representation.
