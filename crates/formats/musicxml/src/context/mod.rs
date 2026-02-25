@@ -341,6 +341,15 @@ impl ConversionContext {
         self.part_symbols.get(part_id)
     }
 
+    /// Inverse lookup: given a global staff number, return the local (within-part) staff number
+    /// for the current part.
+    pub fn local_staff_for_global(&self, part_id: &str, global_staff: u32) -> Option<u32> {
+        self.part_staff_map
+            .iter()
+            .find(|((pid, _), gs)| pid == part_id && **gs == global_staff)
+            .map(|((_, local), _)| *local)
+    }
+
     /// Return the number of staves registered for a given part.
     pub fn staves_for_part(&self, part_id: &str) -> u32 {
         self.part_staff_map

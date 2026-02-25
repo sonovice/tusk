@@ -84,6 +84,11 @@ impl super::ConversionContext {
         self.position.layer = Some(layer);
     }
 
+    /// Get the current part ID, if set.
+    pub fn current_part_id(&self) -> Option<String> {
+        self.position.part_id.clone()
+    }
+
     /// Get the current staff number, or 1 if not set.
     pub fn current_staff(&self) -> u32 {
         self.position.staff.unwrap_or(1)

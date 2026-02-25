@@ -396,6 +396,7 @@ pub fn convert_mei_score_content(
         // Multi-staff parts (e.g., piano) have multiple MEI staves that must be merged
         // into a single MusicXML part with <backup> elements between staves.
         for (part_idx, part_id) in part_ids.iter().enumerate() {
+            ctx.set_part(part_id.as_str());
             let num_staves = ctx.staves_for_part(part_id);
 
             // Set per-part divisions from the first staffDef of this part
@@ -444,6 +445,7 @@ pub fn convert_mei_score_content(
                         staff,
                         local_staff_n,
                         num_staves as usize,
+                        1, // single-staff: max_layers not used for voice offset
                         &mut mxml_measure,
                         ctx,
                     )?;
@@ -475,7 +477,17 @@ pub fn convert_mei_score_content(
                 convert_technical_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
                 convert_notation_dynamics(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
             } else {
-                // Multi-staff part: merge multiple staves with <backup> between them
+                // Multi-staff part: merge multiple staves with <backup> between them.
+                // Pre-compute max layer count across all staves for unique voice numbering.
+                let max_layers = (1..=num_staves)
+                    .filter_map(|ls| {
+                        let gs = ctx.global_staff_for_part(part_id, ls)? as usize;
+                        find_staff_in_measure(mei_measure, gs)
+                            .map(|s| s.children.len())
+                    })
+                    .max()
+                    .unwrap_or(1);
+
                 for local_staff in 1..=num_staves {
                     let global_staff_n =
                         ctx.global_staff_for_part(part_id, local_staff).unwrap() as usize;
@@ -499,6 +511,7 @@ pub fn convert_mei_score_content(
                             staff,
                             local_staff_n,
                             num_staves as usize,
+                            max_layers,
                             &mut mxml_measure,
                             ctx,
                         )?;
@@ -2339,6 +2352,28 @@ fn find_note_by_id_mut<'a>(
     None
 }
 
+/// Resolve the effective MusicXML local staff number for an MEI note/chord/rest.
+///
+/// If the element has an MEI `@staff` attribute (indicating cross-staff rendering),
+/// convert from global MEI staff to local within-part staff. Otherwise use the
+/// default `enclosing_staff_n` from the containing `<staff>` element.
+fn resolve_note_staff(
+    mei_staff_attr: &Option<String>,
+    enclosing_staff_n: usize,
+    ctx: &ConversionContext,
+) -> u32 {
+    if let Some(staff_str) = mei_staff_attr {
+        if let Ok(global_staff) = staff_str.parse::<u32>() {
+            if let Some(part_id) = ctx.current_part_id() {
+                if let Some(local) = ctx.local_staff_for_global(&part_id, global_staff) {
+                    return local;
+                }
+            }
+        }
+    }
+    enclosing_staff_n as u32
+}
+
 /// Convert an MEI staff's content to MusicXML measure content.
 ///
 /// The `staff_n` parameter is the 1-based within-part staff number, used to set
@@ -2350,6 +2385,7 @@ fn convert_staff_content(
     staff: &Staff,
     staff_n: usize,
     num_staves: usize,
+    max_layers_across_staves: usize,
     mxml_measure: &mut MxmlMeasure,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<()> {
@@ -2371,8 +2407,8 @@ fn convert_staff_content(
             .and_then(|s| s.parse().ok())
             .unwrap_or(layer_idx + 1);
         let voice_number = if num_staves > 1 {
-            // Use max(layer_count, 2) so staff 2 starts at voice 3+ even with 1 layer
-            let layers_per_staff = layer_count.max(2);
+            // Use max of (max_layers_across_staves, 2) so voice numbers are unique
+            let layers_per_staff = max_layers_across_staves.max(2);
             (staff_n - 1) * layers_per_staff + layer_n
         } else {
             layer_n
@@ -2422,23 +2458,29 @@ fn convert_staff_content(
 
             match layer_child {
                 LayerChild::Note(note) => {
+                    let effective_staff =
+                        resolve_note_staff(&note.note_log.staff, staff_n, ctx);
                     let mut mxml_note = convert_mei_note(note, ctx)?;
-                    mxml_note.staff = Some(staff_n as u32);
+                    mxml_note.staff = Some(effective_staff);
                     mxml_measure
                         .content
                         .push(MeasureContent::Note(Box::new(mxml_note)));
                 }
                 LayerChild::Rest(rest) => {
+                    let effective_staff =
+                        resolve_note_staff(&rest.rest_log.staff, staff_n, ctx);
                     let mut mxml_note = convert_mei_rest(rest, ctx)?;
-                    mxml_note.staff = Some(staff_n as u32);
+                    mxml_note.staff = Some(effective_staff);
                     mxml_measure
                         .content
                         .push(MeasureContent::Note(Box::new(mxml_note)));
                 }
                 LayerChild::Chord(chord) => {
+                    let effective_staff =
+                        resolve_note_staff(&chord.chord_log.staff, staff_n, ctx);
                     let mxml_notes = convert_mei_chord(chord, ctx)?;
                     for mut note in mxml_notes {
-                        note.staff = Some(staff_n as u32);
+                        note.staff = Some(effective_staff);
                         mxml_measure
                             .content
                             .push(MeasureContent::Note(Box::new(note)));
@@ -2454,8 +2496,10 @@ fn convert_staff_content(
                     convert_ftrem_content(ftrem, staff_n, mxml_measure, ctx)?;
                 }
                 LayerChild::MRest(mrest) => {
+                    let effective_staff =
+                        resolve_note_staff(&mrest.m_rest_log.staff, staff_n, ctx);
                     let mut mxml_note = convert_mei_mrest(mrest, ctx)?;
-                    mxml_note.staff = Some(staff_n as u32);
+                    mxml_note.staff = Some(effective_staff);
                     mxml_measure
                         .content
                         .push(MeasureContent::Note(Box::new(mxml_note)));
@@ -2489,7 +2533,7 @@ fn convert_staff_content(
                 .push(MeasureContent::Attributes(Box::new(attrs)));
         }
 
-        // Assign voice to all notes and forwards added by this layer
+        // Assign voice and staff to all notes and forwards added by this layer
         for item in &mut mxml_measure.content[content_start..] {
             match item {
                 MeasureContent::Note(note) => {
@@ -2497,9 +2541,8 @@ fn convert_staff_content(
                 }
                 MeasureContent::Forward(forward) => {
                     forward.voice = Some(voice_str.clone());
+                    forward.staff = Some(staff_n as u32);
                 }
-                // Other MeasureContent variants (Backup, Attributes, Direction, etc.)
-                // don't carry a voice element.
                 MeasureContent::Backup(_)
                 | MeasureContent::Attributes(_)
                 | MeasureContent::Direction(_)
@@ -2512,6 +2555,21 @@ fn convert_staff_content(
                 | MeasureContent::Grouping(_)
                 | MeasureContent::Link(_)
                 | MeasureContent::Bookmark(_) => {}
+            }
+        }
+
+        // Insert <backup> between layers (not after the last one) to reset
+        // beat position for the next voice in this staff.
+        if layer_idx + 1 < layer_count {
+            let layer_duration = calculate_staff_duration(mxml_measure, content_start);
+            if layer_duration > 0.0 {
+                mxml_measure.content.push(MeasureContent::Backup(Box::new(
+                    crate::model::note::Backup {
+                        duration: layer_duration,
+                        footnote: None,
+                        level: None,
+                    },
+                )));
             }
         }
     }
@@ -2652,8 +2710,10 @@ fn collect_beam_events(
     for child in &beam.children {
         match child {
             BeamChild::Note(note) => {
+                let effective_staff =
+                    resolve_note_staff(&note.note_log.staff, staff_n, ctx);
                 let mut mxml_note = convert_mei_note(note, ctx)?;
-                mxml_note.staff = Some(staff_n as u32);
+                mxml_note.staff = Some(effective_staff);
                 let idx = mxml_measure.content.len();
                 mxml_measure
                     .content
@@ -2661,8 +2721,10 @@ fn collect_beam_events(
                 events.push((idx, false));
             }
             BeamChild::Rest(rest) => {
+                let effective_staff =
+                    resolve_note_staff(&rest.rest_log.staff, staff_n, ctx);
                 let mut mxml_note = convert_mei_rest(rest, ctx)?;
-                mxml_note.staff = Some(staff_n as u32);
+                mxml_note.staff = Some(effective_staff);
                 let idx = mxml_measure.content.len();
                 mxml_measure
                     .content
@@ -2670,10 +2732,12 @@ fn collect_beam_events(
                 events.push((idx, true));
             }
             BeamChild::Chord(chord) => {
+                let effective_staff =
+                    resolve_note_staff(&chord.chord_log.staff, staff_n, ctx);
                 let mxml_notes = convert_mei_chord(chord, ctx)?;
                 let first_idx = mxml_measure.content.len();
                 for mut note in mxml_notes {
-                    note.staff = Some(staff_n as u32);
+                    note.staff = Some(effective_staff);
                     mxml_measure
                         .content
                         .push(MeasureContent::Note(Box::new(note)));
@@ -2798,8 +2862,10 @@ fn convert_btrem_content(
     for child in &btrem.children {
         match child {
             BTremChild::Note(note) => {
+                let effective_staff =
+                    resolve_note_staff(&note.note_log.staff, staff_n, ctx);
                 let mut mxml_note = convert_mei_note(note, ctx)?;
-                mxml_note.staff = Some(staff_n as u32);
+                mxml_note.staff = Some(effective_staff);
                 add_tremolo_to_note(
                     &mut mxml_note,
                     crate::model::data::TremoloType::Single,
@@ -2810,10 +2876,12 @@ fn convert_btrem_content(
                     .push(MeasureContent::Note(Box::new(mxml_note)));
             }
             BTremChild::Chord(chord) => {
+                let effective_staff =
+                    resolve_note_staff(&chord.chord_log.staff, staff_n, ctx);
                 let mxml_notes = convert_mei_chord(chord, ctx)?;
                 let mut first = true;
                 for mut note in mxml_notes {
-                    note.staff = Some(staff_n as u32);
+                    note.staff = Some(effective_staff);
                     if first {
                         add_tremolo_to_note(
                             &mut note,
@@ -2866,18 +2934,22 @@ fn convert_ftrem_content(
 
         match child {
             FTremChild::Note(note) => {
+                let effective_staff =
+                    resolve_note_staff(&note.note_log.staff, staff_n, ctx);
                 let mut mxml_note = convert_mei_note(note, ctx)?;
-                mxml_note.staff = Some(staff_n as u32);
+                mxml_note.staff = Some(effective_staff);
                 add_tremolo_to_note(&mut mxml_note, ttype, marks);
                 mxml_measure
                     .content
                     .push(MeasureContent::Note(Box::new(mxml_note)));
             }
             FTremChild::Chord(chord) => {
+                let effective_staff =
+                    resolve_note_staff(&chord.chord_log.staff, staff_n, ctx);
                 let mxml_notes = convert_mei_chord(chord, ctx)?;
                 let mut first = true;
                 for mut note in mxml_notes {
-                    note.staff = Some(staff_n as u32);
+                    note.staff = Some(effective_staff);
                     if first {
                         add_tremolo_to_note(&mut note, ttype, marks);
                         first = false;

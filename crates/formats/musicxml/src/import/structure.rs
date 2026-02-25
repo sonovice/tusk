@@ -133,21 +133,51 @@ pub fn convert_measure(
         ctx.set_measure(&musicxml_measure.number);
     }
 
-    // Phase 1: Create staff elements for each part (notes, rests, chords)
-    // Multi-staff parts (e.g., piano with <staves>2</staves>) keep all notes
-    // in a single MEI staff (the first global staff). This preserves the
-    // original voice/backup ordering which is essential for roundtrip fidelity,
-    // especially with cross-staff notes.
+    // Phase 1: Create staff elements for each part (notes, rests, chords).
+    // Multi-staff parts (e.g., piano with <staves>2</staves>) produce one MEI
+    // <staff> per MusicXML staff, distributing notes by voice→staff mapping.
+    // Cross-staff notes (a voice spanning staves) get MEI @staff attributes.
     for part in &score.parts {
         ctx.set_part(&part.id);
+        let num_staves = ctx.staves_for_part(&part.id);
 
         if let Some(musicxml_measure) = part.measures.get(measure_idx) {
-            let global_staff = ctx.global_staff_for_part(&part.id, 1).unwrap_or(1);
-            ctx.set_staff(global_staff);
-            let staff = convert_staff(musicxml_measure, global_staff, ctx)?;
-            mei_measure
-                .children
-                .push(MeasureChild::Staff(Box::new(staff)));
+            if num_staves <= 1 {
+                // Single-staff part: existing path
+                let global_staff = ctx.global_staff_for_part(&part.id, 1).unwrap_or(1);
+                ctx.set_staff(global_staff);
+                let staff = convert_staff(musicxml_measure, global_staff, ctx)?;
+                mei_measure
+                    .children
+                    .push(MeasureChild::Staff(Box::new(staff)));
+            } else {
+                // Multi-staff part: build voice→primary_staff map, create one staff per local staff
+                let voice_staff_map = build_voice_staff_map(musicxml_measure);
+                let voices_per_staff =
+                    collect_voices_per_staff(musicxml_measure, &voice_staff_map);
+                for local_staff in 1..=num_staves {
+                    let global_staff = ctx
+                        .global_staff_for_part(&part.id, local_staff)
+                        .unwrap_or(local_staff);
+                    ctx.set_staff(global_staff);
+                    let sv = voices_per_staff
+                        .get(&local_staff)
+                        .cloned()
+                        .unwrap_or_default();
+                    let staff = convert_staff_multi(
+                        musicxml_measure,
+                        global_staff,
+                        local_staff,
+                        &sv,
+                        &voice_staff_map,
+                        &part.id,
+                        ctx,
+                    )?;
+                    mei_measure
+                        .children
+                        .push(MeasureChild::Staff(Box::new(staff)));
+                }
+            }
         }
     }
 
@@ -666,24 +696,407 @@ fn convert_measure_attributes(
     }
 }
 
+/// Collect distinct voice strings from a MusicXML measure, in order of first appearance.
+fn collect_distinct_voices(measure: &crate::model::elements::Measure) -> Vec<String> {
+    use crate::model::elements::MeasureContent;
+    let mut voices = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    for content in &measure.content {
+        if let MeasureContent::Note(note) = content {
+            if note.is_chord() {
+                continue;
+            }
+            if let Some(ref voice) = note.voice {
+                if seen.insert(voice.clone()) {
+                    voices.push(voice.clone());
+                }
+            }
+        }
+    }
+    voices
+}
+
 /// Convert MusicXML measure content to MEI staff.
 pub fn convert_staff(
-    _measure: &crate::model::elements::Measure,
+    measure: &crate::model::elements::Measure,
     staff_number: u32,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<tusk_model::elements::Staff> {
     use tusk_model::elements::Staff;
 
     let mut staff = Staff::default();
-    // Set staff number using n_integer.n (u64)
     staff.n_integer.n = Some((staff_number as u64).to_string());
 
-    // Create a layer for the content
-    // Note: Full measure content conversion will be implemented in subsequent tasks
-    let layer = convert_layer(_measure, 1, ctx)?;
-    staff.children.push(StaffChild::Layer(Box::new(layer)));
+    let voices = collect_distinct_voices(measure);
+    if voices.len() <= 1 {
+        // Single voice (or no voice info): existing single-layer path
+        let layer = convert_layer(measure, 1, ctx)?;
+        staff.children.push(StaffChild::Layer(Box::new(layer)));
+    } else {
+        // Multiple voices: one layer per voice
+        for (idx, voice) in voices.iter().enumerate() {
+            let layer_n = (idx + 1) as u32;
+            let layer = convert_layer_for_voice(measure, layer_n, voice, ctx)?;
+            staff.children.push(StaffChild::Layer(Box::new(layer)));
+        }
+    }
 
     Ok(staff)
+}
+
+/// Build a map from MusicXML voice → primary staff (within-part numbering).
+/// The primary staff is the first staff seen for each voice in the measure.
+fn build_voice_staff_map(
+    measure: &crate::model::elements::Measure,
+) -> std::collections::HashMap<String, u32> {
+    use crate::model::elements::MeasureContent;
+    let mut map = std::collections::HashMap::new();
+    for content in &measure.content {
+        if let MeasureContent::Note(note) = content {
+            if note.is_chord() {
+                continue; // chord notes share their root's voice
+            }
+            if let Some(ref voice) = note.voice {
+                let staff = note.staff.unwrap_or(1);
+                map.entry(voice.clone()).or_insert(staff);
+            }
+        }
+    }
+    map
+}
+
+/// Collect distinct voices per staff from the voice→staff map, in order of
+/// first appearance in the MusicXML measure content.
+fn collect_voices_per_staff(
+    measure: &crate::model::elements::Measure,
+    voice_staff_map: &std::collections::HashMap<String, u32>,
+) -> std::collections::HashMap<u32, Vec<String>> {
+    use crate::model::elements::MeasureContent;
+    let mut per_staff: std::collections::HashMap<u32, Vec<String>> = std::collections::HashMap::new();
+    let mut seen = std::collections::HashSet::new();
+    for content in &measure.content {
+        if let MeasureContent::Note(note) = content {
+            if note.is_chord() {
+                continue;
+            }
+            if let Some(ref voice) = note.voice {
+                if seen.insert(voice.clone()) {
+                    let staff = voice_staff_map.get(voice).copied().unwrap_or(1);
+                    per_staff.entry(staff).or_default().push(voice.clone());
+                }
+            }
+        }
+    }
+    per_staff
+}
+
+/// Convert MusicXML measure content to MEI staff for a multi-staff part.
+/// Filters notes by voice→staff mapping so each staff gets only its voices.
+/// If a staff has multiple voices, creates one layer per voice.
+fn convert_staff_multi(
+    measure: &crate::model::elements::Measure,
+    global_staff: u32,
+    local_staff: u32,
+    staff_voices: &[String],
+    voice_staff_map: &std::collections::HashMap<String, u32>,
+    part_id: &str,
+    ctx: &mut ConversionContext,
+) -> ConversionResult<tusk_model::elements::Staff> {
+    use tusk_model::elements::Staff;
+
+    let mut staff = Staff::default();
+    staff.n_integer.n = Some((global_staff as u64).to_string());
+
+    if staff_voices.len() <= 1 {
+        // Single voice for this staff — existing path
+        let layer =
+            convert_layer_for_staff(measure, 1, local_staff, None, voice_staff_map, part_id, ctx)?;
+        staff.children.push(StaffChild::Layer(Box::new(layer)));
+    } else {
+        // Multiple voices for this staff — one layer per voice
+        for (idx, voice) in staff_voices.iter().enumerate() {
+            let layer_n = (idx + 1) as u32;
+            let layer = convert_layer_for_staff(
+                measure,
+                layer_n,
+                local_staff,
+                Some(voice),
+                voice_staff_map,
+                part_id,
+                ctx,
+            )?;
+            staff.children.push(StaffChild::Layer(Box::new(layer)));
+        }
+    }
+
+    Ok(staff)
+}
+
+/// Convert MusicXML measure content to MEI layer, filtering for a specific staff.
+///
+/// Only emits notes/rests/chords whose voice's primary staff matches `target_local_staff`.
+/// When `target_voice` is Some, further filters to only that voice.
+/// Cross-staff notes (voice on this staff but note.staff differs) get MEI @staff.
+/// Beat position is tracked for ALL notes (regardless of staff) to keep timing correct.
+fn convert_layer_for_staff(
+    measure: &crate::model::elements::Measure,
+    layer_number: u32,
+    target_local_staff: u32,
+    target_voice: Option<&str>,
+    voice_staff_map: &std::collections::HashMap<String, u32>,
+    part_id: &str,
+    ctx: &mut ConversionContext,
+) -> ConversionResult<tusk_model::elements::Layer> {
+    use crate::import::process_attributes;
+    use crate::model::elements::MeasureContent;
+    use tusk_model::elements::Layer;
+
+    let mut layer = Layer::default();
+    layer.n_integer.n = Some((layer_number as u64).to_string());
+
+    ctx.set_layer(layer_number);
+    ctx.reset_beat_position();
+
+    // Collect all notes for chord detection (unfiltered — chord grouping needs full sequence)
+    let notes: Vec<&crate::model::note::Note> = measure
+        .content
+        .iter()
+        .filter_map(|c| match c {
+            MeasureContent::Note(note) => Some(note.as_ref()),
+            _ => None,
+        })
+        .collect();
+
+    // Collect notes for beam restructuring (filtered to match emitted notes)
+    let target_notes: Vec<&crate::model::note::Note> = notes
+        .iter()
+        .filter(|n| {
+            let voice = n.voice.as_deref().unwrap_or("1");
+            let primary_staff = voice_staff_map.get(voice).copied().unwrap_or(1);
+            primary_staff == target_local_staff
+                && target_voice.map_or(true, |tv| tv == voice)
+        })
+        .copied()
+        .collect();
+
+    let mut inline_attr_changes: Vec<LayerChild> = Vec::new();
+    // Deferred spaces: (note_event_count_before_space, Space) — inserted after beam restructuring
+    let mut deferred_spaces: Vec<(usize, LayerChild)> = Vec::new();
+    let mut emitted_event_count: usize = 0;
+    let mut processed_note_indices: std::collections::HashSet<usize> =
+        std::collections::HashSet::new();
+
+    let mut note_index = 0;
+    for content in &measure.content {
+        match content {
+            MeasureContent::Note(note) => {
+                let current_note_index = notes
+                    .iter()
+                    .position(|n| std::ptr::eq(*n, note.as_ref()))
+                    .unwrap_or(note_index);
+                note_index += 1;
+
+                if processed_note_indices.contains(&current_note_index) {
+                    continue;
+                }
+
+                // Chord continuation notes are handled with their root
+                if note.is_chord() {
+                    continue;
+                }
+
+                // Determine if this note's voice belongs to the target staff (and voice)
+                let voice = note.voice.as_deref().unwrap_or("1");
+                let primary_staff = voice_staff_map.get(voice).copied().unwrap_or(1);
+                let emit = primary_staff == target_local_staff
+                    && target_voice.map_or(true, |tv| tv == voice);
+
+                if note.is_rest() {
+                    if emit {
+                        if is_measure_rest(note) {
+                            let mei_mrest = convert_measure_rest(note, ctx)?;
+                            layer.children.push(LayerChild::MRest(Box::new(mei_mrest)));
+                        } else {
+                            let mei_rest = convert_rest(note, ctx)?;
+                            layer.children.push(LayerChild::Rest(Box::new(mei_rest)));
+                        }
+                        emitted_event_count += 1;
+                    }
+                    if let Some(duration) = note.duration {
+                        ctx.advance_beat_position(duration);
+                    }
+                    processed_note_indices.insert(current_note_index);
+                    continue;
+                }
+
+                // Collect chord group
+                let mut chord_notes: Vec<crate::model::note::Note> = vec![note.as_ref().clone()];
+                processed_note_indices.insert(current_note_index);
+
+                for (i, following_note) in notes.iter().enumerate().skip(current_note_index + 1) {
+                    if following_note.is_chord() && !following_note.is_rest() {
+                        chord_notes.push((*following_note).clone());
+                        processed_note_indices.insert(i);
+                    } else {
+                        break;
+                    }
+                }
+
+                if emit {
+                    // Check if this is a cross-staff note (voice on this staff but note renders elsewhere)
+                    let note_actual_staff = note.staff.unwrap_or(1);
+                    let cross_staff_global = if note_actual_staff != target_local_staff {
+                        ctx.global_staff_for_part(part_id, note_actual_staff)
+                    } else {
+                        None
+                    };
+
+                    if chord_notes.len() > 1 {
+                        let mut mei_chord = convert_chord(&chord_notes, ctx)?;
+                        if let Some(gs) = cross_staff_global {
+                            mei_chord.chord_log.staff = Some(gs.to_string());
+                        }
+                        if let Some(pt) = ctx.take_pending_tremolo() {
+                            if let Some(ref id) = mei_chord.common.xml_id {
+                                ctx.register_tremolo_for_id(id.clone(), pt);
+                            }
+                        }
+                        layer.children.push(LayerChild::Chord(Box::new(mei_chord)));
+                    } else {
+                        let mut mei_note = convert_note(note, ctx)?;
+                        if let Some(gs) = cross_staff_global {
+                            mei_note.note_log.staff = Some(gs.to_string());
+                        }
+                        if let Some(pt) = ctx.take_pending_tremolo() {
+                            if let Some(ref id) = mei_note.common.xml_id {
+                                ctx.register_tremolo_for_id(id.clone(), pt);
+                            }
+                        }
+                        layer.children.push(LayerChild::Note(Box::new(mei_note)));
+                    }
+                    emitted_event_count += 1;
+                }
+
+                // Always advance beat position (even for skipped notes)
+                if !note.is_grace()
+                    && let Some(duration) = note.duration
+                {
+                    ctx.advance_beat_position(duration);
+                }
+            }
+            MeasureContent::Attributes(attrs) => {
+                process_attributes(attrs, ctx, None);
+                // Only emit inline attribute changes for the first staff/voice to avoid duplicates
+                if target_local_staff == 1 && layer_number == 1 {
+                    emit_inline_attribute_changes(attrs, &mut inline_attr_changes, ctx);
+                }
+            }
+            MeasureContent::Backup(backup) => {
+                ctx.advance_beat_position(-backup.duration);
+            }
+            MeasureContent::Forward(forward) => {
+                // Defer Space creation until after beam restructuring
+                if let Some(tv) = target_voice {
+                    let fwd_voice = forward.voice.as_deref();
+                    if fwd_voice == Some(tv) {
+                        let mut space = tusk_model::elements::Space::default();
+                        space.space_ges.dur_ppq =
+                            Some((forward.duration as u64).to_string());
+                        deferred_spaces.push((
+                            emitted_event_count,
+                            LayerChild::Space(Box::new(space)),
+                        ));
+                    }
+                }
+                ctx.advance_beat_position(forward.duration);
+            }
+            MeasureContent::Direction(_)
+            | MeasureContent::Harmony(_)
+            | MeasureContent::FiguredBass(_)
+            | MeasureContent::Print(_)
+            | MeasureContent::Sound(_)
+            | MeasureContent::Listening(_)
+            | MeasureContent::Barline(_)
+            | MeasureContent::Grouping(_)
+            | MeasureContent::Link(_)
+            | MeasureContent::Bookmark(_) => {}
+        }
+    }
+
+    // Beam restructuring uses only target-staff/voice notes (no Space interference)
+    layer.children = restructure_with_beams(layer.children, &target_notes);
+
+    let tremolo_map = ctx.drain_tremolo_map();
+    if !tremolo_map.is_empty() {
+        layer.children = wrap_tremolo_containers(layer.children, &tremolo_map);
+    }
+
+    // Insert deferred Space elements at correct positions after beam restructuring
+    if !deferred_spaces.is_empty() {
+        insert_deferred_spaces(&mut layer.children, deferred_spaces);
+    }
+
+    if !inline_attr_changes.is_empty() {
+        inline_attr_changes.append(&mut layer.children);
+        layer.children = inline_attr_changes;
+    }
+
+    Ok(layer)
+}
+
+/// Insert deferred Space elements into layer children at correct positions.
+///
+/// Each space has an `event_count` — the number of note-events emitted before it.
+/// After beam restructuring, note-events may be inside Beam containers, so we
+/// count events by walking the children and counting note-like elements (including
+/// notes inside beams).
+fn insert_deferred_spaces(children: &mut Vec<LayerChild>, spaces: Vec<(usize, LayerChild)>) {
+    // Build event-count-to-child-index mapping
+    let mut event_count = 0;
+    let mut positions: Vec<(usize, usize)> = Vec::new();
+    for (ci, child) in children.iter().enumerate() {
+        positions.push((event_count, ci));
+        match child {
+            LayerChild::Note(_) | LayerChild::Rest(_) | LayerChild::MRest(_) | LayerChild::Chord(_) => {
+                event_count += 1;
+            }
+            LayerChild::Beam(beam) => {
+                event_count += count_beam_note_events(&beam.children);
+            }
+            _ => {}
+        }
+    }
+
+    // Resolve target positions for each space
+    let mut inserts: Vec<(usize, LayerChild)> = Vec::new();
+    for (ec, space) in spaces {
+        let pos = positions
+            .iter()
+            .find(|(count, _)| *count >= ec)
+            .map(|(_, ci)| *ci)
+            .unwrap_or(children.len());
+        inserts.push((pos, space));
+    }
+
+    // Insert from end to preserve indices. For same-position spaces,
+    // process in reverse input order so that original order is preserved
+    // (inserting at the same index shifts earlier inserts right).
+    // Use stable sort by position descending; same-position items stay in
+    // reverse input order, which produces correct final order after insertion.
+    inserts.reverse();
+    inserts.sort_by(|a, b| b.0.cmp(&a.0));
+    for (pos, space) in inserts {
+        children.insert(pos, space);
+    }
+}
+
+/// Count note-like events in beam children (for space insertion positioning).
+fn count_beam_note_events(children: &[tusk_model::elements::BeamChild]) -> usize {
+    use tusk_model::elements::BeamChild;
+    children
+        .iter()
+        .filter(|c| matches!(c, BeamChild::Note(_) | BeamChild::Rest(_) | BeamChild::Chord(_)))
+        .count()
 }
 
 /// Convert MusicXML measure content to MEI layer.
@@ -853,6 +1266,186 @@ pub fn convert_layer(
 
     // Prepend inline attribute changes (collected separately to avoid
     // disrupting beam restructuring which uses index-based ranges).
+    if !inline_attr_changes.is_empty() {
+        inline_attr_changes.append(&mut layer.children);
+        layer.children = inline_attr_changes;
+    }
+
+    Ok(layer)
+}
+
+/// Convert MusicXML measure content to MEI layer, filtering for a specific voice.
+///
+/// For single-staff parts with multiple voices. Only emits notes/rests/chords
+/// whose voice matches `target_voice`. Forward elements with matching voice
+/// become MEI `<space>`. Beat position tracked for ALL events.
+fn convert_layer_for_voice(
+    measure: &crate::model::elements::Measure,
+    layer_number: u32,
+    target_voice: &str,
+    ctx: &mut ConversionContext,
+) -> ConversionResult<tusk_model::elements::Layer> {
+    use crate::import::process_attributes;
+    use crate::model::elements::MeasureContent;
+    use tusk_model::elements::Layer;
+
+    let mut layer = Layer::default();
+    layer.n_integer.n = Some((layer_number as u64).to_string());
+
+    ctx.set_layer(layer_number);
+    ctx.reset_beat_position();
+
+    // Collect all notes for chord detection (unfiltered)
+    let notes: Vec<&crate::model::note::Note> = measure
+        .content
+        .iter()
+        .filter_map(|c| match c {
+            MeasureContent::Note(note) => Some(note.as_ref()),
+            _ => None,
+        })
+        .collect();
+
+    // Collect target-voice notes for beam restructuring
+    let target_notes: Vec<&crate::model::note::Note> = notes
+        .iter()
+        .filter(|n| n.voice.as_deref().unwrap_or("1") == target_voice)
+        .copied()
+        .collect();
+
+    let mut inline_attr_changes: Vec<LayerChild> = Vec::new();
+    let mut deferred_spaces: Vec<(usize, LayerChild)> = Vec::new();
+    let mut emitted_event_count: usize = 0;
+    let mut processed_note_indices: std::collections::HashSet<usize> =
+        std::collections::HashSet::new();
+
+    let mut note_index = 0;
+    for content in &measure.content {
+        match content {
+            MeasureContent::Note(note) => {
+                let current_note_index = notes
+                    .iter()
+                    .position(|n| std::ptr::eq(*n, note.as_ref()))
+                    .unwrap_or(note_index);
+                note_index += 1;
+
+                if processed_note_indices.contains(&current_note_index) {
+                    continue;
+                }
+
+                if note.is_chord() {
+                    continue;
+                }
+
+                let voice = note.voice.as_deref().unwrap_or("1");
+                let emit = voice == target_voice;
+
+                if note.is_rest() {
+                    if emit {
+                        if is_measure_rest(note) {
+                            let mei_mrest = convert_measure_rest(note, ctx)?;
+                            layer.children.push(LayerChild::MRest(Box::new(mei_mrest)));
+                        } else {
+                            let mei_rest = convert_rest(note, ctx)?;
+                            layer.children.push(LayerChild::Rest(Box::new(mei_rest)));
+                        }
+                        emitted_event_count += 1;
+                    }
+                    if let Some(duration) = note.duration {
+                        ctx.advance_beat_position(duration);
+                    }
+                    processed_note_indices.insert(current_note_index);
+                    continue;
+                }
+
+                // Collect chord group
+                let mut chord_notes: Vec<crate::model::note::Note> = vec![note.as_ref().clone()];
+                processed_note_indices.insert(current_note_index);
+
+                for (i, following_note) in notes.iter().enumerate().skip(current_note_index + 1) {
+                    if following_note.is_chord() && !following_note.is_rest() {
+                        chord_notes.push((*following_note).clone());
+                        processed_note_indices.insert(i);
+                    } else {
+                        break;
+                    }
+                }
+
+                if emit {
+                    if chord_notes.len() > 1 {
+                        let mei_chord = convert_chord(&chord_notes, ctx)?;
+                        if let Some(pt) = ctx.take_pending_tremolo() {
+                            if let Some(ref id) = mei_chord.common.xml_id {
+                                ctx.register_tremolo_for_id(id.clone(), pt);
+                            }
+                        }
+                        layer.children.push(LayerChild::Chord(Box::new(mei_chord)));
+                    } else {
+                        let mei_note = convert_note(note, ctx)?;
+                        if let Some(pt) = ctx.take_pending_tremolo() {
+                            if let Some(ref id) = mei_note.common.xml_id {
+                                ctx.register_tremolo_for_id(id.clone(), pt);
+                            }
+                        }
+                        layer.children.push(LayerChild::Note(Box::new(mei_note)));
+                    }
+                    emitted_event_count += 1;
+                }
+
+                // Always advance beat position
+                if !note.is_grace()
+                    && let Some(duration) = note.duration
+                {
+                    ctx.advance_beat_position(duration);
+                }
+            }
+            MeasureContent::Attributes(attrs) => {
+                process_attributes(attrs, ctx, None);
+                if layer_number == 1 {
+                    emit_inline_attribute_changes(attrs, &mut inline_attr_changes, ctx);
+                }
+            }
+            MeasureContent::Backup(backup) => {
+                ctx.advance_beat_position(-backup.duration);
+            }
+            MeasureContent::Forward(forward) => {
+                // Defer Space creation until after beam restructuring
+                let fwd_voice = forward.voice.as_deref();
+                if fwd_voice == Some(target_voice) {
+                    let mut space = tusk_model::elements::Space::default();
+                    space.space_ges.dur_ppq = Some((forward.duration as u64).to_string());
+                    deferred_spaces.push((
+                        emitted_event_count,
+                        LayerChild::Space(Box::new(space)),
+                    ));
+                }
+                ctx.advance_beat_position(forward.duration);
+            }
+            MeasureContent::Direction(_)
+            | MeasureContent::Harmony(_)
+            | MeasureContent::FiguredBass(_)
+            | MeasureContent::Print(_)
+            | MeasureContent::Sound(_)
+            | MeasureContent::Listening(_)
+            | MeasureContent::Barline(_)
+            | MeasureContent::Grouping(_)
+            | MeasureContent::Link(_)
+            | MeasureContent::Bookmark(_) => {}
+        }
+    }
+
+    // Beam restructuring uses only target-voice notes (no Space interference)
+    layer.children = restructure_with_beams(layer.children, &target_notes);
+
+    let tremolo_map = ctx.drain_tremolo_map();
+    if !tremolo_map.is_empty() {
+        layer.children = wrap_tremolo_containers(layer.children, &tremolo_map);
+    }
+
+    // Insert deferred Space elements at correct positions after beam restructuring
+    if !deferred_spaces.is_empty() {
+        insert_deferred_spaces(&mut layer.children, deferred_spaces);
+    }
+
     if !inline_attr_changes.is_empty() {
         inline_attr_changes.append(&mut layer.children);
         layer.children = inline_attr_changes;

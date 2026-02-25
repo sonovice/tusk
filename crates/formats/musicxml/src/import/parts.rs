@@ -416,7 +416,42 @@ pub fn convert_staff_grp(
             .push(StaffGrpChild::StaffGrp(Box::new(unclosed_grp)));
     }
 
+    // Collapse redundant single-child staffGrp wrappers within children (not root itself).
+    // e.g. part-group(brace) wrapping a single multi-staff part creates
+    // staffGrp(brace) > staffGrp(brace, bar.thru) > staffDefs — the outer is redundant.
+    for child in &mut root_grp.children {
+        if let StaffGrpChild::StaffGrp(inner) = child {
+            collapse_redundant_staff_grps(inner);
+        }
+    }
+
     Ok(root_grp)
+}
+
+/// Collapse staffGrp nodes that contain exactly one child staffGrp and nothing else.
+/// Merges outer attributes (symbol, bar.thru) into the inner where missing.
+fn collapse_redundant_staff_grps(grp: &mut StaffGrp) {
+    // Recurse first so inner collapses happen bottom-up
+    for child in &mut grp.children {
+        if let StaffGrpChild::StaffGrp(inner) = child {
+            collapse_redundant_staff_grps(inner);
+        }
+    }
+
+    // Collapse if exactly one child and it's a staffGrp
+    if grp.children.len() == 1 && matches!(&grp.children[0], StaffGrpChild::StaffGrp(_)) {
+        if let StaffGrpChild::StaffGrp(inner) = grp.children.remove(0) {
+            let mut inner = *inner;
+            // Merge outer attrs into inner where inner is missing them
+            if inner.staff_grp_vis.symbol.is_none() {
+                inner.staff_grp_vis.symbol = grp.staff_grp_vis.symbol.take();
+            }
+            if inner.staff_grp_vis.bar_thru.is_none() {
+                inner.staff_grp_vis.bar_thru = grp.staff_grp_vis.bar_thru.take();
+            }
+            *grp = inner;
+        }
+    }
 }
 
 /// Convert MusicXML part-group (start) to MEI staffGrp attributes.

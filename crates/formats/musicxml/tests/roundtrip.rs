@@ -360,6 +360,30 @@ fn compare_part_list(
     }
 }
 
+/// Group notes by voice, preserving appearance order of voices and note order within each.
+/// Returns Vec of (voice_string, Vec<&Note>) in order of first voice appearance.
+fn group_notes_by_voice(content: &[MeasureContent]) -> Vec<(String, Vec<&tusk_musicxml::model::note::Note>)> {
+    let mut voice_order: Vec<String> = Vec::new();
+    let mut voice_notes: std::collections::HashMap<String, Vec<&tusk_musicxml::model::note::Note>> =
+        std::collections::HashMap::new();
+    for item in content {
+        if let MeasureContent::Note(note) = item {
+            let voice = note.voice.clone().unwrap_or_else(|| "1".to_string());
+            if !voice_notes.contains_key(&voice) {
+                voice_order.push(voice.clone());
+            }
+            voice_notes.entry(voice).or_default().push(note.as_ref());
+        }
+    }
+    voice_order
+        .into_iter()
+        .map(|v| {
+            let notes = voice_notes.remove(&v).unwrap_or_default();
+            (v, notes)
+        })
+        .collect()
+}
+
 fn compare_measure_content(
     part_id: &str,
     measure_num: &str,
@@ -367,22 +391,24 @@ fn compare_measure_content(
     roundtripped: &[MeasureContent],
     diffs: &mut Differences,
 ) {
-    // Extract notes from both (ignoring backups, forwards, etc.)
-    let orig_notes: Vec<_> = original
-        .iter()
-        .filter_map(|c| match c {
-            MeasureContent::Note(n) => Some(n.as_ref()),
-            _ => None,
-        })
-        .collect();
+    // Group notes by voice, preserving per-voice order.
+    // Voice splitting may change the interleaving between voices, so we compare
+    // each voice independently. Voice numbers may be renumbered (e.g., original
+    // voices 1,2,5,3 → exported 1,2,3,4), so we match by voice appearance order.
+    let orig_voices = group_notes_by_voice(original);
+    let rt_voices = group_notes_by_voice(roundtripped);
 
-    let rt_notes: Vec<_> = roundtripped
-        .iter()
-        .filter_map(|c| match c {
-            MeasureContent::Note(n) => Some(n.as_ref()),
-            _ => None,
-        })
-        .collect();
+    if orig_voices.len() != rt_voices.len() {
+        diffs.add(format!(
+            "Part '{}', Measure '{}': voice count mismatch: original={}, roundtripped={}",
+            part_id, measure_num, orig_voices.len(), rt_voices.len()
+        ));
+        return;
+    }
+
+    // Flatten back to a single sequence, grouped by voice (each voice's notes in order)
+    let orig_notes: Vec<_> = orig_voices.into_iter().flat_map(|(_, notes)| notes).collect();
+    let rt_notes: Vec<_> = rt_voices.into_iter().flat_map(|(_, notes)| notes).collect();
 
     if orig_notes.len() != rt_notes.len() {
         diffs.add(format!(
@@ -886,10 +912,10 @@ fn debug_roundtrip_output() {
     }
 }
 
-/// Verify that voice and forward elements appear in exported MusicXML.
+/// Verify that voice splitting produces proper voice numbers and backup/forward.
 #[test]
 fn test_voice_and_forward_in_output() {
-    // multi_voice: import flattens voices, export assigns voice "1"
+    // multi_voice: import splits voices into separate layers, export produces distinct voices
     let xml = load_fixture("multi_voice.musicxml").unwrap();
     let partwise = parse_score_partwise(&xml).unwrap();
     let (mei, ext_store) = import(&partwise).unwrap();
@@ -899,8 +925,18 @@ fn test_voice_and_forward_in_output() {
         output.contains("<voice>"),
         "Exported MusicXML should contain <voice> elements"
     );
+    // Verify two distinct voices are exported
+    assert!(
+        output.contains("<voice>1</voice>") && output.contains("<voice>2</voice>"),
+        "multi_voice should have voice 1 and voice 2"
+    );
+    // Verify backup separates voices
+    assert!(
+        output.contains("<backup>"),
+        "multi_voice export should contain <backup> between voices"
+    );
 
-    // voice_forward: forward elements should survive roundtrip
+    // voice_forward: forward elements should survive roundtrip via Space
     let xml2 = load_fixture("voice_forward.musicxml").unwrap();
     let partwise2 = parse_score_partwise(&xml2).unwrap();
     let (mei2, ext_store2) = import(&partwise2).unwrap();
@@ -909,6 +945,10 @@ fn test_voice_and_forward_in_output() {
     assert!(
         output2.contains("<voice>"),
         "voice_forward output should contain <voice>"
+    );
+    assert!(
+        output2.contains("<forward>"),
+        "voice_forward output should contain <forward> from Space roundtrip"
     );
 
     // Check that the exported timewise model has voice set on notes
