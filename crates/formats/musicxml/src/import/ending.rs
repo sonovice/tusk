@@ -11,7 +11,7 @@ use crate::context::ConversionContext;
 use crate::model::data::StartStopDiscontinue;
 use crate::model::elements::{MeasureContent, ScorePartwise};
 use tusk_model::data::DataWord;
-use tusk_model::elements::{Ending as MeiEnding, EndingChild, MeasureChild, Section, SectionChild};
+use tusk_model::elements::{Ending as MeiEnding, EndingChild, Section, SectionChild};
 
 /// Ending boundary detected from MusicXML barlines.
 struct EndingBoundary {
@@ -106,13 +106,19 @@ pub fn restructure_endings(
         return;
     }
 
-    // Strip ending data from barline dirs on boundary measures.
+    // Strip ending data from barline ExtensionStore entries on boundary measures.
     // This avoids double-emitting endings on export — the structural <ending> container
     // takes precedence.
     for boundary in &boundaries {
+        let first_part = score.parts.first().unwrap();
         for idx in [boundary.start_idx, boundary.end_idx] {
-            if let Some(SectionChild::Measure(measure)) = section.children.get_mut(idx) {
-                strip_ending_from_barline_dirs(measure, ctx);
+            if let Some(mxml_measure) = first_part.measures.get(idx) {
+                for loc_str in ["left", "right", "middle"] {
+                    let key = format!("barline:{}:{}", mxml_measure.number, loc_str);
+                    if let Some(bd) = ctx.ext_store_mut().barline_mut(&key) {
+                        bd.ending = None;
+                    }
+                }
             }
         }
     }
@@ -135,7 +141,20 @@ pub fn restructure_endings(
         if let Some(ref text) = boundary.text {
             mei_ending.common.label = Some(text.clone());
         }
-        // Store stop type for roundtrip: "stop", "discontinue", or absent (open-ended)
+        // Map MusicXML stop type to MEI @lendsym visual attribute
+        use tusk_model::data::DataLinestartendsymbol;
+        match boundary.stop_type.as_deref() {
+            Some("stop") => {
+                // Bracket closes with downward hook
+                mei_ending.ending_vis.lendsym = Some(DataLinestartendsymbol::Angledown);
+            }
+            Some("discontinue") => {
+                // Bracket stays open (no closing hook)
+                mei_ending.ending_vis.lendsym = Some(DataLinestartendsymbol::None);
+            }
+            _ => {} // open-ended
+        }
+        // Preserve original stop type for roundtrip
         mei_ending.common.r#type = boundary.stop_type.clone();
 
         for child in drained {
@@ -164,23 +183,3 @@ pub fn restructure_endings(
     }
 }
 
-/// Strip ending data from barline dirs on a measure.
-///
-/// Removes the `ending` field from `BarlineData` in ExtensionStore for each
-/// barline dir on the measure. This prevents the ending from being double-emitted
-/// on export (the structural `<ending>` container takes over).
-fn strip_ending_from_barline_dirs(
-    measure: &mut tusk_model::elements::Measure,
-    ctx: &mut ConversionContext,
-) {
-    for child in &measure.children {
-        if let MeasureChild::Dir(dir) = child {
-            if let Some(ref id) = dir.common.xml_id {
-                // Identify barline dirs by ExtensionStore membership
-                if let Some(bd) = ctx.ext_store_mut().barline_mut(id) {
-                    bd.ending = None;
-                }
-            }
-        }
-    }
-}

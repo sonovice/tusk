@@ -597,16 +597,25 @@ fn convert_measure_barlines(
     mei_measure: &mut tusk_model::elements::Measure,
     ctx: &mut ConversionContext,
 ) {
-    use crate::model::elements::{BarlineLocation, MeasureContent};
+    use crate::model::elements::{BackwardForward, BarlineLocation, MeasureContent};
     use tusk_model::data::DataBarrendition;
 
     for content in &musicxml_measure.content {
         if let MeasureContent::Barline(barline) = content {
-            // Basic bar-style → MEI @left/@right
-            let rend = barline
+            // Start from bar-style mapping, then override for repeats
+            let mut rend = barline
                 .bar_style
                 .map(bar_style_to_mei_barrendition)
                 .unwrap_or(DataBarrendition::Single);
+
+            // Repeat → override to rptstart/rptend
+            if let Some(ref repeat) = barline.repeat {
+                rend = match repeat.direction {
+                    BackwardForward::Forward => DataBarrendition::Rptstart,
+                    BackwardForward::Backward => DataBarrendition::Rptend,
+                };
+            }
+
             let loc = barline.location.unwrap_or(BarlineLocation::Right);
             match loc {
                 BarlineLocation::Left => mei_measure.measure_log.left = Some(rend),
@@ -617,10 +626,18 @@ fn convert_measure_barlines(
                 }
             }
 
-            // Extra children/attrs → JSON-in-label <dir>
+            // Store extra barline data in ExtensionStore keyed by measure:location
             if barline.has_extra_children() || barline.has_extra_attrs() {
-                let dir_child = super::barline::convert_barline(barline, ctx);
-                mei_measure.children.push(dir_child);
+                let loc_str = match loc {
+                    BarlineLocation::Left => "left",
+                    BarlineLocation::Right => "right",
+                    BarlineLocation::Middle => "middle",
+                };
+                let key = format!("barline:{}:{}", musicxml_measure.number, loc_str);
+                ctx.ext_store_mut().insert_barline(
+                    key,
+                    super::barline::build_barline_data(barline),
+                );
             }
         }
     }
@@ -638,7 +655,8 @@ fn bar_style_to_mei_barrendition(
         BarStyle::Dashed => DataBarrendition::Dashed,
         BarStyle::Heavy => DataBarrendition::Heavy,
         BarStyle::LightLight => DataBarrendition::Dbl,
-        BarStyle::LightHeavy | BarStyle::HeavyLight => DataBarrendition::Single,
+        BarStyle::LightHeavy => DataBarrendition::End,
+        BarStyle::HeavyLight => DataBarrendition::Heavy,
         BarStyle::HeavyHeavy => DataBarrendition::Dblheavy,
         BarStyle::Tick | BarStyle::Short => DataBarrendition::Single,
         BarStyle::None => DataBarrendition::Invis,

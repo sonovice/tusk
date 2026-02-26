@@ -604,20 +604,18 @@ pub fn convert_mei_score_content(
                     .push(MeasureContent::Barline(Box::new(barline)));
             }
 
-            // Replace basic barlines with decorated versions from barline dirs
-            for child in &mei_measure.children {
-                if let MeasureChild::Dir(dir) = child {
-                    if let Some(ref id) = dir.common.xml_id {
-                        if let Some(data) = ctx.ext_store().barline(id) {
-                            let full_barline = build_barline_from_data(data);
-                            let loc = full_barline.location.unwrap_or(BarlineLocation::Right);
-                            replace_barline_at_location(
-                                &mut mxml_measure.content,
-                                &full_barline,
-                                loc,
-                            );
-                        }
-                    }
+            // Enrich basic barlines with extras from ExtensionStore
+            let measure_n = &measure_metas[measure_idx].number;
+            for loc_str in ["left", "right", "middle"] {
+                let key = format!("barline:{measure_n}:{loc_str}");
+                if let Some(data) = ctx.ext_store().barline(&key) {
+                    let full_barline = build_barline_from_data(data);
+                    let loc = full_barline.location.unwrap_or(BarlineLocation::Right);
+                    replace_barline_at_location(
+                        &mut mxml_measure.content,
+                        &full_barline,
+                        loc,
+                    );
                 }
             }
 
@@ -805,7 +803,15 @@ fn collect_measures_from_ending<'a>(
                 .unwrap_or("1")
                 .to_string(),
             label: ending.common.label.clone(),
-            stop_type: ending.common.r#type.clone(),
+            stop_type: ending.common.r#type.clone().or_else(|| {
+                // Derive from @lendsym if @type absent (externally-authored MEI)
+                use tusk_model::data::DataLinestartendsymbol;
+                match ending.ending_vis.lendsym {
+                    Some(DataLinestartendsymbol::Angledown) => Some("stop".to_string()),
+                    Some(DataLinestartendsymbol::None) => Some("discontinue".to_string()),
+                    _ => None,
+                }
+            }),
         });
     }
 }
@@ -926,36 +932,57 @@ fn mei_barrendition_to_barline(
     rend: tusk_model::data::DataBarrendition,
     location: BarlineLocation,
 ) -> Barline {
+    use crate::model::elements::{BackwardForward, Repeat};
     use tusk_model::data::DataBarrendition;
-    let bar_style = match rend {
-        DataBarrendition::Single => BarStyle::Regular,
-        DataBarrendition::Dotted => BarStyle::Dotted,
-        DataBarrendition::Dashed => BarStyle::Dashed,
-        DataBarrendition::Heavy => BarStyle::Heavy,
-        DataBarrendition::Dbl => BarStyle::LightLight,
-        DataBarrendition::Dblheavy => BarStyle::HeavyHeavy,
-        DataBarrendition::Invis => BarStyle::None,
-        DataBarrendition::Dbldashed => BarStyle::Dashed,
-        DataBarrendition::Dbldotted => BarStyle::Dotted,
-        // These MEI bar renditions have no exact MusicXML bar-style equivalent.
-        // Repeat-related renditions (rptstart/rptend/rptboth) are handled separately
-        // via barline extras roundtrip; if they reach here, fall back to regular.
-        DataBarrendition::End => BarStyle::LightHeavy,
-        DataBarrendition::Rptstart
-        | DataBarrendition::Rptend
-        | DataBarrendition::Rptboth
-        | DataBarrendition::Segno
-        | DataBarrendition::Dblsegno => {
-            tracing::debug!(
-                "MEI bar rendition {:?} mapped to regular — repeat/segno info preserved in barline extras",
-                rend
-            );
-            BarStyle::Regular
-        }
+
+    let (bar_style, repeat) = match rend {
+        DataBarrendition::Single => (BarStyle::Regular, None),
+        DataBarrendition::Dotted => (BarStyle::Dotted, None),
+        DataBarrendition::Dashed => (BarStyle::Dashed, None),
+        DataBarrendition::Heavy => (BarStyle::Heavy, None),
+        DataBarrendition::Dbl => (BarStyle::LightLight, None),
+        DataBarrendition::Dblheavy => (BarStyle::HeavyHeavy, None),
+        DataBarrendition::Invis => (BarStyle::None, None),
+        DataBarrendition::Dbldashed => (BarStyle::Dashed, None),
+        DataBarrendition::Dbldotted => (BarStyle::Dotted, None),
+        DataBarrendition::End => (BarStyle::LightHeavy, None),
+        DataBarrendition::Rptstart => (
+            BarStyle::HeavyLight,
+            Some(Repeat {
+                direction: BackwardForward::Forward,
+                times: None,
+                after_jump: None,
+                winged: None,
+            }),
+        ),
+        DataBarrendition::Rptend => (
+            BarStyle::LightHeavy,
+            Some(Repeat {
+                direction: BackwardForward::Backward,
+                times: None,
+                after_jump: None,
+                winged: None,
+            }),
+        ),
+        DataBarrendition::Rptboth => (
+            BarStyle::LightHeavy,
+            Some(Repeat {
+                direction: if location == BarlineLocation::Left {
+                    BackwardForward::Forward
+                } else {
+                    BackwardForward::Backward
+                },
+                times: None,
+                after_jump: None,
+                winged: None,
+            }),
+        ),
+        DataBarrendition::Segno | DataBarrendition::Dblsegno => (BarStyle::Regular, None),
     };
     Barline {
         location: Some(location),
         bar_style: Some(bar_style),
+        repeat,
         ..Barline::default()
     }
 }
