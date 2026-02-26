@@ -101,8 +101,8 @@ impl<'src> Parser<'src> {
                     _ => unreachable!(),
                 }
             }
-            // Figure event: \< figures \> duration
-            Token::EscapedAngleOpen => self.parse_figure_event(),
+            // Figure event: <figures> or \<figures\> with duration
+            Token::EscapedAngleOpen | Token::AngleOpen => self.parse_figure_event(),
             _ => Err(ParseError::Unexpected {
                 found: self.current.token.clone(),
                 offset: self.offset(),
@@ -111,16 +111,22 @@ impl<'src> Parser<'src> {
         }
     }
 
-    /// Parse a figure event: `\< bass_figures... \> [duration]`.
+    /// Parse a figure event: `<figures>dur` or `\<figures\>dur`.
     ///
     /// Grammar: `FIGURE_OPEN figure_list FIGURE_CLOSE`
     fn parse_figure_event(&mut self) -> Result<Music, ParseError> {
-        self.advance()?; // consume \<
+        let escaped = *self.peek() == Token::EscapedAngleOpen;
+        self.advance()?; // consume < or \<
+        let close = if escaped {
+            Token::EscapedAngleClose
+        } else {
+            Token::AngleClose
+        };
         let mut figures = Vec::new();
-        while *self.peek() != Token::EscapedAngleClose && !self.at_eof() {
+        while *self.peek() != close && !self.at_eof() {
             figures.push(self.parse_br_bass_figure()?);
         }
-        self.expect(&Token::EscapedAngleClose)?;
+        self.expect(&close)?;
         let duration = self.parse_optional_duration()?;
         Ok(Music::Figure(FigureEvent { figures, duration }))
     }

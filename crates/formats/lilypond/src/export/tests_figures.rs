@@ -15,7 +15,7 @@ fn roundtrip(src: &str) -> String {
 
 #[test]
 fn roundtrip_figures_basic() {
-    let src = "\\figures { \\<6 4\\>4 \\<7 5\\>4 \\<3\\>2 }";
+    let src = "\\figures { <6 4>4 <7 5>4 <3>2 }";
     let output = roundtrip(src);
     assert!(
         output.contains("\\figuremode"),
@@ -26,29 +26,29 @@ fn roundtrip_figures_basic() {
         "should contain FiguredBass context: {output}"
     );
     assert!(
-        output.contains("\\<6 4\\>4"),
-        "should contain \\<6 4\\>4: {output}"
+        output.contains("<6 4>4"),
+        "should contain <6 4>4: {output}"
     );
     assert!(
-        output.contains("\\<7 5\\>4"),
-        "should contain \\<7 5\\>4: {output}"
+        output.contains("<7 5>4"),
+        "should contain <7 5>4: {output}"
     );
     assert!(
-        output.contains("\\<3\\>2"),
-        "should contain \\<3\\>2: {output}"
+        output.contains("<3>2"),
+        "should contain <3>2: {output}"
     );
 }
 
 #[test]
 fn roundtrip_figuremode_alterations() {
-    let src = "\\figuremode { \\<6+ 4\\>4 \\<7- 5!\\>2 }";
+    let src = "\\figuremode { <6+ 4>4 <7- 5!>2 }";
     let output = roundtrip(src);
     assert!(
-        output.contains("\\<6+ 4\\>4"),
+        output.contains("<6+ 4>4"),
         "should preserve sharp alteration: {output}"
     );
     assert!(
-        output.contains("\\<7- 5!\\>2"),
+        output.contains("<7- 5!>2"),
         "should preserve flat and forced natural: {output}"
     );
 }
@@ -102,7 +102,7 @@ fn roundtrip_fixture_basic() {
         "should contain \\figuremode: {output}"
     );
     assert!(
-        output.contains("\\<6 4\\>4"),
+        output.contains("<6 4>4"),
         "should preserve basic figures: {output}"
     );
 }

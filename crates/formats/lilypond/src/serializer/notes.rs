@@ -84,15 +84,20 @@ impl Serializer<'_> {
         // Quality items after `:`
         if !ce.quality.is_empty() {
             self.out.push(':');
-            for (i, item) in ce.quality.iter().enumerate() {
-                if i > 0 {
-                    self.out.push('.');
-                }
+            let mut last_was_step = false;
+            for item in &ce.quality {
                 match item {
-                    ChordQualityItem::Modifier(m) => self.out.push_str(m.as_str()),
+                    ChordQualityItem::Modifier(m) => {
+                        self.out.push_str(m.as_str());
+                        last_was_step = false;
+                    }
                     ChordQualityItem::Step(s) => {
+                        if last_was_step {
+                            self.out.push('.');
+                        }
                         self.out.push_str(&s.number.to_string());
                         self.out.push_str(s.alteration.as_str());
+                        last_was_step = true;
                     }
                 }
             }
@@ -122,14 +127,14 @@ impl Serializer<'_> {
     }
 
     pub(super) fn write_figure_event(&mut self, fe: &note::FigureEvent) {
-        self.out.push_str("\\<");
+        self.out.push('<');
         for (i, fig) in fe.figures.iter().enumerate() {
             if i > 0 {
                 self.out.push(' ');
             }
             self.write_bass_figure(fig);
         }
-        self.out.push_str("\\>");
+        self.out.push('>');
         if let Some(dur) = &fe.duration {
             self.write_duration(dur);
         }
