@@ -48,14 +48,16 @@ pub fn convert_note(
 
     let mut mei_note = MeiNote::default();
 
-    // Generate and set xml:id
-    let note_id = ctx.generate_id_with_suffix("note");
-    mei_note.common.xml_id = Some(note_id.clone());
-
-    // Map original ID if present
-    if let Some(ref orig_id) = note.id {
-        ctx.map_id(orig_id, note_id);
-    }
+    // Set xml:id — preserve original MusicXML ID if present, else generate
+    let note_id = match note.id {
+        Some(ref orig_id) => {
+            let id = orig_id.clone();
+            ctx.map_id(orig_id, &id);
+            id
+        }
+        None => ctx.generate_id_with_suffix("note"),
+    };
+    mei_note.common.xml_id = Some(note_id);
 
     // Convert pitch/unpitched content
     match &note.content {
@@ -301,14 +303,16 @@ pub fn convert_rest(
 
     let mut mei_rest = MeiRest::default();
 
-    // Generate and set xml:id
-    let rest_id = ctx.generate_id_with_suffix("rest");
+    // Set xml:id — preserve original MusicXML ID if present, else generate
+    let rest_id = match note.id {
+        Some(ref orig_id) => {
+            let id = orig_id.clone();
+            ctx.map_id(orig_id, &id);
+            id
+        }
+        None => ctx.generate_id_with_suffix("rest"),
+    };
     mei_rest.common.xml_id = Some(rest_id.clone());
-
-    // Map original ID if present
-    if let Some(ref orig_id) = note.id {
-        ctx.map_id(orig_id, rest_id);
-    }
 
     // Convert duration — only set @dur when MusicXML has an explicit <type>,
     // not when inferred from <duration>. Whole-measure rests intentionally omit
@@ -330,6 +334,9 @@ pub fn convert_rest(
     if note.cue.is_some() {
         mei_rest.rest_log.cue = Some(DataBoolean::True);
     }
+
+    // Rests can carry tuplet start/stop annotations — process them
+    process_tuplets(note, &rest_id, ctx);
 
     Ok(mei_rest)
 }
@@ -355,14 +362,16 @@ pub fn convert_measure_rest(
 
     let mut mei_mrest = MRest::default();
 
-    // Generate and set xml:id
-    let mrest_id = ctx.generate_id_with_suffix("mrest");
-    mei_mrest.common.xml_id = Some(mrest_id.clone());
-
-    // Map original ID if present
-    if let Some(ref orig_id) = note.id {
-        ctx.map_id(orig_id, mrest_id);
-    }
+    // Set xml:id — preserve original MusicXML ID if present, else generate
+    let mrest_id = match note.id {
+        Some(ref orig_id) => {
+            let id = orig_id.clone();
+            ctx.map_id(orig_id, &id);
+            id
+        }
+        None => ctx.generate_id_with_suffix("mrest"),
+    };
+    mei_mrest.common.xml_id = Some(mrest_id);
 
     if let Some(duration) = note.duration {
         mei_mrest.m_rest_ges.dur_ppq = Some((duration as u64).to_string());
@@ -407,7 +416,9 @@ pub fn convert_chord(
 ) -> ConversionResult<Chord> {
     let mut mei_chord = Chord::default();
 
-    // Generate and set xml:id
+    // Always generate a fresh chord xml:id. Child notes keep their own IDs for
+    // slur/phrase/tuplet references; the chord must have a distinct ID so that
+    // fixup_tuplet_ids_for_chord can replace child note IDs with the chord ID.
     let chord_id = ctx.generate_id_with_suffix("chord");
     mei_chord.common.xml_id = Some(chord_id);
 
@@ -470,6 +481,20 @@ pub fn convert_chord(
             .children
             .push(ChordChild::Note(Box::new(mei_note)));
     }
+
+    // Replace child note IDs with chord ID in tuplet tracking.
+    // MusicXML puts duplicate tuplet start/stop on each chord member,
+    // but MEI tupletSpan should reference the chord, not internal notes.
+    let child_note_ids: Vec<String> = mei_chord
+        .children
+        .iter()
+        .filter_map(|cc| {
+            let ChordChild::Note(note) = cc;
+            note.common.xml_id.clone()
+        })
+        .collect();
+    let chord_id = mei_chord.common.xml_id.clone().unwrap_or_default();
+    ctx.fixup_tuplet_ids_for_chord(&child_note_ids, &chord_id);
 
     Ok(mei_chord)
 }

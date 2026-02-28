@@ -82,6 +82,6 @@ impl tusk_format::Exporter for LilyPondFormat {
         ext_store: &tusk_format::ExtensionStore,
     ) -> tusk_format::FormatResult<String> {
         let file = crate::export::export(mei, ext_store).map_err(tusk_format::FormatError::conversion)?;
-        Ok(crate::serializer::serialize(&file))
+        Ok(crate::serializer::serialize_pretty(&file))
     }
 }

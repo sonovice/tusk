@@ -880,7 +880,8 @@ fn validate_music(m: &Music, errors: &mut Vec<ValidationError>) {
             }
             validate_function_args(args, errors);
         }
-        Music::SchemeMusic(_) | Music::Event(_) | Music::Unparsed(_) | Music::Identifier(_) => {}
+        Music::SchemeMusic(_) | Music::Event(_) | Music::Unparsed(_) | Music::Identifier(_)
+        | Music::LineComment(_) => {}
     }
 }
 

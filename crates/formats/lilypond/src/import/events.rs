@@ -419,7 +419,7 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
             let serialized = crate::serializer::serialize_scheme_expr(expr);
             events.push(LyEvent::SchemeMusic(serialized));
         }
-        Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
+        Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) | Music::LineComment(_) => {}
     }
 }
 

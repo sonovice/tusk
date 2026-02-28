@@ -18,7 +18,15 @@ use tusk_model::musicxml_ext::{
 pub fn convert_figured_bass(fb: &FiguredBass, ctx: &mut ConversionContext) -> Fb {
     let mut mei_fb = Fb::default();
 
-    let fb_id = ctx.generate_id_with_suffix("fb");
+    // Set xml:id — preserve original MusicXML ID if present, else generate
+    let fb_id = match fb.id {
+        Some(ref orig_id) => {
+            let id = orig_id.clone();
+            ctx.map_id(orig_id, &id);
+            id
+        }
+        None => ctx.generate_id_with_suffix("fb"),
+    };
     mei_fb.common.xml_id = Some(fb_id);
 
     // Canonicalize offset to absolute position

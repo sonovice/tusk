@@ -416,7 +416,7 @@ pub fn convert_staff_grp(
             .push(StaffGrpChild::StaffGrp(Box::new(unclosed_grp)));
     }
 
-    // Collapse redundant single-child staffGrp wrappers within children (not root itself).
+    // Collapse redundant single-child staffGrp wrappers within children.
     // e.g. part-group(brace) wrapping a single multi-staff part creates
     // staffGrp(brace) > staffGrp(brace, bar.thru) > staffDefs — the outer is redundant.
     for child in &mut root_grp.children {

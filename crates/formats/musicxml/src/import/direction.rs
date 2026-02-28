@@ -54,6 +54,16 @@ impl DirectionConversionResult {
             DirectionConversionResult::Dir(d) => d.common.xml_id.as_deref(),
         }
     }
+
+    /// Replace the xml:id of the wrapped MEI element.
+    fn set_element_id(&mut self, id: String) {
+        match self {
+            DirectionConversionResult::Dynam(d) => d.common.xml_id = Some(id),
+            DirectionConversionResult::Hairpin(h) => h.common.xml_id = Some(id),
+            DirectionConversionResult::Tempo(t) => t.common.xml_id = Some(id),
+            DirectionConversionResult::Dir(d) => d.common.xml_id = Some(id),
+        }
+    }
 }
 
 /// Convert a MusicXML direction to MEI control events.
@@ -85,6 +95,9 @@ pub fn convert_direction(
     // MusicXML <staff> is within-part (e.g., piano staff 1), but MEI @staff is global.
     let staff = ctx.current_staff();
     let place = convert_placement(direction.placement.as_ref());
+
+    // Preserve original MusicXML ID on the first result element
+    let orig_id_remaining = direction.id.clone();
 
     for direction_type in &direction.direction_types {
         match &direction_type.content {
@@ -207,6 +220,14 @@ pub fn convert_direction(
                 let dir = dir_with_ext(tstamp.clone(), staff, place.clone(), ctx, data);
                 results.push(DirectionConversionResult::Dir(dir));
             }
+        }
+    }
+
+    // Preserve original MusicXML ID on the first result element
+    if let Some(orig_id) = orig_id_remaining {
+        if let Some(first) = results.first_mut() {
+            ctx.map_id(&orig_id, &orig_id);
+            first.set_element_id(orig_id);
         }
     }
 

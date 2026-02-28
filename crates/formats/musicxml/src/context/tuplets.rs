@@ -77,4 +77,29 @@ impl super::ConversionContext {
     pub fn drain_completed_tuplets(&mut self) -> Vec<CompletedTuplet> {
         std::mem::take(&mut self.completed_tuplets)
     }
+
+    /// After processing a chord, replace child note IDs with the chord ID
+    /// in pending/completed tuplets and deduplicate. MusicXML puts duplicate
+    /// tuplet start/stop on each chord member, but MEI tupletSpan should
+    /// reference the chord element, not individual notes inside it.
+    pub fn fixup_tuplet_ids_for_chord(&mut self, child_note_ids: &[String], chord_id: &str) {
+        for pt in &mut self.pending_tuplets {
+            if child_note_ids.contains(&pt.start_id) {
+                pt.start_id = chord_id.to_string();
+            }
+        }
+        self.pending_tuplets
+            .dedup_by(|a, b| a.part_id == b.part_id && a.staff == b.staff && a.number == b.number && a.start_id == b.start_id);
+
+        for ct in &mut self.completed_tuplets {
+            if child_note_ids.contains(&ct.start_id) {
+                ct.start_id = chord_id.to_string();
+            }
+            if child_note_ids.contains(&ct.end_id) {
+                ct.end_id = chord_id.to_string();
+            }
+        }
+        self.completed_tuplets
+            .dedup_by(|a, b| a.start_id == b.start_id && a.end_id == b.end_id);
+    }
 }

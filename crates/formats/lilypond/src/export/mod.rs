@@ -48,7 +48,9 @@ use tusk_model::extensions::ExtensionStore;
 use tusk_model::{ToplevelMarkup, ToplevelMarkupKind};
 
 use crate::model::Duration;
-use crate::model::note::{Direction, PostEvent, ScriptAbbreviation};
+use crate::model::note::{Direction, MultiMeasureRestEvent, PostEvent, ScriptAbbreviation};
+use crate::model::property::{PropertyPath, PropertyValue};
+use crate::model::scheme::SchemeExpr;
 use crate::model::{
     ContextKeyword, LilyPondFile, Music, ScoreBlock, ScoreItem, ToplevelExpression, Version,
 };
@@ -171,14 +173,66 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
 
     let mei_defaults = extract_mei_defaults(score);
 
+    // Inject \voiceOne/\voiceTwo in multi-voice measures only for
+    // MusicXML-originated content (always has part_details in ext_store).
+    // LilyPond-originated content preserves original voice structure.
+    let inject_voice_cmds = !ext_store.part_details_map.is_empty();
+
+    // Accumulate music per staff: each staff gets a single flat Vec<Music>
+    // containing all measures' content sequentially. Multi-voice measures
+    // are wrapped in << >> inline so voice count can vary per measure.
     let mut staff_music: Vec<Vec<Vec<Music>>> = Vec::new();
     let mut staff_layer_children: Vec<Vec<&[LayerChild]>> = Vec::new();
+    let mut measure_numbers: Vec<String> = Vec::new();
+    let mut staves_initialized = false;
+
+    // Track current time signature for measure-duration spacers.
+    // Extract initial time sig from first staff's event sequence.
+    let mut current_time_num: Vec<u32> = vec![4];
+    let mut current_time_den: u32 = 4;
+    if let Some(seq) = event_sequences.first() {
+        for ev in seq {
+            if let Music::TimeSignature(ts) = &ev.music {
+                current_time_num = ts.numerators.clone();
+                current_time_den = ts.denominator;
+                break;
+            }
+        }
+    }
+
+    // Pre-collect slur/phrase post events across ALL measures. MEI slur control
+    // events live in the end measure but may reference start notes in earlier
+    // measures. A global map ensures cross-measure slur starts get applied.
+    let global_slur_map = {
+        let mut map: HashMap<String, Vec<PostEvent>> = HashMap::new();
+        for child in &score.children {
+            if let ScoreChild::Section(section) = child {
+                for sc in &section.children {
+                    if let SectionChild::Measure(m) = sc {
+                        let m_map = collect_slur_post_events(&m.children, ext_store);
+                        for (k, v) in m_map {
+                            map.entry(k).or_default().extend(v);
+                        }
+                    }
+                }
+            }
+        }
+        map
+    };
 
     for child in &score.children {
         if let ScoreChild::Section(section) = child {
             for section_child in &section.children {
                 if let SectionChild::Measure(measure) = section_child {
-                    let mut post_event_map = collect_slur_post_events(&measure.children, ext_store);
+                    let measure_n = measure
+                        .common
+                        .n
+                        .as_ref()
+                        .map(|n| n.0.clone())
+                        .unwrap_or_else(|| (measure_numbers.len() + 1).to_string());
+                    measure_numbers.push(measure_n.clone());
+
+                    let mut post_event_map = global_slur_map.clone();
                     collect_dynam_post_events(&measure.children, &mut post_event_map);
                     collect_hairpin_post_events(&measure.children, &mut post_event_map);
                     collect_artic_post_events(&measure.children, &mut post_event_map, ext_store);
@@ -192,7 +246,8 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                     let repeat_spans = collect_repeat_spans(&measure.children, ext_store);
                     let ending_spans = collect_ending_spans(&measure.children, ext_store);
 
-                    let mut staff_idx = 0usize;
+                    // Build all staves' layers for this measure
+                    let mut all_staves: Vec<(Vec<Vec<Music>>, Vec<&[LayerChild]>)> = Vec::new();
                     for mc in &measure.children {
                         if let MeasureChild::Staff(staff) = mc {
                             let mut layers: Vec<Vec<Music>> = Vec::new();
@@ -211,8 +266,6 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                                 let log1 = inject_property_ops(&mut items, &mut item_ids, &property_ops);
                                 let log2 = inject_function_ops(&mut items, &mut item_ids, &function_ops);
                                 let log3 = inject_scheme_music_ops(&mut items, &mut item_ids, &scheme_music_ops);
-                                // Sync grace_types with insertion logs so it stays
-                                // aligned with items after ops injection.
                                 let mut grace_types = grace_types;
                                 apply_insertion_log(&mut grace_types, &log1);
                                 apply_insertion_log(&mut grace_types, &log2);
@@ -227,18 +280,74 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                                 );
                                 layers.push(items);
                             }
+                            all_staves.push((layers, raw_layers));
+                        }
+                    }
 
-                            // Inject signature events into first layer only, after
-                            // wrapping (so signatures stay outside wrappers).
-                            if let Some(seq) = event_sequences.get(staff_idx)
-                                && let Some(first_layer) = layers.first_mut() {
+                    // Detect time signature changes from first staff's first layer
+                    if let Some((first_layers, _)) = all_staves.first() {
+                        if let Some(first_layer) = first_layers.first() {
+                            if let Some((num, den)) = extract_time_from_items(first_layer) {
+                                current_time_num = num;
+                                current_time_den = den;
+                            }
+                        }
+                    }
+
+                    // Build spacer for MusicXML content to enforce measure duration
+                    let spacer = if inject_voice_cmds {
+                        Some(make_measure_spacer(&current_time_num, current_time_den))
+                    } else {
+                        None
+                    };
+
+                    // Accumulate into staff_music
+                    let num_staves = all_staves.len();
+                    let measure_comment = Music::LineComment(format!("m.{}", measure_n));
+                    for (staff_idx, (layers, raw_layers)) in all_staves.into_iter().enumerate() {
+                        if !staves_initialized {
+                            if let Some(seq) = event_sequences.get(staff_idx) {
+                                let mut first_layers = layers;
+                                if let Some(first_layer) = first_layers.first_mut() {
                                     inject_signature_events(first_layer, seq);
                                 }
-
-                            staff_music.push(layers);
-                            staff_layer_children.push(raw_layers);
-                            staff_idx += 1;
+                                let mut measure_items = flatten_measure_layers(first_layers, inject_voice_cmds, spacer.clone());
+                                measure_items.insert(0, measure_comment.clone());
+                                staff_music.push(vec![measure_items]);
+                            } else {
+                                let mut measure_items = flatten_measure_layers(layers, inject_voice_cmds, spacer.clone());
+                                measure_items.insert(0, measure_comment.clone());
+                                staff_music.push(vec![measure_items]);
+                            }
+                            // Only first layer — \addlyrics aligns with first voice in << >>
+                            staff_layer_children.push(raw_layers.into_iter().take(1).collect());
+                        } else {
+                            let mut measure_items = flatten_measure_layers(layers, inject_voice_cmds, spacer.clone());
+                            // Reset measure position before \time changes to
+                            // prevent "mid-measure time signature" warnings
+                            // from tuplet timing rounding errors.
+                            if inject_voice_cmds {
+                                insert_timing_reset_before_time_change(&mut measure_items);
+                            }
+                            let stream = &mut staff_music[staff_idx][0];
+                            if inject_voice_cmds {
+                                // Explicit barline resets timing counter —
+                                // prevents cascading barline misplacement
+                                // when source has irregular measure durations.
+                                stream.push(Music::BarLine {
+                                    bar_type: "|".to_string(),
+                                });
+                            } else {
+                                stream.push(Music::BarCheck);
+                            }
+                            stream.push(measure_comment.clone());
+                            stream.extend(measure_items);
+                            // Only first layer — \addlyrics aligns with first voice
+                            staff_layer_children[staff_idx].extend(raw_layers.into_iter().take(1));
                         }
+                    }
+                    if !staves_initialized && num_staves > 0 {
+                        staves_initialized = true;
                     }
                 }
             }
@@ -249,6 +358,36 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
     let chord_names_meta = extract_chord_names_meta(score, ext_store);
     let figure_mode_events = collect_figure_mode_fbs(score, ext_store);
     let figured_bass_meta = extract_figured_bass_meta(score, ext_store);
+
+    // For MusicXML-originated content, lyrics_infos may be all-None because
+    // ext_store doesn't have lyrics metadata. Detect lyrics from layer children
+    // and assign to the staff with the most lyric content (typically the melody staff).
+    let mut lyrics_infos = lyrics_infos;
+    {
+        let mut best_idx = None;
+        let mut best_count = 0usize;
+        let mut best_ids = Vec::new();
+        for (i, info) in lyrics_infos.iter().enumerate() {
+            if info.is_none() {
+                if let Some(layer_children) = staff_layer_children.get(i) {
+                    let verse_ids = detect_verse_ids(layer_children);
+                    if !verse_ids.is_empty() {
+                        let count = count_lyric_notes(layer_children, &verse_ids[0]);
+                        if count > best_count {
+                            best_count = count;
+                            best_idx = Some(i);
+                            best_ids = verse_ids;
+                        }
+                    }
+                }
+            }
+        }
+        if let Some(idx) = best_idx {
+            lyrics_infos[idx] = Some(lyrics::LyricsExportInfo {
+                style: lyrics::LyricsExportStyle::AddLyrics { verse_ids: best_ids },
+            });
+        }
+    }
 
     apply_pitch_contexts(&mut staff_music, &pitch_contexts);
 
@@ -263,6 +402,7 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
         &figure_mode_events,
         &figured_bass_meta,
         ext_store,
+        &measure_numbers,
     );
 
     let mut score_items = vec![ScoreItem::Music(music)];
@@ -469,20 +609,152 @@ fn extract_lyrics_infos(
         if let ScoreChild::ScoreDef(score_def) = child {
             for sd_child in &score_def.children {
                 if let ScoreDefChild::StaffGrp(grp) = sd_child {
-                    for grp_child in &grp.children {
-                        if let StaffGrpChild::StaffDef(sdef) = grp_child {
-                            let info = sdef.basic.xml_id.as_deref().and_then(|id| {
-                                let ext = ext_store.lyrics_info(id)?;
-                                lyrics::ext_lyrics_info_to_export(ext)
-                            });
-                            infos.push(info);
-                        }
+                    for sdef in collect_staff_defs_from_grp(grp) {
+                        let info = sdef.basic.xml_id.as_deref().and_then(|id| {
+                            let ext = ext_store.lyrics_info(id)?;
+                            lyrics::ext_lyrics_info_to_export(ext)
+                        });
+                        infos.push(info);
                     }
                 }
             }
         }
     }
     infos
+}
+
+// ---------------------------------------------------------------------------
+// StaffGrp traversal helpers
+// ---------------------------------------------------------------------------
+
+/// Detect the maximum verse number across all layer children.
+///
+/// Scans notes/chords for `<verse>` children and returns the highest verse
+/// number found. Used as fallback when ext_store has no lyrics metadata
+/// (MusicXML-originated content).
+fn detect_verse_ids(layer_children: &[&[LayerChild]]) -> Vec<String> {
+    use std::collections::BTreeSet;
+    use tusk_model::elements::NoteChild;
+    let mut ids = BTreeSet::new();
+    for children in layer_children {
+        for child in *children {
+            let verses = match child {
+                LayerChild::Note(n) => &n.children,
+                LayerChild::Chord(c) => {
+                    if let Some(tusk_model::elements::ChordChild::Note(n)) = c.children.first() {
+                        &n.children
+                    } else {
+                        continue;
+                    }
+                }
+                LayerChild::Beam(beam) => {
+                    for bc in &beam.children {
+                        let note_children = match bc {
+                            tusk_model::elements::BeamChild::Note(n) => &n.children,
+                            tusk_model::elements::BeamChild::Chord(c) => {
+                                if let Some(tusk_model::elements::ChordChild::Note(n)) = c.children.first() {
+                                    &n.children
+                                } else {
+                                    continue;
+                                }
+                            }
+                            _ => continue,
+                        };
+                        for nc in note_children {
+                            if let NoteChild::Verse(v) = nc {
+                                if let Some(n_attr) = v.common.n.as_ref() {
+                                    ids.insert(n_attr.0.clone());
+                                }
+                            }
+                        }
+                    }
+                    continue;
+                }
+                _ => continue,
+            };
+            for nc in verses {
+                if let NoteChild::Verse(v) = nc {
+                    if let Some(n_attr) = v.common.n.as_ref() {
+                        ids.insert(n_attr.0.clone());
+                    }
+                }
+            }
+        }
+    }
+    ids.into_iter().collect()
+}
+
+/// Count how many notes have a verse with the given ID.
+fn count_lyric_notes(layer_children: &[&[LayerChild]], verse_id: &str) -> usize {
+    use tusk_model::elements::NoteChild;
+    let mut count = 0;
+    for children in layer_children {
+        for child in *children {
+            let has_verse = |note_children: &[NoteChild]| -> bool {
+                note_children.iter().any(|nc| {
+                    matches!(nc, NoteChild::Verse(v) if v.common.n.as_ref().is_some_and(|n| n.0 == verse_id))
+                })
+            };
+            match child {
+                LayerChild::Note(n) => {
+                    if has_verse(&n.children) { count += 1; }
+                }
+                LayerChild::Chord(c) => {
+                    if let Some(tusk_model::elements::ChordChild::Note(n)) = c.children.first() {
+                        if has_verse(&n.children) { count += 1; }
+                    }
+                }
+                LayerChild::Beam(beam) => {
+                    for bc in &beam.children {
+                        match bc {
+                            tusk_model::elements::BeamChild::Note(n) => {
+                                if has_verse(&n.children) { count += 1; }
+                            }
+                            tusk_model::elements::BeamChild::Chord(c) => {
+                                if let Some(tusk_model::elements::ChordChild::Note(n)) = c.children.first() {
+                                    if has_verse(&n.children) { count += 1; }
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    count
+}
+
+/// Recursively collect all staffDefs from a staffGrp, walking into nested staffGrps.
+fn collect_staff_defs_from_grp<'a>(grp: &'a tusk_model::elements::StaffGrp) -> Vec<&'a tusk_model::elements::StaffDef> {
+    let mut defs = Vec::new();
+    for child in &grp.children {
+        match child {
+            StaffGrpChild::StaffDef(sdef) => defs.push(sdef.as_ref()),
+            StaffGrpChild::StaffGrp(sub_grp) => defs.extend(collect_staff_defs_from_grp(sub_grp)),
+            _ => {}
+        }
+    }
+    defs
+}
+
+/// Find the innermost staffGrp that has a symbol attribute (brace/bracket).
+/// This is the group that should become the LilyPond context wrapper (PianoStaff, StaffGroup).
+fn find_group_staff_grp(grp: &tusk_model::elements::StaffGrp) -> Option<&tusk_model::elements::StaffGrp> {
+    // Check nested staffGrps first (prefer innermost)
+    for child in &grp.children {
+        if let StaffGrpChild::StaffGrp(sub_grp) = child {
+            if let Some(found) = find_group_staff_grp(sub_grp) {
+                return Some(found);
+            }
+        }
+    }
+    // Then check self
+    if grp.staff_grp_vis.symbol.is_some() || grp.common.xml_id.is_some() {
+        return Some(grp);
+    }
+    None
 }
 
 // ---------------------------------------------------------------------------
@@ -511,8 +783,9 @@ fn extract_group_meta(score: &tusk_model::elements::Score, ext_store: &Extension
         if let ScoreChild::ScoreDef(score_def) = child {
             for sd_child in &score_def.children {
                 if let ScoreDefChild::StaffGrp(grp) = sd_child {
+                    let target = find_group_staff_grp(grp).unwrap_or(grp);
                     // Check ext_store for typed group context
-                    if let Some(id) = grp.common.xml_id.as_deref()
+                    if let Some(id) = target.common.xml_id.as_deref()
                         && let Some(ctx) = ext_store.staff_context(id) {
                             return Some(GroupMeta {
                                 context_type: ctx.context_type.clone(),
@@ -521,7 +794,7 @@ fn extract_group_meta(score: &tusk_model::elements::Score, ext_store: &Extension
                             });
                         }
                     // Fallback: infer from symbol
-                    if let Some(symbol) = &grp.staff_grp_vis.symbol {
+                    if let Some(symbol) = &target.staff_grp_vis.symbol {
                         let context_type = match symbol.as_str() {
                             "brace" => "PianoStaff",
                             "bracket" => "StaffGroup",
@@ -547,11 +820,9 @@ fn extract_staff_metas(score: &tusk_model::elements::Score, ext_store: &Extensio
         if let ScoreChild::ScoreDef(score_def) = child {
             for sd_child in &score_def.children {
                 if let ScoreDefChild::StaffGrp(grp) = sd_child {
-                    for grp_child in &grp.children {
-                        if let StaffGrpChild::StaffDef(sdef) = grp_child {
-                            let meta = extract_staff_meta_from_ext(sdef, ext_store);
-                            metas.push(meta);
-                        }
+                    for sdef in collect_staff_defs_from_grp(grp) {
+                        let meta = extract_staff_meta_from_ext(sdef, ext_store);
+                        metas.push(meta);
                     }
                 }
             }
@@ -597,6 +868,43 @@ fn parse_with_block_str(with_str: &str) -> Option<Vec<crate::model::ContextModIt
     None
 }
 
+/// Build a default `\with` block for ChordNames that uses conventional
+/// jazz/pop chord name rendering instead of LilyPond's default symbols.
+///
+/// - `majorSevenSymbol` → "maj7" (instead of △)
+/// - Augmented chords → "+" prefix (instead of ♯5)
+fn jazz_chord_name_with_block() -> Vec<crate::model::ContextModItem> {
+    use crate::model::{
+        markup::Markup, Assignment, AssignmentValue, ContextModItem, SchemeExpr,
+    };
+
+    // majorSevenSymbol = \markup "maj7"
+    let major_seven = ContextModItem::Assignment(Assignment {
+        name: "majorSevenSymbol".to_string(),
+        value: AssignmentValue::Markup(Markup::String("maj7".to_string())),
+    });
+
+    // chordNameExceptions = #(append (sequential-music-to-chord-exceptions #{ ... #} #t) ignatzekExceptions)
+    let exceptions = ContextModItem::Assignment(Assignment {
+        name: "chordNameExceptions".to_string(),
+        value: AssignmentValue::SchemeExpr(SchemeExpr::Raw(
+            concat!(
+                "(append\n",
+                "      (sequential-music-to-chord-exceptions\n",
+                "       #{\n",
+                "        <c e gis>-\\markup { \"+\" }\n",
+                "        <c e gis b>-\\markup { \"+maj7\" }\n",
+                "        <c e gis bes>-\\markup { \"+7\" }\n",
+                "       #} #t)\n",
+                "      ignatzekExceptions)",
+            )
+            .to_string(),
+        )),
+    });
+
+    vec![major_seven, exceptions]
+}
+
 /// Build a Music expression from staff/layer structure, wrapping in context.
 #[allow(clippy::too_many_arguments)]
 fn build_music_with_contexts(
@@ -610,6 +918,7 @@ fn build_music_with_contexts(
     figure_mode_events: &[Music],
     figured_bass_meta: &Option<FiguredBassMeta>,
     ext_store: &ExtensionStore,
+    measure_numbers: &[String],
 ) -> Music {
     let num_staves = staff_music.len();
     let has_chords = !chord_mode_events.is_empty();
@@ -630,9 +939,9 @@ fn build_music_with_contexts(
         let mut music = build_flat_music(staff_music);
         // Apply lyrics wrapping for single-staff case
         if let Some(Some(info)) = lyrics_infos.first()
-            && let Some(raw) = staff_layer_children.first().and_then(|v| v.first())
+            && let Some(raw) = staff_layer_children.first()
         {
-            music = lyrics::wrap_music_with_lyrics(music, raw, info, ext_store);
+            music = lyrics::wrap_music_with_lyrics(music, raw, info, ext_store, &measure_numbers);
         }
         return music;
     }
@@ -670,7 +979,8 @@ fn build_music_with_contexts(
         let cn_with = chord_names_meta
             .as_ref()
             .and_then(|m| m.with_block_str.as_deref())
-            .and_then(parse_with_block_str);
+            .and_then(parse_with_block_str)
+            .or_else(|| Some(jazz_chord_name_with_block()));
         let cn_name = chord_names_meta.as_ref().and_then(|m| m.name.clone());
         let chord_names_expr = Music::ContextedMusic {
             keyword: ContextKeyword::New,
@@ -702,14 +1012,14 @@ fn build_music_with_contexts(
         staff_exprs.push(fb_expr);
     }
 
+    // Multi-staff (PianoStaff etc.): \addlyrics inside << >> misaligns with
+    // multi-voice bars. Use \context Voice + \new Lyrics \lyricsto instead.
+    // ChordNames/FiguredBass don't cause this — \addlyrics binds to the
+    // preceding music expr, so it works fine in << >> with just chords.
+    let is_multi_staff = num_staves > 1;
+
     for (i, layers) in staff_music.into_iter().enumerate() {
         let mut inner = build_layers_music(layers);
-        // Apply lyrics wrapping per-staff
-        if let Some(Some(info)) = lyrics_infos.get(i)
-            && let Some(raw) = staff_layer_children.get(i).and_then(|v| v.first())
-        {
-            inner = lyrics::wrap_music_with_lyrics(inner, raw, info, ext_store);
-        }
         let meta = staff_metas.get(i);
 
         let with_block = meta
@@ -727,6 +1037,24 @@ fn build_music_with_contexts(
             };
         }
 
+        // Check if this staff has lyrics
+        let has_lyrics = lyrics_infos.get(i).is_some_and(|opt| opt.is_some());
+
+        // Multi-staff with lyrics: wrap inner music in \context Voice = "name"
+        let voice_name = if has_lyrics && is_multi_staff {
+            let name = format!("lyrics-v{}", i + 1);
+            inner = Music::ContextedMusic {
+                keyword: ContextKeyword::Context,
+                context_type: "Voice".to_string(),
+                name: Some(name.clone()),
+                with_block: None,
+                music: Box::new(inner),
+            };
+            Some(name)
+        } else {
+            None
+        };
+
         let staff_music_expr = Music::ContextedMusic {
             keyword: ContextKeyword::New,
             context_type: ctx_type,
@@ -734,7 +1062,29 @@ fn build_music_with_contexts(
             with_block,
             music: Box::new(inner),
         };
-        staff_exprs.push(staff_music_expr);
+
+        if let Some(voice_name) = voice_name {
+            // Multi-staff: use \new Lyrics \lyricsto instead of \addlyrics
+            if let Some(Some(info)) = lyrics_infos.get(i)
+                && let Some(raw) = staff_layer_children.get(i)
+            {
+                let (staff_expr, lyrics_exprs) =
+                    lyrics::wrap_music_with_lyricsto(staff_music_expr, raw, info, ext_store, &voice_name, &measure_numbers);
+                staff_exprs.push(staff_expr);
+                staff_exprs.extend(lyrics_exprs);
+            } else {
+                staff_exprs.push(staff_music_expr);
+            }
+        } else {
+            // Single-staff or no lyrics: use \addlyrics as before
+            let mut expr = staff_music_expr;
+            if let Some(Some(info)) = lyrics_infos.get(i)
+                && let Some(raw) = staff_layer_children.get(i)
+            {
+                expr = lyrics::wrap_music_with_lyrics(expr, raw, info, ext_store, &measure_numbers);
+            }
+            staff_exprs.push(expr);
+        }
     }
 
     // Wrap in simultaneous if multiple staves
@@ -782,6 +1132,186 @@ fn build_layers_music(layers: Vec<Vec<Music>>) -> Music {
         _ => {
             let voices: Vec<Music> = non_empty.into_iter().map(Music::Sequential).collect();
             Music::Simultaneous(voices)
+        }
+    }
+}
+
+/// Flatten a single measure's layers into a list of Music items.
+///
+/// If only one layer, returns its items directly. If multiple layers,
+/// wraps in `<< >>`. When `inject_voice_cmds` is true, prepends
+/// `\voiceOne`/`\voiceTwo` etc. and appends `\oneVoice` to restore
+/// default stem direction.
+///
+/// When `spacer` is provided, adds an invisible skip voice to the `<< >>`
+/// block to enforce a minimum measure duration. This prevents duration
+/// mismatches between staves from accumulating and causing orphan systems.
+fn flatten_measure_layers(
+    layers: Vec<Vec<Music>>,
+    inject_voice_cmds: bool,
+    spacer: Option<Music>,
+) -> Vec<Music> {
+    let non_empty: Vec<Vec<Music>> = layers.into_iter().filter(|l| !l.is_empty()).collect();
+    match non_empty.len() {
+        0 => {
+            if let Some(s) = spacer {
+                vec![s]
+            } else {
+                Vec::new()
+            }
+        }
+        1 if spacer.is_none() => non_empty.into_iter().next().unwrap(),
+        1 => {
+            let content = non_empty.into_iter().next().unwrap();
+            // If the layer has no sounding notes (only rests + attribute changes),
+            // skip the polyphonic wrapper. Promote a lone rest to R (multi-measure
+            // rest) so LilyPond centers it in the bar instead of left-aligning.
+            if is_rest_only_layer(&content) {
+                promote_lone_rest_to_mmrest(content)
+            } else {
+                let mut voices = vec![Music::Sequential(content)];
+                if let Some(s) = spacer {
+                    voices.push(Music::Sequential(vec![s]));
+                }
+                vec![Music::Simultaneous(voices)]
+            }
+        }
+        _ if inject_voice_cmds => {
+            let voice_names = ["voiceOne", "voiceTwo", "voiceThree", "voiceFour"];
+            let mut voices: Vec<Music> = non_empty
+                .into_iter()
+                .enumerate()
+                .map(|(i, mut items)| {
+                    if let Some(&name) = voice_names.get(i) {
+                        items.insert(
+                            0,
+                            Music::MusicFunction {
+                                name: name.to_string(),
+                                args: vec![],
+                            },
+                        );
+                    }
+                    Music::Sequential(items)
+                })
+                .collect();
+            if let Some(s) = spacer {
+                voices.push(Music::Sequential(vec![s]));
+            }
+            vec![
+                Music::Simultaneous(voices),
+                Music::MusicFunction {
+                    name: "oneVoice".to_string(),
+                    args: vec![],
+                },
+            ]
+        }
+        _ => {
+            let mut voices: Vec<Music> = non_empty.into_iter().map(Music::Sequential).collect();
+            if let Some(s) = spacer {
+                voices.push(Music::Sequential(vec![s]));
+            }
+            vec![Music::Simultaneous(voices)]
+        }
+    }
+}
+
+/// Create a spacer skip for a given time signature to enforce measure duration.
+///
+/// Produces e.g. `s4*4` for 4/4, `s4*5` for 5/4, `s4*2` for 2/4.
+fn make_measure_spacer(numerators: &[u32], denominator: u32) -> Music {
+    let total_num: u32 = numerators.iter().sum();
+    use crate::model::note::SkipEvent;
+    Music::Skip(SkipEvent {
+        duration: Some(Duration {
+            base: denominator,
+            dots: 0,
+            multipliers: vec![(total_num, 1)],
+        }),
+        post_events: vec![],
+    })
+}
+
+/// Check if a layer contains only rests and non-sounding items (clef, time, key changes, etc.).
+/// Such layers don't need a spacer-enforced polyphonic wrapper — removing it lets LilyPond
+/// center whole-bar rests instead of left-aligning them.
+fn is_rest_only_layer(items: &[Music]) -> bool {
+    items.iter().all(|m| {
+        matches!(
+            m,
+            Music::Rest(_)
+                | Music::MultiMeasureRest(_)
+                | Music::Skip(_)
+                | Music::Clef(_)
+                | Music::KeySignature(_)
+                | Music::TimeSignature(_)
+                | Music::BarLine { .. }
+                | Music::BarCheck
+                | Music::Mark(_)
+                | Music::TextMark(_)
+                | Music::Tempo(_)
+                | Music::Override { .. }
+                | Music::Revert { .. }
+                | Music::Set { .. }
+                | Music::Unset { .. }
+                | Music::Once { .. }
+                | Music::LineComment(_)
+        )
+    })
+}
+
+/// If the layer has exactly one `Music::Rest`, promote it to `Music::MultiMeasureRest`
+/// (`R` instead of `r`) so LilyPond centers it in the bar.
+fn promote_lone_rest_to_mmrest(mut items: Vec<Music>) -> Vec<Music> {
+    let rest_count = items.iter().filter(|m| matches!(m, Music::Rest(_))).count();
+    if rest_count == 1 {
+        for item in &mut items {
+            if let Music::Rest(r) = item {
+                *item = Music::MultiMeasureRest(MultiMeasureRestEvent {
+                    duration: r.duration.take(),
+                    post_events: std::mem::take(&mut r.post_events),
+                });
+                break;
+            }
+        }
+    }
+    items
+}
+
+/// Scan a layer's items for a `\time` change and return the new numerators/denominator.
+fn extract_time_from_items(items: &[Music]) -> Option<(Vec<u32>, u32)> {
+    for item in items {
+        if let Music::TimeSignature(ts) = item {
+            return Some((ts.numerators.clone(), ts.denominator));
+        }
+    }
+    None
+}
+
+/// Insert `\set Timing.measurePosition = #(ly:make-moment 0)` before any
+/// `\time` change in the items. This prevents LilyPond's "mid-measure time
+/// signature without \partial" warning caused by tuplet floating-point
+/// timing rounding errors that accumulate across measures.
+///
+/// Handles both flat items and nested `<< { \time ... } { spacer } >>`.
+fn insert_timing_reset_before_time_change(items: &mut Vec<Music>) {
+    let reset = || Music::Set {
+        path: PropertyPath::new(vec!["Timing".to_string(), "measurePosition".to_string()]),
+        value: PropertyValue::SchemeExpr(SchemeExpr::List("(ly:make-moment 0)".to_string())),
+    };
+    // Check top-level items first
+    if let Some(pos) = items.iter().position(|m| matches!(m, Music::TimeSignature(_))) {
+        items.insert(pos, reset());
+        return;
+    }
+    // Check inside << { items... } { spacer } >> wrappers
+    for item in items.iter_mut() {
+        if let Music::Simultaneous(voices) = item {
+            if let Some(Music::Sequential(inner)) = voices.first_mut() {
+                if let Some(pos) = inner.iter().position(|m| matches!(m, Music::TimeSignature(_))) {
+                    inner.insert(pos, reset());
+                    return;
+                }
+            }
         }
     }
 }
@@ -1002,16 +1532,14 @@ fn extract_mei_defaults(score: &tusk_model::elements::Score) -> conversion::MeiD
             // StaffDef-level overrides (use first staffDef as representative)
             for sd_child in &score_def.children {
                 if let ScoreDefChild::StaffGrp(grp) = sd_child {
-                    for grp_child in &grp.children {
-                        if let StaffGrpChild::StaffDef(sdef) = grp_child {
-                            if let Some(ref dur) = sdef.staff_def_log.dur_default {
-                                defaults.dur = conversion::mei_data_dur_to_ly(dur);
-                            }
-                            if let Some(ref oct) = sdef.staff_def_log.oct_default {
-                                defaults.oct = Some(oct.0);
-                            }
-                            return defaults;
+                    if let Some(sdef) = collect_staff_defs_from_grp(grp).first() {
+                        if let Some(ref dur) = sdef.staff_def_log.dur_default {
+                            defaults.dur = conversion::mei_data_dur_to_ly(dur);
                         }
+                        if let Some(ref oct) = sdef.staff_def_log.oct_default {
+                            defaults.oct = Some(oct.0);
+                        }
+                        return defaults;
                     }
                 }
             }
@@ -1049,11 +1577,10 @@ fn convert_layer_child_to_items(
             let count = beam.children.len();
             for (i, bc) in beam.children.iter().enumerate() {
                 if let Some(mut m) = convert_beam_child(bc, ext_store, defaults) {
-                    // Apply slur post-events by xml:id
-                    if let Some(id) = beam_child_xml_id(bc)
-                        && let Some(events) = slur_map.get(id)
-                    {
-                        append_post_events(&mut m, events);
+                    // Apply slur post-events by xml:id (including chord child notes)
+                    let events = collect_post_events_for_beam_child(bc, slur_map);
+                    if !events.is_empty() {
+                        append_post_events(&mut m, &events);
                     }
                     // First child gets BeamStart, last gets BeamEnd
                     if i == 0 {
@@ -1072,10 +1599,9 @@ fn convert_layer_child_to_items(
                 items.push(change);
             }
             if let Some(mut m) = convert_layer_child(child, ext_store, defaults) {
-                if let Some(id) = layer_child_xml_id(child)
-                    && let Some(events) = slur_map.get(id)
-                {
-                    append_post_events(&mut m, events);
+                let events = collect_post_events_for_layer_child(child, slur_map);
+                if !events.is_empty() {
+                    append_post_events(&mut m, &events);
                 }
                 items.push(m);
             }
@@ -1107,8 +1633,44 @@ fn convert_layer_child(child: &LayerChild, ext_store: &ExtensionStore, defaults:
         LayerChild::Chord(chord) => Some(convert_mei_chord(chord, ext_store, defaults)),
         LayerChild::BTrem(btrem) => Some(convert_mei_btrem(btrem, ext_store, defaults)),
         LayerChild::Space(space) => Some(convert_mei_space(space)),
+        LayerChild::MeterSig(msig) => convert_mei_meter_sig(msig),
+        LayerChild::Clef(clef) => convert_mei_inline_clef(clef),
         _ => None,
     }
+}
+
+/// Convert an inline MEI `<meterSig>` to `\time`.
+fn convert_mei_meter_sig(msig: &tusk_model::elements::MeterSig) -> Option<Music> {
+    let count_str = msig.meter_sig_log.count.as_deref()?;
+    let numerators: Vec<u32> = count_str
+        .split('+')
+        .filter_map(|s| s.trim().parse().ok())
+        .collect();
+    if numerators.is_empty() {
+        return None;
+    }
+    let denominator: u32 = msig
+        .meter_sig_log
+        .unit
+        .as_deref()
+        .and_then(|u| u.parse().ok())
+        .unwrap_or(4);
+    Some(Music::TimeSignature(
+        crate::model::signature::TimeSignature {
+            numerators,
+            denominator,
+        },
+    ))
+}
+
+/// Convert an inline MEI `<clef>` to `\clef`.
+fn convert_mei_inline_clef(clef: &tusk_model::elements::Clef) -> Option<Music> {
+    let shape = clef.clef_log.shape.as_ref()?;
+    let line = clef.clef_log.line.as_ref().map(|l| l.0).unwrap_or(2);
+    let dis = clef.clef_log.dis.as_ref().map(|d| d.0);
+    let dis_place = clef.clef_log.dis_place.as_ref();
+    let name = crate::import::mei_clef_to_name(shape, line, dis, dis_place);
+    Some(Music::Clef(crate::model::signature::Clef { name }))
 }
 
 /// Convert a BeamChild to a LilyPond Music expression.
@@ -1170,6 +1732,58 @@ fn beam_child_xml_id(child: &tusk_model::elements::BeamChild) -> Option<&str> {
         BeamChild::Beam(beam) => beam.common.xml_id.as_deref(),
         _ => None,
     }
+}
+
+/// Collect post-events for a layer child from the slur map.
+/// For chords, also checks child note IDs since MEI slurs reference
+/// individual notes, but LilyPond attaches slur marks to the chord.
+fn collect_post_events_for_layer_child(
+    child: &LayerChild,
+    slur_map: &HashMap<String, Vec<PostEvent>>,
+) -> Vec<PostEvent> {
+    let mut events = Vec::new();
+    if let Some(id) = layer_child_xml_id(child) {
+        if let Some(evts) = slur_map.get(id) {
+            events.extend(evts.iter().cloned());
+        }
+    }
+    // For chords, also check child note IDs
+    if let LayerChild::Chord(chord) = child {
+        for cc in &chord.children {
+            let tusk_model::elements::ChordChild::Note(note) = cc;
+            if let Some(id) = note.common.xml_id.as_deref() {
+                if let Some(evts) = slur_map.get(id) {
+                    events.extend(evts.iter().cloned());
+                }
+            }
+        }
+    }
+    events
+}
+
+/// Collect post-events for a beam child from the slur map.
+/// For chords, also checks child note IDs.
+fn collect_post_events_for_beam_child(
+    child: &tusk_model::elements::BeamChild,
+    slur_map: &HashMap<String, Vec<PostEvent>>,
+) -> Vec<PostEvent> {
+    let mut events = Vec::new();
+    if let Some(id) = beam_child_xml_id(child) {
+        if let Some(evts) = slur_map.get(id) {
+            events.extend(evts.iter().cloned());
+        }
+    }
+    if let tusk_model::elements::BeamChild::Chord(chord) = child {
+        for cc in &chord.children {
+            let tusk_model::elements::ChordChild::Note(note) = cc;
+            if let Some(id) = note.common.xml_id.as_deref() {
+                if let Some(evts) = slur_map.get(id) {
+                    events.extend(evts.iter().cloned());
+                }
+            }
+        }
+    }
+    events
 }
 
 /// Collect slur/phrase control events from measure children into a map of

@@ -1536,12 +1536,17 @@ fn convert_tuplet_events(
                 continue;
             };
 
+            // Resolve chord IDs to first-note IDs: tupletSpan may reference a chord's
+            // xml:id, but MusicXML notes carry individual note IDs, not the chord ID.
+            let resolved_sid = resolve_chord_to_first_note_id(mei_measure, &sid).unwrap_or(sid);
+            let resolved_eid = resolve_chord_to_first_note_id(mei_measure, &eid).unwrap_or(eid);
+
             // Find start and end positions in measure content
             let start_pos = mxml_measure.content.iter().position(
-                |c| matches!(c, MeasureContent::Note(n) if n.id.as_deref() == Some(&sid)),
+                |c| matches!(c, MeasureContent::Note(n) if n.id.as_deref() == Some(&resolved_sid)),
             );
             let end_pos = mxml_measure.content.iter().position(
-                |c| matches!(c, MeasureContent::Note(n) if n.id.as_deref() == Some(&eid)),
+                |c| matches!(c, MeasureContent::Note(n) if n.id.as_deref() == Some(&resolved_eid)),
             );
 
             let (Some(start_pos), Some(end_pos)) = (start_pos, end_pos) else {
@@ -1579,6 +1584,45 @@ fn convert_tuplet_events(
         }
     }
     Ok(())
+}
+
+/// Resolve a chord xml:id to its first child note's xml:id.
+/// TupletSpan uses chord IDs, but MusicXML notes carry individual note IDs.
+fn resolve_chord_to_first_note_id(
+    mei_measure: &tusk_model::elements::Measure,
+    id: &str,
+) -> Option<String> {
+    for mc in &mei_measure.children {
+        if let MeasureChild::Staff(staff) = mc {
+            for sc in &staff.children {
+                let tusk_model::elements::StaffChild::Layer(layer) = sc;
+                for lc in &layer.children {
+                    if let tusk_model::elements::LayerChild::Chord(chord) = lc {
+                        if chord.common.xml_id.as_deref() == Some(id) {
+                            return chord.children.first().and_then(|cc| {
+                                let tusk_model::elements::ChordChild::Note(n) = cc;
+                                n.common.xml_id.clone()
+                            });
+                        }
+                    }
+                    // Also check inside beams
+                    if let tusk_model::elements::LayerChild::Beam(beam) = lc {
+                        for bc in &beam.children {
+                            if let tusk_model::elements::BeamChild::Chord(chord) = bc {
+                                if chord.common.xml_id.as_deref() == Some(id) {
+                                    return chord.children.first().and_then(|cc| {
+                                        let tusk_model::elements::ChordChild::Note(n) = cc;
+                                        n.common.xml_id.clone()
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
 }
 
 /// Convert MEI ornament control events to MusicXML ornament notations on notes.

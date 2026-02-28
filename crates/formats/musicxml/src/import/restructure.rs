@@ -229,10 +229,14 @@ fn wrap_tremolo_in_beam(
 /// When a clef, key, or time signature differs from the last-known value,
 /// emits the corresponding inline MEI element (Clef, KeySig, MeterSig) into
 /// the layer and updates the tracked state.
+///
+/// `target_local_staff`: when `Some(n)`, only emit clefs for staff `n` and
+/// key/time only for staff 1 (global attrs). When `None`, emit all.
 pub fn emit_inline_attribute_changes(
     attrs: &crate::model::attributes::Attributes,
     inline_children: &mut Vec<LayerChild>,
     ctx: &mut ConversionContext,
+    target_local_staff: Option<u32>,
 ) {
     use crate::import::attributes::{
         convert_clef_attributes, convert_key_fifths, convert_time_signature,
@@ -240,12 +244,13 @@ pub fn emit_inline_attribute_changes(
     use crate::model::attributes::KeyContent;
 
     let part_id = ctx.position().part_id.clone().unwrap_or_default();
+    let emit_global = target_local_staff.is_none() || target_local_staff == Some(1);
 
-    // --- Key signature changes ---
+    // --- Key signature changes (global — only staff 1) ---
     for key in &attrs.keys {
         if let KeyContent::Traditional(trad) = &key.content {
             let tracked = ctx.tracked_attrs().key_fifths.get(&part_id).copied();
-            if tracked.is_some() && tracked != Some(trad.fifths) {
+            if emit_global && tracked.is_some() && tracked != Some(trad.fifths) {
                 let mut keysig = tusk_model::elements::KeySig::default();
                 keysig.key_sig_log.sig = Some(convert_key_fifths(trad.fifths));
                 inline_children.push(LayerChild::KeySig(Box::new(keysig)));
@@ -256,7 +261,7 @@ pub fn emit_inline_attribute_changes(
         }
     }
 
-    // --- Time signature changes ---
+    // --- Time signature changes (global — only staff 1) ---
     for time in &attrs.times {
         let (count, unit, sym) = convert_time_signature(time);
         let new_val = (
@@ -265,7 +270,7 @@ pub fn emit_inline_attribute_changes(
             sym.map(|s| format!("{:?}", s)),
         );
         let tracked = ctx.tracked_attrs().time_sig.get(&part_id).cloned();
-        if tracked.is_some() && tracked.as_ref() != Some(&new_val) {
+        if emit_global && tracked.is_some() && tracked.as_ref() != Some(&new_val) {
             let mut metersig = tusk_model::elements::MeterSig::default();
             metersig.meter_sig_log.count = count.clone();
             metersig.meter_sig_log.unit = unit.map(|u| u.to_string());
@@ -277,9 +282,16 @@ pub fn emit_inline_attribute_changes(
             .insert(part_id.clone(), new_val);
     }
 
-    // --- Clef changes ---
+    // --- Clef changes (per-staff) ---
     for clef in &attrs.clefs {
         let local_staff = clef.number.unwrap_or(1);
+        let matches_target = target_local_staff.is_none()
+            || target_local_staff == Some(local_staff);
+        // Only process clefs for the target staff — other staffs will process
+        // their own clefs when called with their target_local_staff.
+        if !matches_target {
+            continue;
+        }
         let new_val = (
             format!("{:?}", clef.sign),
             clef.line,

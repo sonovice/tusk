@@ -25,8 +25,15 @@ pub fn convert_harmony(harmony: &Harmony, ctx: &mut ConversionContext) -> Harm {
 
     let mut harm = Harm::default();
 
-    // Generate unique ID
-    let harm_id = ctx.generate_id_with_suffix("harm");
+    // Set xml:id — preserve original MusicXML ID if present, else generate
+    let harm_id = match harmony.id {
+        Some(ref orig_id) => {
+            let id = orig_id.clone();
+            ctx.map_id(orig_id, &id);
+            id
+        }
+        None => ctx.generate_id_with_suffix("harm"),
+    };
     harm.common.xml_id = Some(harm_id);
 
     // Normalize for ExtensionStore: clear `staff` (handled via MEI @staff),

@@ -60,3 +60,6 @@ crates/formats/musicxml/codegen/schema/versions/
 test.musicxml
 test_fixed.musicxml
 assets/
+
+# Misc
+.metadata_cache/

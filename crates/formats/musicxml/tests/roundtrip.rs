@@ -548,6 +548,8 @@ fn compare_attributes(
     roundtripped: &[MeasureContent],
     diffs: &mut Differences,
 ) {
+    // Collect ALL attributes blocks — multi-staff parts may split attributes
+    // across multiple blocks (e.g. clef for staff 2 after backup).
     let orig_attrs: Vec<_> = original
         .iter()
         .filter_map(|c| match c {
@@ -564,115 +566,128 @@ fn compare_attributes(
         })
         .collect();
 
-    // Compare first attributes block (most common case)
-    if let (Some(orig), Some(rt)) = (orig_attrs.first(), rt_attrs.first()) {
-        let ctx = format!("Part '{}', Measure '{}'", part_id, measure_num);
+    // Both sides need at least one attributes block to compare
+    if orig_attrs.is_empty() || rt_attrs.is_empty() {
+        return;
+    }
 
-        // Compare divisions (MusicXML defaults to 1 when absent)
-        let orig_divs = orig.divisions.unwrap_or(1.0);
-        let rt_divs = rt.divisions.unwrap_or(1.0);
+    let ctx = format!("Part '{}', Measure '{}'", part_id, measure_num);
+
+    // Compare divisions from first block (divisions are always in the first block)
+    {
+        let orig_divs = orig_attrs[0].divisions.unwrap_or(1.0);
+        let rt_divs = rt_attrs[0].divisions.unwrap_or(1.0);
         if orig_divs != rt_divs {
             diffs.add(format!(
                 "{}: divisions mismatch: original={:?}, roundtripped={:?}",
-                ctx, orig.divisions, rt.divisions
+                ctx, orig_attrs[0].divisions, rt_attrs[0].divisions
             ));
         }
+    }
 
-        // Compare key signatures
-        if let (Some(orig_key), Some(rt_key)) = (orig.keys.first(), rt.keys.first()) {
-            // Extract fifths from key content
-            let orig_fifths = match &orig_key.content {
-                KeyContent::Traditional(k) => Some(k.fifths),
-                KeyContent::NonTraditional(_) => None,
-            };
-            let rt_fifths = match &rt_key.content {
-                KeyContent::Traditional(k) => Some(k.fifths),
-                KeyContent::NonTraditional(_) => None,
-            };
-            if orig_fifths != rt_fifths {
-                diffs.add(format!(
-                    "{}: key fifths mismatch: original={:?}, roundtripped={:?}",
-                    ctx, orig_fifths, rt_fifths
-                ));
-            }
-        } else if orig.keys.len() != rt.keys.len() {
+    // Merge keys, times, and clefs across all attributes blocks.
+    // Multi-staff parts may split attributes across blocks (e.g. clef for
+    // staff 2 after backup), so positional comparison is too strict.
+    let orig_keys: Vec<_> = orig_attrs.iter().flat_map(|a| &a.keys).collect();
+    let rt_keys: Vec<_> = rt_attrs.iter().flat_map(|a| &a.keys).collect();
+
+    let orig_times: Vec<_> = orig_attrs.iter().flat_map(|a| &a.times).collect();
+    let rt_times: Vec<_> = rt_attrs.iter().flat_map(|a| &a.times).collect();
+
+    let orig_clefs: Vec<_> = orig_attrs.iter().flat_map(|a| &a.clefs).collect();
+    let rt_clefs: Vec<_> = rt_attrs.iter().flat_map(|a| &a.clefs).collect();
+
+    // Compare key signatures
+    if let (Some(orig_key), Some(rt_key)) = (orig_keys.first(), rt_keys.first()) {
+        let orig_fifths = match &orig_key.content {
+            KeyContent::Traditional(k) => Some(k.fifths),
+            KeyContent::NonTraditional(_) => None,
+        };
+        let rt_fifths = match &rt_key.content {
+            KeyContent::Traditional(k) => Some(k.fifths),
+            KeyContent::NonTraditional(_) => None,
+        };
+        if orig_fifths != rt_fifths {
             diffs.add(format!(
-                "{}: key count mismatch: original={}, roundtripped={}",
-                ctx,
-                orig.keys.len(),
-                rt.keys.len()
+                "{}: key fifths mismatch: original={:?}, roundtripped={:?}",
+                ctx, orig_fifths, rt_fifths
             ));
         }
+    } else if orig_keys.len() != rt_keys.len() {
+        diffs.add(format!(
+            "{}: key count mismatch: original={}, roundtripped={}",
+            ctx,
+            orig_keys.len(),
+            rt_keys.len()
+        ));
+    }
 
-        // Compare time signatures
-        if let (Some(orig_time), Some(rt_time)) = (orig.times.first(), rt.times.first()) {
-            // Extract beats/beat-type from time content
-            let orig_sig = match &orig_time.content {
-                TimeContent::Standard(t) => t.signatures.first(),
-                TimeContent::SenzaMisura(_) => None,
-            };
-            let rt_sig = match &rt_time.content {
-                TimeContent::Standard(t) => t.signatures.first(),
-                TimeContent::SenzaMisura(_) => None,
-            };
+    // Compare time signatures
+    if let (Some(orig_time), Some(rt_time)) = (orig_times.first(), rt_times.first()) {
+        let orig_sig = match &orig_time.content {
+            TimeContent::Standard(t) => t.signatures.first(),
+            TimeContent::SenzaMisura(_) => None,
+        };
+        let rt_sig = match &rt_time.content {
+            TimeContent::Standard(t) => t.signatures.first(),
+            TimeContent::SenzaMisura(_) => None,
+        };
 
-            if let (Some(orig_s), Some(rt_s)) = (orig_sig, rt_sig) {
-                if orig_s.beats != rt_s.beats {
-                    diffs.add(format!(
-                        "{}: time beats mismatch: original='{}', roundtripped='{}'",
-                        ctx, orig_s.beats, rt_s.beats
-                    ));
-                }
-                if orig_s.beat_type != rt_s.beat_type {
-                    diffs.add(format!(
-                        "{}: time beat-type mismatch: original='{}', roundtripped='{}'",
-                        ctx, orig_s.beat_type, rt_s.beat_type
-                    ));
-                }
+        if let (Some(orig_s), Some(rt_s)) = (orig_sig, rt_sig) {
+            if orig_s.beats != rt_s.beats {
+                diffs.add(format!(
+                    "{}: time beats mismatch: original='{}', roundtripped='{}'",
+                    ctx, orig_s.beats, rt_s.beats
+                ));
             }
-        } else if orig.times.len() != rt.times.len() {
+            if orig_s.beat_type != rt_s.beat_type {
+                diffs.add(format!(
+                    "{}: time beat-type mismatch: original='{}', roundtripped='{}'",
+                    ctx, orig_s.beat_type, rt_s.beat_type
+                ));
+            }
+        }
+    } else if orig_times.len() != rt_times.len() {
+        diffs.add(format!(
+            "{}: time signature count mismatch: original={}, roundtripped={}",
+            ctx,
+            orig_times.len(),
+            rt_times.len()
+        ));
+    }
+
+    // Compare clefs (merged across all attributes blocks).
+    // When original omits clef and roundtripped has the default treble clef
+    // (G line 2), that's not a real difference — our import adds a default clef.
+    if let (Some(orig_clef), Some(rt_clef)) = (orig_clefs.first(), rt_clefs.first()) {
+        if orig_clef.sign != rt_clef.sign {
             diffs.add(format!(
-                "{}: time signature count mismatch: original={}, roundtripped={}",
-                ctx,
-                orig.times.len(),
-                rt.times.len()
+                "{}: clef sign mismatch: original={:?}, roundtripped={:?}",
+                ctx, orig_clef.sign, rt_clef.sign
             ));
         }
-
-        // Compare clefs.
-        // When original omits clef and roundtripped has the default treble clef
-        // (G line 2), that's not a real difference — our import adds a default clef.
-        if let (Some(orig_clef), Some(rt_clef)) = (orig.clefs.first(), rt.clefs.first()) {
-            if orig_clef.sign != rt_clef.sign {
-                diffs.add(format!(
-                    "{}: clef sign mismatch: original={:?}, roundtripped={:?}",
-                    ctx, orig_clef.sign, rt_clef.sign
-                ));
-            }
-            if orig_clef.line != rt_clef.line {
-                diffs.add(format!(
-                    "{}: clef line mismatch: original={:?}, roundtripped={:?}",
-                    ctx, orig_clef.line, rt_clef.line
-                ));
-            }
-        } else if orig.clefs.is_empty() && rt.clefs.len() == 1 {
-            // Roundtrip added a default clef — acceptable if it's treble (G line 2)
-            let rt_clef = &rt.clefs[0];
-            let is_default = rt_clef.sign == ClefSign::G && rt_clef.line == Some(2);
-            if !is_default {
-                diffs.add(format!(
-                    "{}: roundtrip added non-default clef: {:?} line {:?}",
-                    ctx, rt_clef.sign, rt_clef.line
-                ));
-            }
-        } else if orig.clefs.len() != rt.clefs.len() {
+        if orig_clef.line != rt_clef.line {
             diffs.add(format!(
-                "{}: clef count mismatch: original={}, roundtripped={}",
-                ctx,
-                orig.clefs.len(),
-                rt.clefs.len()
+                "{}: clef line mismatch: original={:?}, roundtripped={:?}",
+                ctx, orig_clef.line, rt_clef.line
             ));
         }
+    } else if orig_clefs.is_empty() && rt_clefs.len() == 1 {
+        let rt_clef = rt_clefs[0];
+        let is_default = rt_clef.sign == ClefSign::G && rt_clef.line == Some(2);
+        if !is_default {
+            diffs.add(format!(
+                "{}: roundtrip added non-default clef: {:?} line {:?}",
+                ctx, rt_clef.sign, rt_clef.line
+            ));
+        }
+    } else if orig_clefs.len() != rt_clefs.len() {
+        diffs.add(format!(
+            "{}: clef count mismatch: original={}, roundtripped={}",
+            ctx,
+            orig_clefs.len(),
+            rt_clefs.len()
+        ));
     }
 }
 

@@ -46,6 +46,414 @@ pub fn serialize(file: &LilyPondFile) -> String {
     out
 }
 
+/// Serialize with basic pretty-printing: newlines after barlines and before staff contexts.
+pub fn serialize_pretty(file: &LilyPondFile) -> String {
+    let raw = serialize(file);
+    pretty_format(&raw)
+}
+
+/// Nesting context: tracks what kind of block we're inside.
+#[derive(Clone, Copy, PartialEq)]
+enum NestKind {
+    /// \score { ... } — structural, newlines around content
+    Score,
+    /// \new XYZ { ... } or \new XYZ << ... >> — structural
+    Context,
+    /// \addlyrics { ... } — structural, lyrics content wrapped
+    Lyrics,
+    /// Measure-level { } or << >> — inline, no extra newlines
+    Inline,
+}
+
+fn pretty_format(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + s.len() / 10);
+    let bytes = s.as_bytes();
+    let mut i = 0;
+    // Stack tracks nesting: (kind, bracket_char) where bracket_char is '{' or '<'
+    let mut stack: Vec<(NestKind, u8)> = Vec::new();
+    // Count \new contexts seen at current structural depth (for blank line between staves)
+    let mut new_count_at_depth: Vec<u32> = Vec::new();
+
+    while i < bytes.len() {
+        // ── Skip runs of existing whitespace (we control all formatting) ──
+        // But preserve newlines from the raw serializer's \score block
+        if bytes[i] == b'\n' {
+            // Preserve raw newlines (from write_score_block etc.)
+            out.push('\n');
+            i += 1;
+            // Skip spaces after newline — we'll re-indent
+            while i < bytes.len() && bytes[i] == b' ' {
+                i += 1;
+            }
+            // Re-indent at current depth
+            push_indent(&mut out, structural_depth(&stack));
+            continue;
+        }
+
+        // ── \addlyrics ──
+        if starts_with(bytes, i, b"\\addlyrics") {
+            // Newline before \addlyrics if not already on fresh line
+            ensure_newline(&mut out, structural_depth(&stack));
+            out.push_str("\\addlyrics");
+            i += 10;
+            skip_spaces(bytes, &mut i);
+            // Expect { — open lyrics block
+            if i < bytes.len() && bytes[i] == b'{' {
+                out.push_str(" {");
+                i += 1;
+                stack.push((NestKind::Lyrics, b'{'));
+                new_count_at_depth.push(0);
+                out.push('\n');
+                push_indent(&mut out, structural_depth(&stack));
+                skip_spaces(bytes, &mut i);
+                // Write lyrics content with wrapping
+                write_lyrics_wrapped(bytes, &mut i, &mut out, &stack);
+            }
+            continue;
+        }
+
+        // ── \new ContextType ──
+        if starts_with(bytes, i, b"\\new ") {
+            let depth = structural_depth(&stack);
+            // Blank line between sibling \new at same depth
+            if let Some(count) = new_count_at_depth.last_mut() {
+                if *count > 0 {
+                    ensure_newline(&mut out, depth);
+                    out.push('\n');
+                    push_indent(&mut out, depth);
+                }
+                *count += 1;
+            }
+            if !out.is_empty() {
+                ensure_newline(&mut out, depth);
+            }
+            out.push_str("\\new ");
+            i += 5;
+            // Copy context type, optional name, and \with block
+            while i < bytes.len() && bytes[i] != b'{' && !starts_with(bytes, i, b"<<") {
+                // Copy \with { ... } block with re-indentation
+                if starts_with(bytes, i, b"\\with ") {
+                    let with_indent = depth + 1;
+                    out.push_str("\\with {");
+                    i += 6;
+                    skip_spaces(bytes, &mut i);
+                    if i < bytes.len() && bytes[i] == b'{' {
+                        i += 1;
+                        let mut depth_w = 1u32;
+                        while i < bytes.len() && depth_w > 0 {
+                            match bytes[i] {
+                                b'{' => { depth_w += 1; out.push('{'); }
+                                b'}' => {
+                                    depth_w -= 1;
+                                    if depth_w == 0 {
+                                        out.push('\n');
+                                        push_indent(&mut out, depth);
+                                        out.push('}');
+                                    } else {
+                                        out.push('}');
+                                    }
+                                }
+                                b'\n' => {
+                                    i += 1;
+                                    // Skip old indentation
+                                    while i < bytes.len() && bytes[i] == b' ' {
+                                        i += 1;
+                                    }
+                                    // Don't emit newline+indent if next char closes the block
+                                    if i < bytes.len() && bytes[i] == b'}' && depth_w == 1 {
+                                        continue;
+                                    }
+                                    out.push('\n');
+                                    push_indent(&mut out, with_indent);
+                                    continue; // skip the i += 1 at end
+                                }
+                                ch => out.push(ch as char),
+                            }
+                            i += 1;
+                        }
+                    }
+                    continue;
+                }
+                out.push(bytes[i] as char);
+                i += 1;
+            }
+            // Trim trailing space before opener
+            while out.ends_with(' ') {
+                out.pop();
+            }
+            out.push(' ');
+            // Open bracket
+            if i < bytes.len() {
+                if starts_with(bytes, i, b"<<") {
+                    out.push_str("<<");
+                    i += 2;
+                    stack.push((NestKind::Context, b'<'));
+                } else if bytes[i] == b'{' {
+                    out.push('{');
+                    i += 1;
+                    stack.push((NestKind::Context, b'{'));
+                }
+                new_count_at_depth.push(0);
+                out.push('\n');
+                push_indent(&mut out, structural_depth(&stack));
+                skip_spaces(bytes, &mut i);
+            }
+            continue;
+        }
+
+        // ── \bar "..." — measure separator ──
+        if starts_with(bytes, i, b"\\bar ") {
+            out.push_str("\\bar ");
+            i += 5;
+            // Copy the quoted bar type
+            copy_quoted_string(bytes, &mut i, &mut out);
+            // Newline after barline (only inside structural context)
+            if current_kind(&stack) != NestKind::Inline {
+                out.push('\n');
+                push_indent(&mut out, structural_depth(&stack));
+                skip_spaces(bytes, &mut i);
+            }
+            continue;
+        }
+
+        // ── | (bar check) — measure separator ──
+        // Detect standalone | (not inside quotes, not part of |.)
+        // Only add newline when inside a staff body (Context parent in stack).
+        if bytes[i] == b'|'
+            && !starts_with(bytes, i, b"|.")
+            && (i == 0 || bytes[i - 1] == b' ' || bytes[i - 1] == b'>')
+            && (i + 1 >= bytes.len() || bytes[i + 1] == b' ' || bytes[i + 1] == b'\n')
+            && stack.iter().any(|(k, _)| *k == NestKind::Context)
+        {
+            out.push('|');
+            i += 1;
+            skip_spaces(bytes, &mut i);
+            // Only newline if next content is NOT another | (avoid stacking empty bar checks)
+            if i < bytes.len() && bytes[i] != b'|' {
+                let depth = structural_depth(&stack);
+                out.push('\n');
+                push_indent(&mut out, depth);
+            } else {
+                out.push(' ');
+            }
+            continue;
+        }
+
+        // ── \oneVoice — keep inline before \bar ──
+        if starts_with(bytes, i, b"\\oneVoice") {
+            out.push_str("\\oneVoice");
+            i += 9;
+            continue;
+        }
+
+        // ── << (open simultaneous) ──
+        if starts_with(bytes, i, b"<<") {
+            // << directly inside \score → structural (top-level staves container)
+            // << inside staff body (Context) → inline (measure-level polyphonic)
+            let kind = if current_kind(&stack) == NestKind::Score {
+                NestKind::Context
+            } else {
+                NestKind::Inline
+            };
+            out.push_str("<<");
+            i += 2;
+            stack.push((kind, b'<'));
+            new_count_at_depth.push(0);
+            if kind != NestKind::Inline {
+                out.push('\n');
+                push_indent(&mut out, structural_depth(&stack));
+                skip_spaces(bytes, &mut i);
+            } else {
+                // Inline << — just add space
+                if i < bytes.len() && bytes[i] == b' ' {
+                    out.push(' ');
+                    i += 1;
+                }
+            }
+            continue;
+        }
+
+        // ── >> (close simultaneous) ──
+        if starts_with(bytes, i, b">>") {
+            if let Some((kind, _bracket)) = stack.pop() {
+                new_count_at_depth.pop();
+                if kind != NestKind::Inline {
+                    ensure_newline(&mut out, structural_depth(&stack));
+                }
+                out.push_str(">>");
+            } else {
+                out.push_str(">>");
+            }
+            i += 2;
+            continue;
+        }
+
+        // ── { (open sequential) ──
+        if bytes[i] == b'{' {
+            // Detect structural blocks: \score, \header, \paper, \layout, \midi
+            let kind = if out_ends_with_keyword(&out, "\\score")
+                || out_ends_with_keyword(&out, "\\header")
+                || out_ends_with_keyword(&out, "\\paper")
+                || out_ends_with_keyword(&out, "\\layout")
+                || out_ends_with_keyword(&out, "\\midi")
+            {
+                NestKind::Score
+            } else {
+                NestKind::Inline
+            };
+            out.push('{');
+            i += 1;
+            stack.push((kind, b'{'));
+            new_count_at_depth.push(0);
+            continue;
+        }
+
+        // ── } (close sequential) ──
+        if bytes[i] == b'}' {
+            if let Some((kind, _bracket)) = stack.pop() {
+                new_count_at_depth.pop();
+                if kind == NestKind::Context || kind == NestKind::Score || kind == NestKind::Lyrics {
+                    ensure_newline(&mut out, structural_depth(&stack));
+                }
+                out.push('}');
+            } else {
+                out.push('}');
+            }
+            i += 1;
+            continue;
+        }
+
+        // ── Default: copy character ──
+        out.push(bytes[i] as char);
+        i += 1;
+    }
+
+    // Clean up: collapse multiple blank lines into max 1
+    collapse_blank_lines(&mut out);
+    out
+}
+
+/// Current nesting kind (top of stack, or Score as root default).
+fn current_kind(stack: &[(NestKind, u8)]) -> NestKind {
+    stack.last().map(|&(k, _)| k).unwrap_or(NestKind::Score)
+}
+
+/// Count structural (non-inline) nesting depth for indentation.
+fn structural_depth(stack: &[(NestKind, u8)]) -> u32 {
+    stack
+        .iter()
+        .filter(|(k, _)| *k != NestKind::Inline)
+        .count() as u32
+}
+
+/// Ensure output ends with a newline + indent at the given depth.
+fn ensure_newline(out: &mut String, depth: u32) {
+    // Trim trailing spaces
+    while out.ends_with(' ') {
+        out.pop();
+    }
+    if !out.ends_with('\n') {
+        out.push('\n');
+    }
+    push_indent(out, depth);
+}
+
+/// Skip space characters.
+fn skip_spaces(bytes: &[u8], i: &mut usize) {
+    while *i < bytes.len() && bytes[*i] == b' ' {
+        *i += 1;
+    }
+}
+
+/// Check if bytes at position i start with the given prefix.
+fn starts_with(bytes: &[u8], i: usize, prefix: &[u8]) -> bool {
+    i + prefix.len() <= bytes.len() && &bytes[i..i + prefix.len()] == prefix
+}
+
+/// Check if the output string ends with a keyword (after trimming trailing spaces).
+fn out_ends_with_keyword(out: &str, keyword: &str) -> bool {
+    let trimmed = out.trim_end();
+    trimmed.ends_with(keyword)
+}
+
+/// Copy a "quoted string" from bytes to output.
+fn copy_quoted_string(bytes: &[u8], i: &mut usize, out: &mut String) {
+    if *i < bytes.len() && bytes[*i] == b'"' {
+        out.push('"');
+        *i += 1;
+        while *i < bytes.len() && bytes[*i] != b'"' {
+            out.push(bytes[*i] as char);
+            *i += 1;
+        }
+        if *i < bytes.len() {
+            out.push('"');
+            *i += 1;
+        }
+    }
+}
+
+/// Write lyrics content with line wrapping at ~80 chars.
+fn write_lyrics_wrapped(bytes: &[u8], i: &mut usize, out: &mut String, stack: &[(NestKind, u8)]) {
+    let indent_depth = structural_depth(stack);
+    let mut col = indent_depth as usize * 2; // current column
+    let wrap_at = 80usize;
+    let mut depth = 1u32; // we're inside the { already
+
+    while *i < bytes.len() {
+        if bytes[*i] == b'{' {
+            depth += 1;
+            out.push('{');
+            *i += 1;
+            continue;
+        }
+        if bytes[*i] == b'}' {
+            depth -= 1;
+            if depth == 0 {
+                // End of lyrics block — don't consume the }, let caller handle it
+                return;
+            }
+            out.push('}');
+            *i += 1;
+            continue;
+        }
+
+        // At word boundary, check if we should wrap
+        if bytes[*i] == b' ' && col >= wrap_at {
+            out.push('\n');
+            push_indent(out, indent_depth);
+            col = indent_depth as usize * 2;
+            *i += 1;
+            // Skip additional spaces
+            while *i < bytes.len() && bytes[*i] == b' ' {
+                *i += 1;
+            }
+            continue;
+        }
+
+        out.push(bytes[*i] as char);
+        col += 1;
+        *i += 1;
+    }
+}
+
+/// Collapse runs of 3+ newlines into at most 2 (one blank line).
+fn collapse_blank_lines(s: &mut String) {
+    while s.contains("\n\n\n") {
+        *s = s.replace("\n\n\n", "\n\n");
+    }
+    // Trim trailing whitespace
+    while s.ends_with('\n') || s.ends_with(' ') {
+        s.pop();
+    }
+    s.push('\n');
+}
+
+fn push_indent(out: &mut String, level: u32) {
+    for _ in 0..level {
+        out.push_str("  ");
+    }
+}
+
 /// Serialize a single `\markup` expression to a string (without leading `\markup`).
 pub fn serialize_markup(m: &markup::Markup) -> String {
     let mut out = String::new();
@@ -670,10 +1078,40 @@ impl<'a> Serializer<'a> {
                 self.out.push_str(" }");
             }
             Music::Simultaneous(items) => {
+                // Detect multi-voice bars: any branch starts with a voice command
+                let has_voice_cmds = items.iter().any(|item| {
+                    if let Music::Sequential(seq) = item {
+                        matches!(
+                            seq.first(),
+                            Some(Music::MusicFunction { name, .. })
+                                if matches!(name.as_str(), "voiceOne" | "voiceTwo" | "voiceThree" | "voiceFour")
+                        )
+                    } else {
+                        false
+                    }
+                });
                 self.out.push_str("<< ");
                 for (i, item) in items.iter().enumerate() {
                     if i > 0 {
                         self.out.push(' ');
+                    }
+                    // Secondary voices: use \new Voice instead of \\ so that
+                    // \addlyrics can follow the first voice through the outer
+                    // Voice context. \\ creates separate contexts for ALL
+                    // voices, making them invisible to \addlyrics.
+                    if has_voice_cmds && i > 0 {
+                        let is_secondary_voice = if let Music::Sequential(seq) = item {
+                            matches!(
+                                seq.first(),
+                                Some(Music::MusicFunction { name, .. })
+                                    if matches!(name.as_str(), "voiceTwo" | "voiceThree" | "voiceFour")
+                            )
+                        } else {
+                            false
+                        };
+                        if is_secondary_voice {
+                            self.out.push_str("\\new Voice ");
+                        }
                     }
                     self.write_music(item);
                 }
@@ -913,6 +1351,12 @@ impl<'a> Serializer<'a> {
                 self.out.push_str(name);
             }
             Music::Unparsed(text) => self.out.push_str(text),
+            Music::LineComment(text) => {
+                self.out.push('\n');
+                self.out.push_str("% ");
+                self.out.push_str(text);
+                self.out.push('\n');
+            }
         }
     }
 

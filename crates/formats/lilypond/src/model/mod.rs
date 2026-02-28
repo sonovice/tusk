@@ -519,6 +519,8 @@ pub enum Music {
     Identifier(String),
     /// Unparsed content inside braces (to be refined in later phases).
     Unparsed(String),
+    /// A line comment: `% text` — purely decorative, not parsed back.
+    LineComment(String),
 }
 
 // ---------------------------------------------------------------------------

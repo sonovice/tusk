@@ -1,7 +1,6 @@
 //! Clef / key / time event sequence extraction and injection for LilyPond export.
 
 use tusk_model::elements::ScoreDefChild;
-use tusk_model::elements::StaffGrpChild;
 use tusk_model::extensions::ExtensionStore;
 use tusk_model::{ControlEvent, EventSequence};
 
@@ -27,10 +26,8 @@ pub(super) fn extract_event_sequences(
         if let tusk_model::elements::ScoreChild::ScoreDef(score_def) = child {
             for sd_child in &score_def.children {
                 if let ScoreDefChild::StaffGrp(grp) = sd_child {
-                    for grp_child in &grp.children {
-                        if let StaffGrpChild::StaffDef(sdef) = grp_child {
-                            result.push(parse_event_sequence_from_ext(sdef, ext_store));
-                        }
+                    for sdef in super::collect_staff_defs_from_grp(grp) {
+                        result.push(parse_event_sequence_from_ext(sdef, ext_store));
                     }
                 }
             }

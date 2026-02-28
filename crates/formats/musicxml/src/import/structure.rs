@@ -699,11 +699,10 @@ fn convert_measure_attributes(
         mei_measure.measure_vis.width = Some(DataMeasurementunsigned::from(format!("{}vu", width)));
     }
 
-    // id → xml:id (with mapping)
+    // id → xml:id (preserve 1-to-1)
     if let Some(ref id) = musicxml_measure.id {
-        let mei_id = ctx.generate_id_with_suffix("measure");
-        ctx.map_id(id, mei_id.clone());
-        mei_measure.common.xml_id = Some(mei_id);
+        ctx.map_id(id, id);
+        mei_measure.common.xml_id = Some(id.clone());
     }
 
     // non_controlling="yes" → control="false" (barline is not controlling)
@@ -897,10 +896,16 @@ fn convert_layer_for_staff(
         .copied()
         .collect();
 
-    let mut inline_attr_changes: Vec<LayerChild> = Vec::new();
+    // Inline attribute changes tagged with beat position (in divisions) for
+    // correct mid-measure placement — event count doesn't work for multi-staff
+    // since attributes appear among staff 1's notes, before the backup to staff 2.
+    let mut inline_attr_changes: Vec<(f64, LayerChild)> = Vec::new();
     // Deferred spaces: (note_event_count_before_space, Space) — inserted after beam restructuring
     let mut deferred_spaces: Vec<(usize, LayerChild)> = Vec::new();
     let mut emitted_event_count: usize = 0;
+    // Lyrics from rests: carry forward to the next sounding note so they aren't lost
+    // (MEI rests can't have verse children, but MusicXML allows lyrics on rests).
+    let mut pending_rest_lyrics: Vec<crate::model::lyric::Lyric> = Vec::new();
     let mut processed_note_indices: std::collections::HashSet<usize> =
         std::collections::HashSet::new();
 
@@ -931,6 +936,10 @@ fn convert_layer_for_staff(
 
                 if note.is_rest() {
                     if emit {
+                        // Carry lyrics from rest to next sounding note
+                        if !note.lyrics.is_empty() {
+                            pending_rest_lyrics.extend(note.lyrics.iter().cloned());
+                        }
                         if is_measure_rest(note) {
                             let mei_mrest = convert_measure_rest(note, ctx)?;
                             layer.children.push(LayerChild::MRest(Box::new(mei_mrest)));
@@ -960,6 +969,19 @@ fn convert_layer_for_staff(
                     }
                 }
 
+                // Apply any lyrics carried forward from a preceding rest
+                if !pending_rest_lyrics.is_empty() {
+                    for pl in pending_rest_lyrics.drain(..) {
+                        let num = pl.number.as_deref().unwrap_or("1");
+                        let already = chord_notes[0].lyrics.iter().any(|l| {
+                            l.number.as_deref().unwrap_or("1") == num
+                        });
+                        if !already {
+                            chord_notes[0].lyrics.push(pl);
+                        }
+                    }
+                }
+
                 if emit {
                     // Check if this is a cross-staff note (voice on this staff but note renders elsewhere)
                     let note_actual_staff = note.staff.unwrap_or(1);
@@ -981,7 +1003,7 @@ fn convert_layer_for_staff(
                         }
                         layer.children.push(LayerChild::Chord(Box::new(mei_chord)));
                     } else {
-                        let mut mei_note = convert_note(note, ctx)?;
+                        let mut mei_note = convert_note(&chord_notes[0], ctx)?;
                         if let Some(gs) = cross_staff_global {
                             mei_note.note_log.staff = Some(gs.to_string());
                         }
@@ -1004,9 +1026,14 @@ fn convert_layer_for_staff(
             }
             MeasureContent::Attributes(attrs) => {
                 process_attributes(attrs, ctx, None);
-                // Only emit inline attribute changes for the first staff/voice to avoid duplicates
-                if target_local_staff == 1 && layer_number == 1 {
-                    emit_inline_attribute_changes(attrs, &mut inline_attr_changes, ctx);
+                // Emit inline attribute changes for this staff's first voice only
+                if layer_number == 1 {
+                    let beat_pos = ctx.beat_position();
+                    let mut changes = Vec::new();
+                    emit_inline_attribute_changes(attrs, &mut changes, ctx, Some(target_local_staff));
+                    for c in changes {
+                        inline_attr_changes.push((beat_pos, c));
+                    }
                 }
             }
             MeasureContent::Backup(backup) => {
@@ -1054,9 +1081,9 @@ fn convert_layer_for_staff(
         insert_deferred_spaces(&mut layer.children, deferred_spaces);
     }
 
+    // Insert inline attribute changes (clef/key/time) at correct mid-measure positions
     if !inline_attr_changes.is_empty() {
-        inline_attr_changes.append(&mut layer.children);
-        layer.children = inline_attr_changes;
+        insert_by_beat_position(&mut layer.children, inline_attr_changes, ctx);
     }
 
     Ok(layer)
@@ -1108,6 +1135,78 @@ fn insert_deferred_spaces(children: &mut Vec<LayerChild>, spaces: Vec<(usize, La
     }
 }
 
+/// Insert layer children at positions determined by beat position (in divisions).
+///
+/// Unlike `insert_deferred_spaces` which uses event counts, this uses the cumulative
+/// duration of layer events to find the right insertion point. Needed for multi-staff
+/// parts where attribute changes appear among staff 1's notes but must be placed in
+/// staff 2's layer at the corresponding beat position.
+fn insert_by_beat_position(
+    children: &mut Vec<LayerChild>,
+    items: Vec<(f64, LayerChild)>,
+    ctx: &ConversionContext,
+) {
+    use tusk_model::elements::BeamChild;
+
+    // Helper to extract dur_ppq from a LayerChild
+    fn child_dur_ppq(child: &LayerChild) -> f64 {
+        match child {
+            LayerChild::Note(n) => n.note_ges.dur_ppq.as_deref()
+                .and_then(|s| s.parse::<f64>().ok()).unwrap_or(0.0),
+            LayerChild::Rest(r) => r.rest_ges.dur_ppq.as_deref()
+                .and_then(|s| s.parse::<f64>().ok()).unwrap_or(0.0),
+            LayerChild::Chord(c) => c.chord_ges.dur_ppq.as_deref()
+                .and_then(|s| s.parse::<f64>().ok()).unwrap_or(0.0),
+            LayerChild::Space(s) => s.space_ges.dur_ppq.as_deref()
+                .and_then(|s| s.parse::<f64>().ok()).unwrap_or(0.0),
+            LayerChild::MRest(m) => m.m_rest_ges.dur_ppq.as_deref()
+                .and_then(|s| s.parse::<f64>().ok()).unwrap_or(0.0),
+            LayerChild::Beam(beam) => beam_dur_ppq(&beam.children),
+            _ => 0.0,
+        }
+    }
+
+    fn beam_dur_ppq(children: &[BeamChild]) -> f64 {
+        children.iter().map(|c| match c {
+            BeamChild::Note(n) => n.note_ges.dur_ppq.as_deref()
+                .and_then(|s| s.parse::<f64>().ok()).unwrap_or(0.0),
+            BeamChild::Rest(r) => r.rest_ges.dur_ppq.as_deref()
+                .and_then(|s| s.parse::<f64>().ok()).unwrap_or(0.0),
+            BeamChild::Chord(c) => c.chord_ges.dur_ppq.as_deref()
+                .and_then(|s| s.parse::<f64>().ok()).unwrap_or(0.0),
+            BeamChild::Beam(b) => beam_dur_ppq(&b.children),
+            _ => 0.0,
+        }).sum()
+    }
+
+    // Build cumulative duration at each child index
+    let mut cum_dur = 0.0_f64;
+    let mut positions: Vec<(f64, usize)> = Vec::new(); // (cumulative_dur_before, child_index)
+    for (ci, child) in children.iter().enumerate() {
+        positions.push((cum_dur, ci));
+        cum_dur += child_dur_ppq(child);
+    }
+
+    // For each item, find the child index where cumulative duration >= target beat position
+    let _ = ctx; // ctx available if needed for divisions info
+    let mut inserts: Vec<(usize, LayerChild)> = Vec::new();
+    for (beat_pos, item) in items {
+        let pos = positions
+            .iter()
+            .find(|(cum, _)| *cum >= beat_pos - 0.5) // small epsilon for float comparison
+            .map(|(_, ci)| *ci)
+            .unwrap_or(children.len());
+        inserts.push((pos, item));
+    }
+
+    // Insert from end to preserve indices
+    inserts.reverse();
+    inserts.sort_by(|a, b| b.0.cmp(&a.0));
+    for (pos, item) in inserts {
+        children.insert(pos, item);
+    }
+}
+
 /// Count note-like events in beam children (for space insertion positioning).
 fn count_beam_note_events(children: &[tusk_model::elements::BeamChild]) -> usize {
     use tusk_model::elements::BeamChild;
@@ -1146,11 +1245,12 @@ pub fn convert_layer(
 
     // Collect inline attribute changes separately so beam restructuring
     // (which uses index-based ranges) isn't disrupted by non-note elements.
-    let mut inline_attr_changes: Vec<LayerChild> = Vec::new();
+    let mut inline_attr_changes: Vec<(usize, LayerChild)> = Vec::new();
 
     // Track which notes we've processed (for chord grouping)
     let mut processed_note_indices: std::collections::HashSet<usize> =
         std::collections::HashSet::new();
+    let mut emitted_event_count: usize = 0;
 
     // Process measure content
     let mut note_index = 0;
@@ -1185,6 +1285,7 @@ pub fn convert_layer(
                         let mei_rest = convert_rest(note, ctx)?;
                         layer.children.push(LayerChild::Rest(Box::new(mei_rest)));
                     }
+                    emitted_event_count += 1;
 
                     // Advance beat position for rests
                     if let Some(duration) = note.duration {
@@ -1228,6 +1329,7 @@ pub fn convert_layer(
                     }
                     layer.children.push(LayerChild::Note(Box::new(mei_note)));
                 }
+                emitted_event_count += 1;
 
                 // Advance beat position if not a grace note
                 if !note.is_grace()
@@ -1244,7 +1346,11 @@ pub fn convert_layer(
                 // The first measure's first attributes block is already in the staffDef,
                 // so only emit for changes detected against tracked state.
                 // Collected separately to avoid disrupting beam restructuring indices.
-                emit_inline_attribute_changes(attrs, &mut inline_attr_changes, ctx);
+                let mut changes = Vec::new();
+                emit_inline_attribute_changes(attrs, &mut changes, ctx, None);
+                for c in changes {
+                    inline_attr_changes.push((emitted_event_count, c));
+                }
             }
             MeasureContent::Backup(backup) => {
                 // Move beat position backward
@@ -1282,11 +1388,9 @@ pub fn convert_layer(
         layer.children = wrap_tremolo_containers(layer.children, &tremolo_map);
     }
 
-    // Prepend inline attribute changes (collected separately to avoid
-    // disrupting beam restructuring which uses index-based ranges).
+    // Insert inline attribute changes at correct mid-measure positions
     if !inline_attr_changes.is_empty() {
-        inline_attr_changes.append(&mut layer.children);
-        layer.children = inline_attr_changes;
+        insert_deferred_spaces(&mut layer.children, inline_attr_changes);
     }
 
     Ok(layer)
@@ -1330,7 +1434,7 @@ fn convert_layer_for_voice(
         .copied()
         .collect();
 
-    let mut inline_attr_changes: Vec<LayerChild> = Vec::new();
+    let mut inline_attr_changes: Vec<(usize, LayerChild)> = Vec::new();
     let mut deferred_spaces: Vec<(usize, LayerChild)> = Vec::new();
     let mut emitted_event_count: usize = 0;
     let mut processed_note_indices: std::collections::HashSet<usize> =
@@ -1419,7 +1523,11 @@ fn convert_layer_for_voice(
             MeasureContent::Attributes(attrs) => {
                 process_attributes(attrs, ctx, None);
                 if layer_number == 1 {
-                    emit_inline_attribute_changes(attrs, &mut inline_attr_changes, ctx);
+                    let mut changes = Vec::new();
+                    emit_inline_attribute_changes(attrs, &mut changes, ctx, None);
+                    for c in changes {
+                        inline_attr_changes.push((emitted_event_count, c));
+                    }
                 }
             }
             MeasureContent::Backup(backup) => {
@@ -1464,9 +1572,9 @@ fn convert_layer_for_voice(
         insert_deferred_spaces(&mut layer.children, deferred_spaces);
     }
 
+    // Insert inline attribute changes at correct mid-measure positions
     if !inline_attr_changes.is_empty() {
-        inline_attr_changes.append(&mut layer.children);
-        layer.children = inline_attr_changes;
+        insert_deferred_spaces(&mut layer.children, inline_attr_changes);
     }
 
     Ok(layer)

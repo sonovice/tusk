@@ -1,7 +1,7 @@
 //! Pitch context (relative / transpose) extraction and application for LilyPond export.
 
 use tusk_model::PitchContext as ExtPitchContext;
-use tusk_model::elements::{ScoreDefChild, StaffGrpChild};
+use tusk_model::elements::ScoreDefChild;
 use tusk_model::extensions::ExtensionStore;
 
 use crate::model::pitch::Pitch;
@@ -31,14 +31,12 @@ pub(super) fn extract_pitch_contexts(score: &tusk_model::elements::Score, ext_st
         if let tusk_model::elements::ScoreChild::ScoreDef(score_def) = child {
             for sd_child in &score_def.children {
                 if let ScoreDefChild::StaffGrp(grp) = sd_child {
-                    for grp_child in &grp.children {
-                        if let StaffGrpChild::StaffDef(sdef) = grp_child {
-                            let ctx = sdef.basic.xml_id.as_deref().and_then(|id| {
-                                let ext = ext_store.pitch_context(id)?;
-                                Some(ext_pitch_context_to_pitch_ctx(ext.clone()))
-                            });
-                            result.push(ctx);
-                        }
+                    for sdef in super::collect_staff_defs_from_grp(grp) {
+                        let ctx = sdef.basic.xml_id.as_deref().and_then(|id| {
+                            let ext = ext_store.pitch_context(id)?;
+                            Some(ext_pitch_context_to_pitch_ctx(ext.clone()))
+                        });
+                        result.push(ctx);
                     }
                 }
             }

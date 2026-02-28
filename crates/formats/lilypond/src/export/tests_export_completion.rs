@@ -101,15 +101,16 @@ fn roundtrip_tweak_id_not_emitted_for_autogen() {
 }
 
 // ---------------------------------------------------------------------------
-// Fresh MEI → LilyPond with custom xml:id
+// Fresh MEI → LilyPond with custom xml:id (no tweak emitted)
 // ---------------------------------------------------------------------------
 
 #[test]
-fn export_mei_with_custom_xml_id_emits_tweak() {
+fn export_mei_with_custom_xml_id_no_tweak() {
     use tusk_model::elements::*;
     use tusk_model::generated::data::*;
 
-    // Build a minimal MEI with a custom xml:id on a note
+    // Build a minimal MEI with a custom xml:id on a note — should NOT emit \tweak id
+    // (only tweaks stored in ExtensionStore from LilyPond roundtrip are emitted)
     let mut mei = Mei::default();
     mei.mei_version.meiversion = Some("6.0-dev".to_string());
 
@@ -183,8 +184,8 @@ fn export_mei_with_custom_xml_id_emits_tweak() {
     let output = serializer::serialize(&exported);
 
     assert!(
-        output.contains(r#"\tweak id #"custom-note-id""#),
-        "should emit \\tweak id for custom xml:id: {output}"
+        !output.contains(r#"\tweak id"#),
+        "should NOT emit \\tweak id for bare MEI xml:id (only ExtensionStore tweaks): {output}"
     );
 }
 
