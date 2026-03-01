@@ -1053,7 +1053,7 @@ fn generate_element(
         .collect();
 
     // Generate validation implementation
-    let validation_impl = generate_element_validation(elem, defs);
+    let validation_impl = generate_element_validation(elem, defs, skip_extra_children);
 
     let child_field_tokens = child_field.unwrap_or_else(|| quote! {});
     let module_doc = format!("Element: `<{}>`", elem.ident);
@@ -1094,7 +1094,7 @@ fn generate_element(
 }
 
 /// Generate validation implementation for an element.
-fn generate_element_validation(elem: &Element, defs: &OddDefinitions) -> TokenStream {
+fn generate_element_validation(elem: &Element, defs: &OddDefinitions, skip_extras: bool) -> TokenStream {
     let name = mei_ident_to_type(&elem.ident);
     let _elem_name_str = &elem.ident;
 
@@ -1132,13 +1132,15 @@ fn generate_element_validation(elem: &Element, defs: &OddDefinitions) -> TokenSt
     let mut child_types: HashSet<String> = HashSet::new();
     let mut has_text = false;
     collect_content_refs(&elem.content, defs, &mut child_types, &mut has_text);
-    for &(parent, child) in EXTRA_CHILDREN {
-        if elem.ident == parent && defs.elements.contains_key(child) {
-            child_types.insert(child.to_string());
+    if !skip_extras {
+        for &(parent, child) in EXTRA_CHILDREN {
+            if elem.ident == parent && defs.elements.contains_key(child) {
+                child_types.insert(child.to_string());
+            }
         }
-    }
-    if EXTRA_TEXT_CONTENT.contains(&elem.ident.as_str()) {
-        has_text = true;
+        if EXTRA_TEXT_CONTENT.contains(&elem.ident.as_str()) {
+            has_text = true;
+        }
     }
     let has_children_field = !child_types.is_empty() || has_text;
 
