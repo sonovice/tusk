@@ -27,19 +27,16 @@ jobs:
           CURRENT=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
           echo "version=$CURRENT" >> "$GITHUB_OUTPUT"
 
-          if git rev-parse HEAD~1 >/dev/null 2>&1; then
-            PREVIOUS=$(git show HEAD~1:Cargo.toml | grep -m1 '^version' | cut -d'"' -f2)
-          else
-            PREVIOUS=""
-          fi
-
-          if [ "$CURRENT" != "$PREVIOUS" ]; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "Version changed: $PREVIOUS -> $CURRENT"
-          else
+          TAG="v${CURRENT}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "Version unchanged: $CURRENT"
+            echo "Release $TAG already exists"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "No release for $TAG yet — will create"
           fi
+        env:
+          GH_TOKEN: ${{ github.token }}
 
   build:
     needs: check-version
