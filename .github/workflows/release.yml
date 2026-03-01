@@ -38,8 +38,38 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
-  build:
+  test:
     needs: check-version
+    if: needs.check-version.outputs.version_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        run: rustup update stable && rustup default stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run all tests
+        run: cargo test --workspace
+
+  preflight:
+    needs: check-version
+    if: needs.check-version.outputs.version_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check changelog entry exists
+        run: |
+          VERSION="${{ needs.check-version.outputs.version }}"
+          if ! grep -q "^## \[${VERSION}\]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no entry for version ${VERSION}"
+            exit 1
+          fi
+
+  build:
+    needs: [check-version, test, preflight]
     if: needs.check-version.outputs.version_changed == 'true'
     strategy:
       fail-fast: true
