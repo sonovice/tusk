@@ -5,7 +5,7 @@
 //! - MusicXML `<score-part>` → MEI `<staffDef>`
 //! - MusicXML `<part-group>` → nested MEI `<staffGrp>`
 
-use crate::context::ConversionContext;
+use crate::context::{ConversionContext, TimeSigTuple};
 use crate::convert_error::ConversionResult;
 use crate::import::{
     convert_clef_attributes, convert_key_fifths, convert_key_to_context, convert_time_signature,
@@ -792,6 +792,8 @@ pub fn convert_staff_def_from_score_part(
 
         // Default key: C major (0 fifths)
         let mut init_key_fifths: i8 = 0;
+        // Default time: none (sentinel for "no time signature")
+        let mut init_time: TimeSigTuple = (None, None, None);
         // Default clef: G on line 2
         let mut init_clef = (format!("{:?}", ClefSign::G), Some(2u32), None::<i32>);
 
@@ -803,13 +805,10 @@ pub fn convert_staff_def_from_score_part(
             }
             if let Some(time) = attrs.times.first() {
                 let (count, unit, sym) = convert_time_signature(time);
-                ctx.tracked_attrs_mut().time_sig.insert(
-                    score_part.id.clone(),
-                    (
-                        count,
-                        unit.map(|u| u.to_string()),
-                        sym.map(|s| format!("{:?}", s)),
-                    ),
+                init_time = (
+                    count,
+                    unit.map(|u| u.to_string()),
+                    sym.map(|s| format!("{:?}", s)),
                 );
             }
             let clef = match clef_number {
@@ -836,6 +835,9 @@ pub fn convert_staff_def_from_score_part(
         ctx.tracked_attrs_mut()
             .key_fifths
             .insert(score_part.id.clone(), init_key_fifths);
+        ctx.tracked_attrs_mut()
+            .time_sig
+            .insert(score_part.id.clone(), init_time);
         ctx.tracked_attrs_mut()
             .clef
             .insert((score_part.id.clone(), local), init_clef);
@@ -1381,9 +1383,12 @@ mod tests {
         let text = label
             .children
             .iter()
-            .map(|c| {
-                let LabelChild::Text(t) = c;
-                t.as_str()
+            .filter_map(|c| {
+                if let LabelChild::Text(t) = c {
+                    Some(t.as_str())
+                } else {
+                    None
+                }
             })
             .next();
         assert_eq!(text, Some("Violin I"));
@@ -1496,7 +1501,7 @@ mod tests {
                     return false;
                 };
                 l.children.iter().any(|lc| {
-                    let LabelChild::Text(t) = lc;
+                    let LabelChild::Text(t) = lc else { return false };
                     t == "Strings"
                 })
             });
@@ -1508,7 +1513,7 @@ mod tests {
                     return false;
                 };
                 l.children.iter().any(|lc| {
-                    let LabelAbbrChild::Text(t) = lc;
+                    let LabelAbbrChild::Text(t) = lc else { return false };
                     t == "Str."
                 })
             });

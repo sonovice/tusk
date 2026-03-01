@@ -253,7 +253,7 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                             let mut layers: Vec<Vec<Music>> = Vec::new();
                             let mut raw_layers: Vec<&[LayerChild]> = Vec::new();
                             for sc in &staff.children {
-                                let tusk_model::elements::StaffChild::Layer(layer) = sc;
+                                let tusk_model::elements::StaffChild::Layer(layer) = sc else { continue; };
                                 raw_layers.push(&layer.children);
                                 let grace_types = collect_grace_types(&layer.children, ext_store);
                                 let mut items = Vec::new();
@@ -320,6 +320,13 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                                 staff_music.push(vec![measure_items]);
                             }
                             // Only first layer — \addlyrics aligns with first voice in << >>
+                            staff_layer_children.push(raw_layers.into_iter().take(1).collect());
+                        } else if staff_idx >= staff_music.len() {
+                            // A later measure introduces more staves than the
+                            // first measure — initialize the new staff entry.
+                            let mut measure_items = flatten_measure_layers(layers, inject_voice_cmds, spacer.clone());
+                            measure_items.insert(0, measure_comment.clone());
+                            staff_music.push(vec![measure_items]);
                             staff_layer_children.push(raw_layers.into_iter().take(1).collect());
                         } else {
                             let mut measure_items = flatten_measure_layers(layers, inject_voice_cmds, spacer.clone());
@@ -775,6 +782,8 @@ struct StaffMeta {
     with_block_str: Option<String>,
     /// True when the staff was created with an explicit `\new` or `\context` keyword.
     has_explicit_context: bool,
+    /// Inner voice context name (e.g. `\context Voice = "name"` inside the staff).
+    inner_voice_name: Option<String>,
 }
 
 /// Extract group metadata from scoreDef's staffGrp via ext_store.
@@ -840,6 +849,7 @@ fn extract_staff_meta_from_ext(sdef: &tusk_model::elements::StaffDef, ext_store:
                 name: ctx.name.clone(),
                 with_block_str: ctx.with_block.clone(),
                 has_explicit_context: ctx.keyword.is_some(),
+                inner_voice_name: ctx.inner_voice_name.clone(),
             };
         }
     StaffMeta {
@@ -847,6 +857,7 @@ fn extract_staff_meta_from_ext(sdef: &tusk_model::elements::StaffDef, ext_store:
         name: None,
         with_block_str: None,
         has_explicit_context: false,
+        inner_voice_name: None,
     }
 }
 
@@ -1041,8 +1052,19 @@ fn build_music_with_contexts(
         let has_lyrics = lyrics_infos.get(i).is_some_and(|opt| opt.is_some());
 
         // Multi-staff with lyrics: wrap inner music in \context Voice = "name"
+        // Also wrap if inner_voice_name is stored in StaffContext (preserves structure)
         let voice_name = if has_lyrics && is_multi_staff {
-            let name = format!("lyrics-v{}", i + 1);
+            // Use stored voice_id from LyricsTo if available, else generate
+            let name = lyrics_infos
+                .get(i)
+                .and_then(|opt| opt.as_ref())
+                .and_then(|info| match &info.style {
+                    lyrics::LyricsExportStyle::LyricsTo { voice_id, .. } if !voice_id.is_empty() => {
+                        Some(voice_id.clone())
+                    }
+                    _ => None,
+                })
+                .unwrap_or_else(|| format!("lyrics-v{}", i + 1));
             inner = Music::ContextedMusic {
                 keyword: ContextKeyword::Context,
                 context_type: "Voice".to_string(),
@@ -1051,6 +1073,16 @@ fn build_music_with_contexts(
                 music: Box::new(inner),
             };
             Some(name)
+        } else if let Some(ref ivn) = meta.and_then(|m| m.inner_voice_name.clone()) {
+            // No lyrics but inner voice name stored — restore the wrapper
+            inner = Music::ContextedMusic {
+                keyword: ContextKeyword::Context,
+                context_type: "Voice".to_string(),
+                name: Some(ivn.clone()),
+                with_block: None,
+                music: Box::new(inner),
+            };
+            Some(ivn.clone())
         } else {
             None
         };
@@ -1750,7 +1782,7 @@ fn collect_post_events_for_layer_child(
     // For chords, also check child note IDs
     if let LayerChild::Chord(chord) = child {
         for cc in &chord.children {
-            let tusk_model::elements::ChordChild::Note(note) = cc;
+            let tusk_model::elements::ChordChild::Note(note) = cc else { continue; };
             if let Some(id) = note.common.xml_id.as_deref() {
                 if let Some(evts) = slur_map.get(id) {
                     events.extend(evts.iter().cloned());
@@ -1775,7 +1807,7 @@ fn collect_post_events_for_beam_child(
     }
     if let tusk_model::elements::BeamChild::Chord(chord) = child {
         for cc in &chord.children {
-            let tusk_model::elements::ChordChild::Note(note) = cc;
+            let tusk_model::elements::ChordChild::Note(note) = cc else { continue; };
             if let Some(id) = note.common.xml_id.as_deref() {
                 if let Some(evts) = slur_map.get(id) {
                     events.extend(evts.iter().cloned());
@@ -1838,9 +1870,8 @@ fn collect_dynam_post_events(
             let text = dynam
                 .children
                 .iter()
-                .map(|c| {
-                    let tusk_model::elements::DynamChild::Text(t) = c;
-                    t.clone()
+                .filter_map(|c| {
+                    if let tusk_model::elements::DynamChild::Text(t) = c { Some(t.clone()) } else { None }
                 })
                 .next()
                 .unwrap_or_default();

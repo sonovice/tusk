@@ -18,20 +18,39 @@ fn roundtrip_fixture(name: &str) {
     assert_eq!(ast, ast2, "roundtrip mismatch for {name}");
 }
 
-// ── Generic music function with braced music ─────────────────────────────
+// ── Known function with braced music ─────────────────────────────────────
 
 #[test]
 fn parse_function_with_music_arg() {
-    let input = "\\someFunction { c4 d e f }";
+    // \keepWithTag is a known function taking (symbol-list? ly:music?)
+    let input = "\\keepWithTag #'print { c4 d e f }";
     let ast = parse(input).unwrap();
     assert_eq!(ast.items.len(), 1);
     match &ast.items[0] {
         ToplevelExpression::Music(Music::MusicFunction { name, args }) => {
-            assert_eq!(name, "someFunction");
-            assert_eq!(args.len(), 1);
-            assert!(matches!(&args[0], FunctionArg::Music(Music::Sequential(_))));
+            assert_eq!(name, "keepWithTag");
+            assert_eq!(args.len(), 2);
+            assert!(matches!(&args[0], FunctionArg::SchemeExpr(_)));
+            assert!(matches!(&args[1], FunctionArg::Music(Music::Sequential(_))));
         }
         other => panic!("expected MusicFunction, got {other:?}"),
+    }
+}
+
+// ── Unknown function does NOT consume { } ────────────────────────────────
+
+#[test]
+fn parse_unknown_function_no_music_consumption() {
+    // Unknown functions should NOT consume { } — it stays as a separate sibling
+    let input = "{ \\someFunction { c4 d e f } }";
+    let ast = parse(input).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            assert_eq!(items.len(), 2, "expected identifier + sequential");
+            assert!(matches!(&items[0], Music::Identifier(s) if s == "someFunction"));
+            assert!(matches!(&items[1], Music::Sequential(_)));
+        }
+        other => panic!("expected Sequential, got {other:?}"),
     }
 }
 
@@ -153,16 +172,17 @@ fn parse_partial_function_no_args() {
     }
 }
 
-// ── Function with \default argument ──────────────────────────────────────
+// ── Known function with \default argument ─────────────────────────────────
 
 #[test]
 fn parse_function_with_default_arg() {
-    let input = "\\someFunc \\default { c4 d e f }";
+    // \tag is known (1 music arg), \default is consumed as a regular arg
+    let input = "\\tag \\default { c4 d e f }";
     let ast = parse(input).unwrap();
     assert_eq!(ast.items.len(), 1);
     match &ast.items[0] {
         ToplevelExpression::Music(Music::MusicFunction { name, args }) => {
-            assert_eq!(name, "someFunc");
+            assert_eq!(name, "tag");
             assert_eq!(args.len(), 2);
             assert!(matches!(&args[0], FunctionArg::Default));
             assert!(matches!(&args[1], FunctionArg::Music(Music::Sequential(_))));
@@ -171,24 +191,23 @@ fn parse_function_with_default_arg() {
     }
 }
 
-// ── Function with symbol list argument ───────────────────────────────────
+// ── Known function with symbol list argument ─────────────────────────────
 
 #[test]
 fn parse_function_with_symbol_list_arg() {
-    let input = "\\myFunc Staff.NoteHead.color { c4 }";
+    // \settingsFrom is known (1 music arg) and takes a symbol list
+    let input = "\\settingsFrom Staff.NoteHead.color { c4 }";
     let ast = parse(input).unwrap();
     assert_eq!(ast.items.len(), 1);
     match &ast.items[0] {
         ToplevelExpression::Music(Music::MusicFunction { name, args }) => {
-            assert_eq!(name, "myFunc");
-            assert_eq!(args.len(), 2);
+            assert_eq!(name, "settingsFrom");
             match &args[0] {
                 FunctionArg::SymbolList(segs) => {
                     assert_eq!(segs, &["Staff", "NoteHead", "color"]);
                 }
                 other => panic!("expected SymbolList, got {other:?}"),
             }
-            assert!(matches!(&args[1], FunctionArg::Music(Music::Sequential(_))));
         }
         other => panic!("expected MusicFunction, got {other:?}"),
     }
@@ -196,7 +215,7 @@ fn parse_function_with_symbol_list_arg() {
 
 #[test]
 fn parse_function_with_two_segment_symbol_list() {
-    let input = "\\myFunc Timing.measureLength { c4 }";
+    let input = "\\settingsFrom Timing.measureLength { c4 }";
     let ast = parse(input).unwrap();
     match &ast.items[0] {
         ToplevelExpression::Music(Music::MusicFunction { args, .. }) => match &args[0] {
@@ -209,65 +228,83 @@ fn parse_function_with_two_segment_symbol_list() {
     }
 }
 
-// ── Function with optional args (multiple \default) ─────────────────────
+// ── Unknown function with optional args (multiple \default) ──────────────
 
 #[test]
 fn parse_function_with_multiple_defaults() {
-    let input = "\\myFunc \\default \\default { c4 }";
+    // Unknown function: \default args are consumed but { } is NOT
+    let input = "{ \\myFunc \\default \\default { c4 } }";
     let ast = parse(input).unwrap();
     match &ast.items[0] {
-        ToplevelExpression::Music(Music::MusicFunction { name, args }) => {
-            assert_eq!(name, "myFunc");
-            assert_eq!(args.len(), 3);
-            assert!(matches!(&args[0], FunctionArg::Default));
-            assert!(matches!(&args[1], FunctionArg::Default));
-            assert!(matches!(&args[2], FunctionArg::Music(Music::Sequential(_))));
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            assert_eq!(items.len(), 2, "expected function + sequential");
+            match &items[0] {
+                Music::MusicFunction { name, args } => {
+                    assert_eq!(name, "myFunc");
+                    assert_eq!(args.len(), 2);
+                    assert!(matches!(&args[0], FunctionArg::Default));
+                    assert!(matches!(&args[1], FunctionArg::Default));
+                }
+                other => panic!("expected MusicFunction, got {other:?}"),
+            }
+            assert!(matches!(&items[1], Music::Sequential(_)));
         }
-        other => panic!("expected MusicFunction, got {other:?}"),
+        other => panic!("expected Sequential, got {other:?}"),
     }
 }
 
-// ── Function with mixed type args ───────────────────────────────────────
+// ── Unknown function with mixed type args ────────────────────────────────
 
 #[test]
 fn parse_function_with_mixed_args() {
-    let input = "\\myFunc #'sym \"text\" 42 { c4 }";
+    // Unknown function: non-music args consumed, { } is NOT
+    let input = "{ \\myFunc #'sym \"text\" 42 { c4 } }";
     let ast = parse(input).unwrap();
     match &ast.items[0] {
-        ToplevelExpression::Music(Music::MusicFunction { name, args }) => {
-            assert_eq!(name, "myFunc");
-            assert_eq!(args.len(), 4);
-            assert!(matches!(&args[0], FunctionArg::SchemeExpr(_)));
-            assert!(matches!(&args[1], FunctionArg::String(s) if s == "text"));
-            assert!(matches!(&args[2], FunctionArg::Number(n) if *n == 42.0));
-            assert!(matches!(&args[3], FunctionArg::Music(Music::Sequential(_))));
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            assert_eq!(items.len(), 2, "expected function + sequential");
+            match &items[0] {
+                Music::MusicFunction { name, args } => {
+                    assert_eq!(name, "myFunc");
+                    assert_eq!(args.len(), 3);
+                    assert!(matches!(&args[0], FunctionArg::SchemeExpr(_)));
+                    assert!(matches!(&args[1], FunctionArg::String(s) if s == "text"));
+                    assert!(matches!(&args[2], FunctionArg::Number(n) if *n == 42.0));
+                }
+                other => panic!("expected MusicFunction, got {other:?}"),
+            }
         }
-        other => panic!("expected MusicFunction, got {other:?}"),
+        other => panic!("expected Sequential, got {other:?}"),
     }
 }
 
-// ── Function with duration argument (reparsed_rhythm) ───────────────────
+// ── Function with duration argument ─────────────────────────────────────
 
 #[test]
 fn parse_function_with_duration_arg() {
-    // Duration arg: `4.` is a dotted quarter
-    let input = "\\myFunc 3/2 4. { c4 }";
+    // Unknown function: non-music args consumed, { } is NOT
+    let input = "{ \\myFunc 3/2 4. { c4 } }";
     let ast = parse(input).unwrap();
     match &ast.items[0] {
-        ToplevelExpression::Music(Music::MusicFunction { name, args }) => {
-            assert_eq!(name, "myFunc");
-            assert_eq!(args.len(), 3);
-            assert!(matches!(&args[0], FunctionArg::Number(n) if (*n - 1.5).abs() < 0.001));
-            match &args[1] {
-                FunctionArg::Duration(dur) => {
-                    assert_eq!(dur.base, 4);
-                    assert_eq!(dur.dots, 1);
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            assert_eq!(items.len(), 2, "expected function + sequential");
+            match &items[0] {
+                Music::MusicFunction { name, args } => {
+                    assert_eq!(name, "myFunc");
+                    assert_eq!(args.len(), 2);
+                    assert!(matches!(&args[0], FunctionArg::Number(n) if (*n - 1.5).abs() < 0.001));
+                    match &args[1] {
+                        FunctionArg::Duration(dur) => {
+                            assert_eq!(dur.base, 4);
+                            assert_eq!(dur.dots, 1);
+                        }
+                        other => panic!("expected Duration, got {other:?}"),
+                    }
                 }
-                other => panic!("expected Duration, got {other:?}"),
+                other => panic!("expected MusicFunction, got {other:?}"),
             }
-            assert!(matches!(&args[2], FunctionArg::Music(Music::Sequential(_))));
         }
-        other => panic!("expected MusicFunction, got {other:?}"),
+        other => panic!("expected Sequential, got {other:?}"),
     }
 }
 
@@ -318,7 +355,8 @@ fn parse_part_combine() {
 
 #[test]
 fn serialize_symbol_list_arg_roundtrip() {
-    let input = "\\myFunc Staff.NoteHead.color { c4 }";
+    // Use known function \settingsFrom (takes 1 music arg)
+    let input = "\\settingsFrom Staff.NoteHead.color { c4 }";
     let ast = parse(input).unwrap();
     let output = crate::serializer::serialize(&ast);
     let ast2 = parse(&output).unwrap();
@@ -327,7 +365,8 @@ fn serialize_symbol_list_arg_roundtrip() {
 
 #[test]
 fn serialize_duration_arg_roundtrip() {
-    let input = "\\myFunc 3/2 4. { c4 }";
+    // Use known function \shiftDurations (takes 1 music arg)
+    let input = "\\shiftDurations 3 2 { c4 }";
     let ast = parse(input).unwrap();
     let output = crate::serializer::serialize(&ast);
     let ast2 = parse(&output).unwrap();
@@ -338,7 +377,8 @@ fn serialize_duration_arg_roundtrip() {
 
 #[test]
 fn serialize_function_call_roundtrip() {
-    let input = "\\someFunction \"arg1\" { c4 d e f }";
+    // Known function \tag takes 1 music arg
+    let input = "\\tag \"arg1\" { c4 d e f }";
     let ast = parse(input).unwrap();
     let output = crate::serializer::serialize(&ast);
     let ast2 = parse(&output).unwrap();

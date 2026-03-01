@@ -16,7 +16,7 @@ fn all_mdivs(mei: &Mei) -> Vec<&tusk_model::elements::Mdiv> {
     for child in &mei.children {
         if let MeiChild::Music(music) = child {
             for mc in &music.children {
-                let tusk_model::elements::MusicChild::Body(body) = mc;
+                let tusk_model::elements::MusicChild::Body(body) = mc else { continue; };
                 for bc in &body.children {
                     let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
                     mdivs.push(mdiv.as_ref());
@@ -275,7 +275,7 @@ fn book_score_music_content_preserved() {
     assert_eq!(mdivs.len(), 1);
     // Walk into score → section → measure → staff → layer → notes
     let mdiv = mdivs[0];
-    let MdivChild::Score(score) = &mdiv.children[0];
+    let MdivChild::Score(score) = &mdiv.children[0] else { panic!("expected Score"); };
     let section = score.children.iter().find_map(|c| {
         if let ScoreChild::Section(s) = c {
             Some(s)

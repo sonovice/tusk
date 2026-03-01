@@ -1107,6 +1107,11 @@ fn parse_part<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<
                     skip_element(reader, &e)?;
                 }
             }
+            // Self-closing <measure .../> — empty measure, still needs to be
+            // preserved so that cross-part measure indices stay aligned.
+            Event::Empty(e) if e.name().as_ref() == b"measure" => {
+                part.measures.push(parse_measure_empty(&e)?);
+            }
             Event::End(e) if e.name().as_ref() == b"part" => break,
             Event::Eof => return Err(ParseError::MissingElement("part end".to_string())),
             _ => {}
@@ -1115,6 +1120,27 @@ fn parse_part<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<
     }
 
     Ok(part)
+}
+
+/// Parse attributes from a self-closing `<measure .../>` element.
+fn parse_measure_empty(start: &BytesStart) -> Result<Measure> {
+    Ok(Measure {
+        number: get_attr_required(start, "number")?,
+        text: get_attr(start, "text")?,
+        implicit: get_attr(start, "implicit")?.and_then(|s| match s.as_str() {
+            "yes" => Some(YesNo::Yes),
+            "no" => Some(YesNo::No),
+            _ => None,
+        }),
+        non_controlling: get_attr(start, "non-controlling")?.and_then(|s| match s.as_str() {
+            "yes" => Some(YesNo::Yes),
+            "no" => Some(YesNo::No),
+            _ => None,
+        }),
+        width: get_attr(start, "width")?.and_then(|s| s.parse().ok()),
+        id: get_attr(start, "id")?,
+        content: Vec::new(),
+    })
 }
 
 fn parse_measure<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<Measure> {
@@ -1300,6 +1326,13 @@ fn read_text<R: BufRead>(reader: &mut Reader<R>, end_tag: &[u8]) -> Result<Strin
                     "{} end",
                     String::from_utf8_lossy(end_tag)
                 )));
+            }
+            Event::GeneralRef(r) => {
+                if let Some(resolved) = quick_xml::escape::resolve_predefined_entity(
+                    std::str::from_utf8(&r).unwrap_or(""),
+                ) {
+                    text.push_str(resolved);
+                }
             }
             _ => {}
         }

@@ -37,9 +37,12 @@ pub fn convert_mei_dynam(
     let text_content: String = dynam
         .children
         .iter()
-        .map(|child| {
-            let DynamChild::Text(t) = child;
-            t.as_str()
+        .filter_map(|child| {
+            if let DynamChild::Text(t) = child {
+                Some(t.as_str())
+            } else {
+                None
+            }
         })
         .collect::<Vec<_>>()
         .join("");
@@ -336,9 +339,12 @@ pub fn convert_mei_dir(
     let text_content: String = dir
         .children
         .iter()
-        .map(|child| {
-            let DirChild::Text(t) = child;
-            t.as_str()
+        .filter_map(|child| {
+            if let DirChild::Text(t) = child {
+                Some(t.as_str())
+            } else {
+                None
+            }
         })
         .collect::<Vec<_>>()
         .join("");
@@ -536,9 +542,12 @@ pub fn convert_mei_tempo(
     let text_content: String = tempo
         .children
         .iter()
-        .map(|child| {
-            let TempoChild::Text(t) = child;
-            t.as_str()
+        .filter_map(|child| {
+            if let TempoChild::Text(t) = child {
+                Some(t.as_str())
+            } else {
+                None
+            }
         })
         .collect::<Vec<_>>()
         .join("");
@@ -670,11 +679,16 @@ fn convert_tstamp_to_offset(
     tstamp: &Option<tusk_model::data::DataBeat>,
     ctx: &ConversionContext,
 ) -> Option<crate::model::direction::Offset> {
-    tstamp.as_ref().map(|b| {
+    tstamp.as_ref().and_then(|b| {
         let beat_1based = b.0;
         let beat_position = beat_1based - 1.0; // Convert 1-based to 0-based
         let offset_divisions = beat_position * ctx.divisions();
-        crate::model::direction::Offset::new(offset_divisions)
+        // Skip zero offsets — they add a spurious <offset>0</offset> on roundtrip
+        if offset_divisions.abs() < 0.001 {
+            None
+        } else {
+            Some(crate::model::direction::Offset::new(offset_divisions))
+        }
     })
 }
 

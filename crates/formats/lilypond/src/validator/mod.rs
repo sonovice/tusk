@@ -881,7 +881,7 @@ fn validate_music(m: &Music, errors: &mut Vec<ValidationError>) {
             validate_function_args(args, errors);
         }
         Music::SchemeMusic(_) | Music::Event(_) | Music::Unparsed(_) | Music::Identifier(_)
-        | Music::LineComment(_) => {}
+        | Music::LineComment(_) | Music::LyricMarkup(_) => {}
     }
 }
 
@@ -1006,6 +1006,7 @@ fn validate_scheme_expr(
         SchemeExpr::Bool(_)
         | SchemeExpr::Integer(_)
         | SchemeExpr::Float(_)
+        | SchemeExpr::Fraction(_, _)
         | SchemeExpr::String(_)
         | SchemeExpr::Symbol(_)
         | SchemeExpr::Identifier(_)

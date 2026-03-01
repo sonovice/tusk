@@ -25,6 +25,8 @@ pub enum SchemeExpr {
     Integer(i64),
     /// Floating-point number: `#3.5`.
     Float(f64),
+    /// Rational fraction: `#1/2`, `#3/4`.
+    Fraction(i64, i64),
     /// String literal: `#"hello"`.
     String(String),
     /// Quoted symbol: `#'symbol`.

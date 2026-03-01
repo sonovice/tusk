@@ -56,8 +56,7 @@ impl Serializer<'_> {
     }
 
     pub(super) fn write_lyric_event(&mut self, le: &LyricEvent) {
-        if le.text.is_empty() || le.text.contains(char::is_whitespace) {
-            // Quote empty or whitespace-containing lyrics so they re-parse correctly
+        if needs_lyric_quoting(&le.text) {
             self.out.push('"');
             for ch in le.text.chars() {
                 match ch {
@@ -74,6 +73,15 @@ impl Serializer<'_> {
             self.write_duration(dur);
         }
         self.write_post_events(&le.post_events);
+    }
+
+    pub(super) fn write_lyric_markup_event(&mut self, lme: &LyricMarkupEvent) {
+        self.out.push_str("\\markup ");
+        self.write_markup(&lme.markup);
+        if let Some(dur) = &lme.duration {
+            self.write_duration(dur);
+        }
+        self.write_post_events(&lme.post_events);
     }
 
     pub(super) fn write_chord_mode_event(&mut self, ce: &ChordModeEvent) {
@@ -348,4 +356,14 @@ impl Serializer<'_> {
             }
         }
     }
+}
+
+/// Check if a lyric text needs quoting to roundtrip safely.
+///
+/// Lyric text must be quoted if it's empty, starts with a non-letter,
+/// or contains characters outside the Symbol token set `[a-zA-Z_-]`.
+fn needs_lyric_quoting(text: &str) -> bool {
+    text.is_empty()
+        || !text.as_bytes().first().unwrap_or(&b'_').is_ascii_alphabetic()
+        || text.chars().any(|c| !c.is_ascii_alphabetic() && c != '-' && c != '_')
 }

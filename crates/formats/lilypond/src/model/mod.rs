@@ -15,7 +15,7 @@ pub use markup::{Markup, MarkupList};
 pub use note::{
     BassFigure, ChordEvent, ChordModeEvent, ChordModifier, ChordQualityItem, ChordRepetitionEvent,
     ChordStep, Direction, DrumChordEvent, DrumNoteEvent, FigureAlteration, FigureEvent,
-    FiguredBassModification, KNOWN_DRUM_PITCHES, KNOWN_DYNAMICS, KNOWN_ORNAMENTS, LyricEvent,
+    FiguredBassModification, KNOWN_DRUM_PITCHES, KNOWN_DYNAMICS, KNOWN_ORNAMENTS, LyricEvent, LyricMarkupEvent,
     MultiMeasureRestEvent, NoteEvent, PostEvent, RestEvent, ScriptAbbreviation, SkipEvent,
     StepAlteration,
 };
@@ -481,6 +481,8 @@ pub enum Music {
     Figure(FigureEvent),
     /// A lyric event: a syllable with optional duration and post-events.
     Lyric(LyricEvent),
+    /// A lyric event with markup content (e.g. `\markup \column { ... }` in lyrics).
+    LyricMarkup(LyricMarkupEvent),
     /// A `\markup { ... }` expression in a music context.
     Markup(Markup),
     /// A `\markuplist { ... }` expression in a music context.

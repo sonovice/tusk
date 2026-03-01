@@ -311,9 +311,9 @@ fn extract_note_xml_ids(mei: &tusk_model::elements::Mei) -> Vec<String> {
         let MeiChild::Music(music) = child else {
             continue;
         };
-        let MusicChild::Body(body) = &music.children[0];
+        let MusicChild::Body(body) = &music.children[0] else { panic!("expected Body"); };
         let BodyChild::Mdiv(mdiv) = &body.children[0];
-        let MdivChild::Score(score) = &mdiv.children[0];
+        let MdivChild::Score(score) = &mdiv.children[0] else { panic!("expected Score"); };
         for sc in &score.children {
             if let ScoreChild::Section(section) = sc {
                 for sec_c in &section.children {
@@ -331,7 +331,7 @@ fn collect_note_ids_from_measure(measure: &tusk_model::elements::Measure, ids: &
     for mc in &measure.children {
         if let tusk_model::elements::MeasureChild::Staff(staff) = mc {
             for sc in &staff.children {
-                let tusk_model::elements::StaffChild::Layer(layer) = sc;
+                let tusk_model::elements::StaffChild::Layer(layer) = sc else { continue; };
                 for lc in &layer.children {
                     match lc {
                         tusk_model::elements::LayerChild::Note(n) => {

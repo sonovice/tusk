@@ -18,11 +18,11 @@ fn first_staff(mei: &Mei) -> Option<&Staff> {
     for child in &mei.children {
         if let MeiChild::Music(music) = child {
             for mc in &music.children {
-                let tusk_model::elements::MusicChild::Body(body) = mc;
+                let tusk_model::elements::MusicChild::Body(body) = mc else { continue; };
                 for bc in &body.children {
                     let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
                     for dc in &mdiv.children {
-                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        let tusk_model::elements::MdivChild::Score(score) = dc else { continue; };
                         for sc in &score.children {
                             if let ScoreChild::Section(section) = sc {
                                 for sec_c in &section.children {
@@ -50,11 +50,11 @@ fn all_staves(mei: &Mei) -> Vec<&Staff> {
     for child in &mei.children {
         if let MeiChild::Music(music) = child {
             for mc in &music.children {
-                let tusk_model::elements::MusicChild::Body(body) = mc;
+                let tusk_model::elements::MusicChild::Body(body) = mc else { continue; };
                 for bc in &body.children {
                     let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
                     for dc in &mdiv.children {
-                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        let tusk_model::elements::MdivChild::Score(score) = dc else { continue; };
                         for sc in &score.children {
                             if let ScoreChild::Section(section) = sc {
                                 for sec_c in &section.children {
@@ -81,11 +81,11 @@ fn find_score_def(mei: &Mei) -> Option<&ScoreDef> {
     for child in &mei.children {
         if let MeiChild::Music(music) = child {
             for mc in &music.children {
-                let tusk_model::elements::MusicChild::Body(body) = mc;
+                let tusk_model::elements::MusicChild::Body(body) = mc else { continue; };
                 for bc in &body.children {
                     let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
                     for dc in &mdiv.children {
-                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        let tusk_model::elements::MdivChild::Score(score) = dc else { continue; };
                         for sc in &score.children {
                             if let ScoreChild::ScoreDef(sd) = sc {
                                 return Some(sd);
@@ -688,15 +688,15 @@ fn import_chord_basic() {
         ));
         assert_eq!(chord.children.len(), 3);
         // First note: c'
-        let ChordChild::Note(n) = &chord.children[0];
+        let ChordChild::Note(n) = &chord.children[0] else { panic!("expected Note"); };
         assert_eq!(n.note_log.pname.as_ref().unwrap().0, "c");
         assert_eq!(n.note_log.oct.as_ref().unwrap().0, 4);
         // Second note: e'
-        let ChordChild::Note(n) = &chord.children[1];
+        let ChordChild::Note(n) = &chord.children[1] else { panic!("expected Note"); };
         assert_eq!(n.note_log.pname.as_ref().unwrap().0, "e");
         assert_eq!(n.note_log.oct.as_ref().unwrap().0, 4);
         // Third note: g'
-        let ChordChild::Note(n) = &chord.children[2];
+        let ChordChild::Note(n) = &chord.children[2] else { panic!("expected Note"); };
         assert_eq!(n.note_log.pname.as_ref().unwrap().0, "g");
         assert_eq!(n.note_log.oct.as_ref().unwrap().0, 4);
     } else {
@@ -729,13 +729,13 @@ fn import_chord_with_accidentals() {
     if let LayerChild::Chord(chord) = &children[0] {
         assert_eq!(chord.children.len(), 3);
         // cis' -- sharp
-        let ChordChild::Note(n) = &chord.children[0];
+        let ChordChild::Note(n) = &chord.children[0] else { panic!("expected Note"); };
         assert!(n.note_ges.accid_ges.is_some());
         // es' -- flat
-        let ChordChild::Note(n) = &chord.children[1];
+        let ChordChild::Note(n) = &chord.children[1] else { panic!("expected Note"); };
         assert!(n.note_ges.accid_ges.is_some());
         // g' -- natural (no accidental)
-        let ChordChild::Note(n) = &chord.children[2];
+        let ChordChild::Note(n) = &chord.children[2] else { panic!("expected Note"); };
         assert!(n.note_ges.accid_ges.is_none());
     } else {
         panic!("expected Chord");
@@ -750,10 +750,10 @@ fn import_chord_force_cautionary() {
     if let LayerChild::Chord(chord) = &children[0] {
         assert_eq!(chord.children.len(), 2);
         // cis'! -- forced accidental
-        let ChordChild::Note(n) = &chord.children[0];
+        let ChordChild::Note(n) = &chord.children[0] else { panic!("expected Note"); };
         assert!(!n.children.is_empty(), "should have Accid child");
         // e'? -- cautionary
-        let ChordChild::Note(n) = &chord.children[1];
+        let ChordChild::Note(n) = &chord.children[1] else { panic!("expected Note"); };
         assert!(!n.children.is_empty(), "should have Accid child");
     } else {
         panic!("expected Chord");
@@ -778,11 +778,11 @@ fn measure_slurs(mei: &Mei) -> Vec<&Slur> {
     for child in &mei.children {
         if let MeiChild::Music(music) = child {
             for mc in &music.children {
-                let tusk_model::elements::MusicChild::Body(body) = mc;
+                let tusk_model::elements::MusicChild::Body(body) = mc else { continue; };
                 for bc in &body.children {
                     let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
                     for dc in &mdiv.children {
-                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        let tusk_model::elements::MdivChild::Score(score) = dc else { continue; };
                         for sc in &score.children {
                             if let ScoreChild::Section(section) = sc {
                                 for sec_c in &section.children {
@@ -862,7 +862,7 @@ fn import_chord_tie() {
     // First chord: all notes have tie="i"
     if let LayerChild::Chord(chord) = &children[0] {
         for child in &chord.children {
-            let ChordChild::Note(n) = child;
+            let ChordChild::Note(n) = child else { continue; };
             assert_eq!(n.note_anl.tie.as_ref().unwrap().0, "i");
         }
     } else {
@@ -871,7 +871,7 @@ fn import_chord_tie() {
     // Second chord: all notes have tie="t"
     if let LayerChild::Chord(chord) = &children[1] {
         for child in &chord.children {
-            let ChordChild::Note(n) = child;
+            let ChordChild::Note(n) = child else { continue; };
             assert_eq!(n.note_anl.tie.as_ref().unwrap().0, "t");
         }
     } else {
@@ -979,11 +979,11 @@ fn measure_dynams(mei: &Mei) -> Vec<&Dynam> {
     for child in &mei.children {
         if let MeiChild::Music(music) = child {
             for mc in &music.children {
-                let tusk_model::elements::MusicChild::Body(body) = mc;
+                let tusk_model::elements::MusicChild::Body(body) = mc else { continue; };
                 for bc in &body.children {
                     let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
                     for dc in &mdiv.children {
-                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        let tusk_model::elements::MdivChild::Score(score) = dc else { continue; };
                         for sc in &score.children {
                             if let ScoreChild::Section(section) = sc {
                                 for sec_c in &section.children {
@@ -1011,11 +1011,11 @@ fn measure_hairpins(mei: &Mei) -> Vec<&Hairpin> {
     for child in &mei.children {
         if let MeiChild::Music(music) = child {
             for mc in &music.children {
-                let tusk_model::elements::MusicChild::Body(body) = mc;
+                let tusk_model::elements::MusicChild::Body(body) = mc else { continue; };
                 for bc in &body.children {
                     let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
                     for dc in &mdiv.children {
-                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        let tusk_model::elements::MdivChild::Score(score) = dc else { continue; };
                         for sc in &score.children {
                             if let ScoreChild::Section(section) = sc {
                                 for sec_c in &section.children {
@@ -1044,12 +1044,12 @@ fn import_dynamic_creates_dynam() {
     assert_eq!(dynams.len(), 2, "expected 2 dynam control events");
     // First dynamic: f
     assert_eq!(dynams[0].children.len(), 1);
-    let DynamChild::Text(t) = &dynams[0].children[0];
+    let DynamChild::Text(t) = &dynams[0].children[0] else { panic!("expected Text"); };
     assert_eq!(t, "f");
     assert!(dynams[0].dynam_log.startid.is_some());
     assert!(dynams[0].dynam_log.staff.is_some());
     // Second dynamic: p
-    let DynamChild::Text(t) = &dynams[1].children[0];
+    let DynamChild::Text(t) = &dynams[1].children[0] else { panic!("expected Text"); };
     assert_eq!(t, "p");
 }
 
@@ -1080,9 +1080,9 @@ fn import_dynamic_and_hairpin_combined() {
     let hairpins = measure_hairpins(&mei);
     assert_eq!(dynams.len(), 2, "expected 2 dynamics (f and ff)");
     assert_eq!(hairpins.len(), 1, "expected 1 hairpin");
-    let DynamChild::Text(t) = &dynams[0].children[0];
+    let DynamChild::Text(t) = &dynams[0].children[0] else { panic!("expected Text"); };
     assert_eq!(t, "f");
-    let DynamChild::Text(t) = &dynams[1].children[0];
+    let DynamChild::Text(t) = &dynams[1].children[0] else { panic!("expected Text"); };
     assert_eq!(t, "ff");
 }
 
@@ -1109,7 +1109,7 @@ fn get_verse_text(note: &tusk_model::elements::Note, verse_n: &str) -> Option<St
                 if let VerseChild::Syl(syl) = vc
                     && let Some(sc) = syl.children.first()
                 {
-                    let SylChild::Text(t) = sc;
+                    let SylChild::Text(t) = sc else { continue; };
                     return Some(t.clone());
                 }
             }

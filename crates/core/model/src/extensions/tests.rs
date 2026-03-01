@@ -179,6 +179,7 @@ fn staff_context_roundtrip() {
         name: Some("piano".into()),
         with_block: Some("\\consists \"Span_arpeggio_engraver\"".into()),
         keyword: Some(ContextKeywordExt::New),
+        inner_voice_name: None,
     };
     let json = serde_json::to_string(&ctx).unwrap();
     let back: StaffContext = serde_json::from_str(&json).unwrap();
@@ -240,6 +241,7 @@ fn extension_store_roundtrip() {
             name: None,
             with_block: None,
             keyword: Some(ContextKeywordExt::New),
+            inner_voice_name: None,
         },
     );
 

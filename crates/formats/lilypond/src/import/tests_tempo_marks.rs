@@ -16,11 +16,11 @@ fn measure_tempos(mei: &Mei) -> Vec<&tusk_model::elements::Tempo> {
     for child in &mei.children {
         if let MeiChild::Music(music) = child {
             for mc in &music.children {
-                let tusk_model::elements::MusicChild::Body(body) = mc;
+                let tusk_model::elements::MusicChild::Body(body) = mc else { continue; };
                 for bc in &body.children {
                     let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
                     for dc in &mdiv.children {
-                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        let tusk_model::elements::MdivChild::Score(score) = dc else { continue; };
                         for sc in &score.children {
                             if let ScoreChild::Section(section) = sc {
                                 for sec_c in &section.children {
@@ -48,11 +48,11 @@ fn measure_dirs(mei: &Mei) -> Vec<&tusk_model::elements::Dir> {
     for child in &mei.children {
         if let MeiChild::Music(music) = child {
             for mc in &music.children {
-                let tusk_model::elements::MusicChild::Body(body) = mc;
+                let tusk_model::elements::MusicChild::Body(body) = mc else { continue; };
                 for bc in &body.children {
                     let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
                     for dc in &mdiv.children {
-                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        let tusk_model::elements::MdivChild::Score(score) = dc else { continue; };
                         for sc in &score.children {
                             if let ScoreChild::Section(section) = sc {
                                 for sec_c in &section.children {
@@ -79,11 +79,11 @@ fn staff_def_id(mei: &Mei) -> Option<String> {
     for child in &mei.children {
         if let MeiChild::Music(music) = child {
             for mc in &music.children {
-                let tusk_model::elements::MusicChild::Body(body) = mc;
+                let tusk_model::elements::MusicChild::Body(body) = mc else { continue; };
                 for bc in &body.children {
                     let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
                     for dc in &mdiv.children {
-                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        let tusk_model::elements::MdivChild::Score(score) = dc else { continue; };
                         for sc in &score.children {
                             if let ScoreChild::ScoreDef(sd) = sc {
                                 for sdc in &sd.children {

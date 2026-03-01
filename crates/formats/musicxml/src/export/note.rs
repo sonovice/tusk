@@ -438,17 +438,17 @@ fn convert_mei_articulations(
         }
     }
 
-    // Fallback: reconstruct from MEI @artic (single value)
-    convert_mei_artic_single(mei_note.note_anl.artic.as_ref(), mxml_note);
+    // Fallback: reconstruct from MEI @artic (may be space-separated list)
+    convert_mei_artic_list(mei_note.note_anl.artic.as_ref(), mxml_note);
 }
 
-/// Convert a single MEI DataArticulation to MusicXML notations (fallback path).
+/// Convert MEI @artic (space-separated list) to MusicXML notations (fallback path).
 ///
 /// This handles all DataArticulation variants explicitly. Values that map to MusicXML
 /// `<articulations>` are emitted there; values that map to `<technical>` are emitted
 /// in the technical container; remaining values become `<other-articulation>`.
-fn convert_mei_artic_single(
-    artic: Option<&tusk_model::data::DataArticulation>,
+fn convert_mei_artic_list(
+    artic: Option<&tusk_model::SpaceSeparated<tusk_model::data::DataArticulation>>,
     mxml_note: &mut crate::model::note::Note,
 ) {
     use crate::model::notations::{
@@ -457,61 +457,71 @@ fn convert_mei_artic_single(
     use crate::model::technical::{EmptyPlacementSmufl, Technical};
     use tusk_model::data::DataArticulation;
 
-    let a = match artic {
-        Some(x) => x,
-        None => return,
+    let items = match artic {
+        Some(s) if !s.is_empty() => &s.0,
+        _ => return,
     };
 
     let mut mxml_artic = Articulations::default();
     let mut mxml_tech = Technical::default();
-    let mut other_name: Option<&str> = None;
+    let mut other_names: Vec<&str> = Vec::new();
 
-    match a {
-        // Direct articulation mappings
-        DataArticulation::Acc => mxml_artic.accent = Some(EmptyPlacement::default()),
-        DataArticulation::Marc => mxml_artic.strong_accent = Some(StrongAccent::default()),
-        DataArticulation::Stacc => mxml_artic.staccato = Some(EmptyPlacement::default()),
-        DataArticulation::Ten => mxml_artic.tenuto = Some(EmptyPlacement::default()),
-        DataArticulation::Stacciss => mxml_artic.staccatissimo = Some(EmptyPlacement::default()),
-        DataArticulation::Spicc => mxml_artic.spiccato = Some(EmptyPlacement::default()),
-        DataArticulation::Scoop => mxml_artic.scoop = Some(EmptyPlacement::default()),
-        DataArticulation::Plop => mxml_artic.plop = Some(EmptyPlacement::default()),
-        DataArticulation::Doit => mxml_artic.doit = Some(EmptyPlacement::default()),
-        DataArticulation::Fall => mxml_artic.falloff = Some(EmptyPlacement::default()),
-        DataArticulation::Stress => mxml_artic.stress = Some(EmptyPlacement::default()),
-        DataArticulation::Unstress => mxml_artic.unstress = Some(EmptyPlacement::default()),
-        DataArticulation::AccSoft => mxml_artic.soft_accent = Some(EmptyPlacement::default()),
-        // Technical mappings (MEI artic values that correspond to MusicXML <technical>)
-        DataArticulation::Upbow => mxml_tech.up_bow.push(EmptyPlacement::default()),
-        DataArticulation::Dnbow => mxml_tech.down_bow.push(EmptyPlacement::default()),
-        DataArticulation::Harm => mxml_tech.harmonic.push(Default::default()),
-        DataArticulation::Snap => mxml_tech.snap_pizzicato.push(EmptyPlacement::default()),
-        DataArticulation::Fingernail => mxml_tech.fingernails.push(EmptyPlacement::default()),
-        DataArticulation::Open => {
-            mxml_tech.open.push(EmptyPlacementSmufl::default());
+    for a in items {
+        match a {
+            // Direct articulation mappings
+            DataArticulation::Acc => mxml_artic.accent = Some(EmptyPlacement::default()),
+            DataArticulation::Marc => mxml_artic.strong_accent = Some(StrongAccent::default()),
+            DataArticulation::Stacc => mxml_artic.staccato = Some(EmptyPlacement::default()),
+            DataArticulation::Ten => mxml_artic.tenuto = Some(EmptyPlacement::default()),
+            DataArticulation::Stacciss => {
+                mxml_artic.staccatissimo = Some(EmptyPlacement::default())
+            }
+            DataArticulation::Spicc => mxml_artic.spiccato = Some(EmptyPlacement::default()),
+            DataArticulation::Scoop => mxml_artic.scoop = Some(EmptyPlacement::default()),
+            DataArticulation::Plop => mxml_artic.plop = Some(EmptyPlacement::default()),
+            DataArticulation::Doit => mxml_artic.doit = Some(EmptyPlacement::default()),
+            DataArticulation::Fall => mxml_artic.falloff = Some(EmptyPlacement::default()),
+            DataArticulation::Stress => mxml_artic.stress = Some(EmptyPlacement::default()),
+            DataArticulation::Unstress => mxml_artic.unstress = Some(EmptyPlacement::default()),
+            DataArticulation::AccSoft => mxml_artic.soft_accent = Some(EmptyPlacement::default()),
+            // Technical mappings (MEI artic values that correspond to MusicXML <technical>)
+            DataArticulation::Upbow => mxml_tech.up_bow.push(EmptyPlacement::default()),
+            DataArticulation::Dnbow => mxml_tech.down_bow.push(EmptyPlacement::default()),
+            DataArticulation::Harm => mxml_tech.harmonic.push(Default::default()),
+            DataArticulation::Snap => mxml_tech.snap_pizzicato.push(EmptyPlacement::default()),
+            DataArticulation::Fingernail => {
+                mxml_tech.fingernails.push(EmptyPlacement::default())
+            }
+            DataArticulation::Open => {
+                mxml_tech.open.push(EmptyPlacementSmufl::default());
+            }
+            DataArticulation::Stop => {
+                mxml_tech.stopped.push(EmptyPlacementSmufl::default());
+            }
+            DataArticulation::Dbltongue => {
+                mxml_tech.double_tongue.push(EmptyPlacement::default())
+            }
+            DataArticulation::Trpltongue => {
+                mxml_tech.triple_tongue.push(EmptyPlacement::default())
+            }
+            DataArticulation::Heel => mxml_tech.heel.push(Default::default()),
+            DataArticulation::Toe => mxml_tech.toe.push(Default::default()),
+            DataArticulation::Tap => mxml_tech.tap.push(Default::default()),
+            DataArticulation::Flip => mxml_tech.flip.push(EmptyPlacement::default()),
+            DataArticulation::Smear => mxml_tech.smear.push(EmptyPlacement::default()),
+            // No direct MusicXML equivalent → other-articulation
+            DataArticulation::AccInv => other_names.push("acc-inv"),
+            DataArticulation::AccLong => other_names.push("acc-long"),
+            DataArticulation::Rip => other_names.push("rip"),
+            DataArticulation::Longfall => other_names.push("longfall"),
+            DataArticulation::Bend => other_names.push("bend"),
+            DataArticulation::Shake => other_names.push("shake"),
+            DataArticulation::Damp => other_names.push("damp"),
+            DataArticulation::Dampall => other_names.push("dampall"),
+            DataArticulation::Lhpizz => other_names.push("lhpizz"),
+            DataArticulation::Dot => other_names.push("dot"),
+            DataArticulation::Stroke => other_names.push("stroke"),
         }
-        DataArticulation::Stop => {
-            mxml_tech.stopped.push(EmptyPlacementSmufl::default());
-        }
-        DataArticulation::Dbltongue => mxml_tech.double_tongue.push(EmptyPlacement::default()),
-        DataArticulation::Trpltongue => mxml_tech.triple_tongue.push(EmptyPlacement::default()),
-        DataArticulation::Heel => mxml_tech.heel.push(Default::default()),
-        DataArticulation::Toe => mxml_tech.toe.push(Default::default()),
-        DataArticulation::Tap => mxml_tech.tap.push(Default::default()),
-        DataArticulation::Flip => mxml_tech.flip.push(EmptyPlacement::default()),
-        DataArticulation::Smear => mxml_tech.smear.push(EmptyPlacement::default()),
-        // No direct MusicXML equivalent → other-articulation
-        DataArticulation::AccInv => other_name = Some("acc-inv"),
-        DataArticulation::AccLong => other_name = Some("acc-long"),
-        DataArticulation::Rip => other_name = Some("rip"),
-        DataArticulation::Longfall => other_name = Some("longfall"),
-        DataArticulation::Bend => other_name = Some("bend"),
-        DataArticulation::Shake => other_name = Some("shake"),
-        DataArticulation::Damp => other_name = Some("damp"),
-        DataArticulation::Dampall => other_name = Some("dampall"),
-        DataArticulation::Lhpizz => other_name = Some("lhpizz"),
-        DataArticulation::Dot => other_name = Some("dot"),
-        DataArticulation::Stroke => other_name = Some("stroke"),
     }
 
     if mxml_artic != Articulations::default() {
@@ -522,7 +532,7 @@ fn convert_mei_artic_single(
         let notations = mxml_note.notations.get_or_insert_with(Notations::default);
         notations.technical = Some(mxml_tech);
     }
-    if let Some(name) = other_name {
+    for name in other_names {
         let notations = mxml_note.notations.get_or_insert_with(Notations::default);
         let artics = notations
             .articulations
@@ -903,8 +913,9 @@ fn convert_mei_lyrics(
             let text_value = syl
                 .children
                 .iter()
-                .map(|c| match c {
-                    SylChild::Text(t) => t.as_str(),
+                .filter_map(|c| match c {
+                    SylChild::Text(t) => Some(t.as_str()),
+                    _ => None,
                 })
                 .collect::<Vec<_>>()
                 .join("");
@@ -1274,9 +1285,12 @@ pub fn convert_mei_chord(
     let mei_notes: Vec<&tusk_model::elements::Note> = mei_chord
         .children
         .iter()
-        .map(|child| {
-            let ChordChild::Note(note) = child;
-            note.as_ref()
+        .filter_map(|child| {
+            if let ChordChild::Note(note) = child {
+                Some(note.as_ref())
+            } else {
+                None
+            }
         })
         .collect();
 
@@ -1424,7 +1438,7 @@ pub fn convert_mei_chord(
 
         // Apply chord-level articulations to the first note (fallback for non-roundtrip MEI)
         if i == 0 {
-            convert_mei_artic_single(mei_chord.chord_log.artic.as_ref(), &mut mxml_note);
+            convert_mei_artic_list(mei_chord.chord_log.artic.as_ref(), &mut mxml_note);
         }
 
         // Convert ties from MEI @tie attribute to MusicXML <tie> elements
@@ -1493,10 +1507,10 @@ fn convert_mei_grace_chord(mei_chord: &tusk_model::elements::Chord) -> crate::mo
 
     if let Some(ref grace_type) = mei_chord.chord_log.grace {
         match grace_type {
-            DataGrace::Acc => grace.slash = Some(crate::model::data::YesNo::Yes),
-            DataGrace::Unacc => grace.slash = Some(crate::model::data::YesNo::No),
-            // Unknown grace type — emit grace without slash attribute.
-            DataGrace::Unknown => {}
+            DataGrace::Unacc => grace.slash = Some(crate::model::data::YesNo::Yes),
+            DataGrace::Acc | DataGrace::Unknown => {
+                grace.slash = Some(crate::model::data::YesNo::No)
+            }
         }
     }
 

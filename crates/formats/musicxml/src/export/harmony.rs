@@ -335,9 +335,12 @@ fn parse_left_right(s: &str) -> Option<LeftRight> {
 fn collect_harm_text(harm: &Harm) -> String {
     harm.children
         .iter()
-        .map(|c| {
-            let HarmChild::Text(t) = c;
-            t.as_str()
+        .filter_map(|c| {
+            if let HarmChild::Text(t) = c {
+                Some(t.as_str())
+            } else {
+                None
+            }
         })
         .collect::<Vec<_>>()
         .join("")

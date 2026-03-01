@@ -1013,6 +1013,28 @@ fn generate_element(
         })
         .collect();
 
+    // Inject extra local attributes from EXTRA_ATTRS (only for main model)
+    let extra_attr_fields: Vec<_> = if config.module_path == "crate::generated" {
+        EXTRA_ATTRS
+            .iter()
+            .filter(|(e, _)| *e == elem.ident)
+            .filter(|(_, a)| {
+                // Skip if already defined in local_attributes
+                !elem.local_attributes.iter().any(|la| la.ident == *a)
+            })
+            .map(|(_, attr_name)| {
+                let field_name = make_safe_ident(&attr_name.replace(['.', '-', ':'], "_").to_snake_case());
+                let serde_name = format!("@{}", attr_name);
+                quote! {
+                    #[serde(rename = #serde_name, skip_serializing_if = "Option::is_none")]
+                    pub #field_name: Option<String>,
+                }
+            })
+            .collect()
+    } else {
+        vec![]
+    };
+
     // Generate child element enum and field if content model is non-empty
     let skip_extra_children = config.module_path != "crate::generated";
     let (child_enum, child_field) = generate_child_content(elem, defs, base, skip_extra_children);
@@ -1060,6 +1082,7 @@ fn generate_element(
         pub struct #name {
             #(#att_class_fields)*
             #(#local_attr_fields)*
+            #(#extra_attr_fields)*
             #child_field_tokens
             #extensions_field
         }
@@ -1109,6 +1132,14 @@ fn generate_element_validation(elem: &Element, defs: &OddDefinitions) -> TokenSt
     let mut child_types: HashSet<String> = HashSet::new();
     let mut has_text = false;
     collect_content_refs(&elem.content, defs, &mut child_types, &mut has_text);
+    for &(parent, child) in EXTRA_CHILDREN {
+        if elem.ident == parent && defs.elements.contains_key(child) {
+            child_types.insert(child.to_string());
+        }
+    }
+    if EXTRA_TEXT_CONTENT.contains(&elem.ident.as_str()) {
+        has_text = true;
+    }
     let has_children_field = !child_types.is_empty() || has_text;
 
     let child_validation = if has_children_field {
@@ -1143,6 +1174,26 @@ fn generate_element_validation(elem: &Element, defs: &OddDefinitions) -> TokenSt
         }
     }
 }
+
+/// Extra local attributes to inject into specific elements.
+///
+/// The RNG parser doesn't capture all local (element-specific) attributes.
+/// These supplement the generated attribute classes for MEI 5.x roundtrip.
+///
+/// Format: `(element_name, attribute_name)`
+const EXTRA_ATTRS: &[(&str, &str)] = &[
+    ("application", "version"),
+    ("div", "type"),
+    ("incipCode", "form"),
+    ("name", "type"),
+    ("ref", "target"),
+    ("rend", "rotation"),
+    ("title", "type"),
+    ("titlePart", "type"),
+];
+
+/// Elements that need text content support even if the schema doesn't define it.
+const EXTRA_TEXT_CONTENT: &[&str] = &["plateNum", "useRestrict"];
 
 /// Extra child elements to inject into specific parent elements.
 ///
@@ -1219,9 +1270,256 @@ const EXTRA_CHILDREN: &[(&str, &str)] = &[
     ("ending", "measure"),
     ("ending", "section"),
     ("music", "body"),
+    // Header elements with children from model.pLike / model.headLike / model.manifestationLike
+    ("changeDesc", "p"),
+    ("samplingDecl", "p"),
+    ("samplingDecl", "head"),
+    ("editorialDecl", "p"),
+    ("editorialDecl", "head"),
+    ("editorialDecl", "normalization"),
+    ("projectDesc", "p"),
+    ("projectDesc", "head"),
+    ("manifestationList", "manifestation"),
+    ("manifestationList", "head"),
+    ("notesStmt", "annot"),
+    ("notesStmt", "head"),
+    ("componentList", "work"),
+    ("componentList", "expression"),
+    ("componentList", "manifestation"),
+    ("componentList", "item"),
+    ("componentList", "head"),
+    ("expressionList", "expression"),
+    ("expressionList", "head"),
     ("titleStmt", "title"),
+    ("titleStmt", "arranger"),
+    ("titleStmt", "composer"),
+    ("titleStmt", "editor"),
+    ("titleStmt", "lyricist"),
+    ("titleStmt", "respStmt"),
     ("fileDesc", "titleStmt"),
     ("fileDesc", "pubStmt"),
+    // Pairs discovered from MEI sample files — grouped by parent element.
+    ("add", "dir"),
+    ("add", "space"),
+    ("addrLine", "geogName"),
+    ("addrLine", "postCode"),
+    ("anchoredText", "lb"),
+    ("anchoredText", "rend"),
+    ("annot", "date"),
+    ("application", "p"),
+    ("application", "ptr"),
+    ("arranger", "persName"),
+    ("availability", "useRestrict"),
+    ("back", "div"),
+    ("beam", "app"),
+    ("beam", "clef"),
+    ("beam", "space"),
+    ("bibl", "annot"),
+    ("bibl", "arranger"),
+    ("bibl", "composer"),
+    ("bibl", "edition"),
+    ("bibl", "editor"),
+    ("bibl", "identifier"),
+    ("bibl", "imprint"),
+    ("bibl", "librettist"),
+    ("bibl", "lyricist"),
+    ("bibl", "respStmt"),
+    ("bibl", "series"),
+    ("bibl", "title"),
+    ("change", "date"),
+    ("chord", "artic"),
+    ("composer", "name"),
+    ("composer", "persName"),
+    ("corpName", "address"),
+    ("corpName", "date"),
+    ("corpName", "geogName"),
+    ("creation", "date"),
+    ("creation", "geogName"),
+    ("del", "dir"),
+    ("dir", "lb"),
+    ("dir", "rend"),
+    ("dir", "title"),
+    ("div", "lg"),
+    ("div", "p"),
+    ("dynam", "rend"),
+    ("editor", "persName"),
+    ("ending", "sb"),
+    ("ending", "staffDef"),
+    ("event", "p"),
+    ("expression", "incip"),
+    ("expression", "key"),
+    ("expression", "tempo"),
+    ("expression", "title"),
+    ("f", "symbol"),
+    ("front", "titlePage"),
+    ("funder", "address"),
+    ("funder", "corpName"),
+    ("harm", "fb"),
+    ("harm", "rend"),
+    ("history", "eventList"),
+    ("identifier", "annot"),
+    ("imprint", "address"),
+    ("imprint", "annot"),
+    ("imprint", "date"),
+    ("imprint", "identifier"),
+    ("imprint", "pubPlace"),
+    ("incip", "score"),
+    ("incipText", "p"),
+    ("l", "syl"),
+    ("label", "rend"),
+    ("layer", "add"),
+    ("layer", "app"),
+    ("layer", "barLine"),
+    ("layer", "dot"),
+    ("layer", "ligature"),
+    ("layer", "mRpt"),
+    ("layer", "mSpace"),
+    ("layer", "mensur"),
+    ("layer", "multiRest"),
+    ("layer", "tuplet"),
+    ("layer", "unclear"),
+    ("layerDef", "instrDef"),
+    ("lem", "mRest"),
+    ("lg", "l"),
+    ("librettist", "persName"),
+    ("ligature", "note"),
+    ("lyricist", "name"),
+    ("lyricist", "persName"),
+    ("manifestation", "identifier"),
+    ("manifestation", "physDesc"),
+    ("manifestation", "pubStmt"),
+    ("manifestation", "seriesStmt"),
+    ("mdiv", "mdiv"),
+    ("mdiv", "parts"),
+    ("measure", "add"),
+    ("measure", "app"),
+    ("measure", "beamSpan"),
+    ("measure", "line"),
+    ("measure", "octave"),
+    ("measure", "pedal"),
+    ("measure", "phrase"),
+    ("measure", "reh"),
+    ("measure", "staffDef"),
+    ("measure", "tie"),
+    ("measure", "unclear"),
+    ("meterSigGrp", "meterSig"),
+    ("music", "back"),
+    ("music", "front"),
+    ("music", "group"),
+    ("name", "rend"),
+    ("normalization", "p"),
+    ("note", "app"),
+    ("note", "artic"),
+    ("note", "supplied"),
+    ("note", "syl"),
+    ("p", "date"),
+    ("p", "geogName"),
+    ("p", "lb"),
+    ("p", "list"),
+    ("p", "ptr"),
+    ("p", "rend"),
+    ("part", "scoreDef"),
+    ("part", "section"),
+    ("part", "staffDef"),
+    ("parts", "part"),
+    ("persName", "rend"),
+    ("pgFoot", "name"),
+    ("pgFoot", "p"),
+    ("pgFoot", "rend"),
+    ("pgFoot", "table"),
+    ("pgHead", "lb"),
+    ("pgHead", "p"),
+    ("pgHead", "persName"),
+    ("pgHead", "rend"),
+    ("pgHead", "seg"),
+    ("pgHead", "table"),
+    ("pgHead", "title"),
+    ("physDesc", "handList"),
+    ("physDesc", "plateNum"),
+    ("physDesc", "titlePage"),
+    ("pubStmt", "address"),
+    ("pubStmt", "availability"),
+    ("pubStmt", "date"),
+    ("pubStmt", "identifier"),
+    ("pubStmt", "pubPlace"),
+    ("pubStmt", "publisher"),
+    ("pubStmt", "respStmt"),
+    ("publisher", "address"),
+    ("publisher", "corpName"),
+    ("rdg", "del"),
+    ("rdg", "dynam"),
+    ("rdg", "note"),
+    ("rdg", "pb"),
+    ("rdg", "slur"),
+    ("rdg", "space"),
+    ("rdg", "staff"),
+    ("reh", "rend"),
+    ("rend", "date"),
+    ("rend", "lb"),
+    ("rend", "name"),
+    ("rend", "persName"),
+    ("rend", "rend"),
+    ("rend", "symbol"),
+    ("rend", "title"),
+    ("respStmt", "corpName"),
+    ("respStmt", "persName"),
+    ("score", "ending"),
+    ("score", "staffDef"),
+    ("section", "annot"),
+    ("section", "div"),
+    ("section", "pb"),
+    ("section", "sb"),
+    ("section", "scoreDef"),
+    ("section", "staff"),
+    ("section", "staffDef"),
+    ("seg", "rend"),
+    ("series", "title"),
+    ("seriesStmt", "editor"),
+    ("seriesStmt", "funder"),
+    ("seriesStmt", "identifier"),
+    ("seriesStmt", "title"),
+    ("source", "bibl"),
+    ("staff", "staffDef"),
+    ("staffDef", "clef"),
+    ("staffDef", "layerDef"),
+    ("staffDef", "meterSigGrp"),
+    ("staffGrp", "instrDef"),
+    ("supplied", "artic"),
+    ("syl", "rend"),
+    ("taxonomy", "bibl"),
+    ("td", "lb"),
+    ("td", "rend"),
+    ("tempo", "rend"),
+    ("title", "lb"),
+    ("title", "num"),
+    ("title", "persName"),
+    ("title", "rend"),
+    ("titlePage", "p"),
+    ("tuplet", "bTrem"),
+    ("tuplet", "beam"),
+    ("tuplet", "note"),
+    ("tuplet", "rest"),
+    ("unclear", "dynam"),
+    ("unclear", "note"),
+    ("useRestrict", "p"),
+    ("work", "arranger"),
+    ("work", "composer"),
+    ("work", "identifier"),
+    ("work", "incip"),
+    ("work", "key"),
+    ("work", "librettist"),
+    ("work", "lyricist"),
+    ("work", "meter"),
+    ("work", "tempo"),
+    ("work", "title"),
+    // Mixed content: ref, li, titlePart children discovered from MEI samples
+    ("annot", "ref"),
+    ("identifier", "ref"),
+    ("li", "ref"),
+    ("list", "li"),
+    ("p", "ref"),
+    ("title", "ref"),
+    ("title", "titlePart"),
 ];
 
 fn generate_child_content(
@@ -1246,6 +1544,10 @@ fn generate_child_content(
             if elem.ident == parent && defs.elements.contains_key(child) {
                 child_types.insert(child.to_string());
             }
+        }
+        // Force text content for elements that need it
+        if EXTRA_TEXT_CONTENT.contains(&elem.ident.as_str()) {
+            has_text = true;
         }
     }
 
@@ -1755,12 +2057,9 @@ fn generate_mod_rs(_defs: &OddDefinitions, output: &Path, _config: &CodegenConfi
         pub use validation::{Validate, ValidationContext, ValidationError, ValidationResult};
 
         use serde::{Deserialize, Deserializer, Serialize, Serializer};
-        use std::fmt;
-        use std::str::FromStr;
-
         /// Wrapper for space-separated list values in MEI attributes.
         ///
-        /// MEI uses space-separated lists for some attributes (e.g., bezier coordinates).
+        /// MEI uses space-separated lists for some attributes (e.g., articulation).
         /// This wrapper handles serialization/deserialization of such values.
         #[derive(Debug, Clone, PartialEq, Default)]
         pub struct SpaceSeparated<T>(pub Vec<T>);
@@ -1775,31 +2074,32 @@ fn generate_mod_rs(_defs: &OddDefinitions, output: &Path, _config: &CodegenConfi
             }
         }
 
-        impl<T: fmt::Display> Serialize for SpaceSeparated<T> {
+        impl<T: Serialize> Serialize for SpaceSeparated<T> {
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where
                 S: Serializer,
             {
-                let s: std::string::String = self.0.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(" ");
-                serializer.serialize_str(&s)
+                let parts: Vec<std::string::String> = self.0.iter()
+                    .filter_map(|v| serde_json::to_string(v).ok().map(|s| s.trim_matches('"').to_string()))
+                    .collect();
+                serializer.serialize_str(&parts.join(" "))
             }
         }
 
         impl<'de, T> Deserialize<'de> for SpaceSeparated<T>
         where
-            T: FromStr,
-            T::Err: fmt::Display,
+            T: for<'a> Deserialize<'a>,
         {
             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
             where
                 D: Deserializer<'de>,
             {
                 let s = std::string::String::deserialize(deserializer)?;
-                let items: Result<Vec<T>, _> = s
+                let items: Vec<T> = s
                     .split_whitespace()
-                    .map(|part| part.parse::<T>().map_err(serde::de::Error::custom))
+                    .filter_map(|part| serde_json::from_str(&format!("\"{}\"", part)).ok())
                     .collect();
-                Ok(SpaceSeparated(items?))
+                Ok(SpaceSeparated(items))
             }
         }
     };
@@ -2064,6 +2364,17 @@ fn generate_mei_serialize_impl_for_element(
         })
         .collect();
 
+    // EXTRA_ATTRS serializer lines
+    let extra_attr_collect_lines: Vec<TokenStream> = EXTRA_ATTRS
+        .iter()
+        .filter(|(e, _)| *e == elem.ident)
+        .filter(|(_, a)| !elem.local_attributes.iter().any(|la| la.ident == *a))
+        .map(|(_, attr_name)| {
+            let field_name = make_safe_ident(&attr_name.replace(['.', '-', ':'], "_").to_snake_case());
+            quote! { push_attr!(attrs, #attr_name, string self.#field_name); }
+        })
+        .collect();
+
     let mut child_types: HashSet<String> = HashSet::new();
     let mut has_text = false;
     collect_content_refs(&elem.content, defs, &mut child_types, &mut has_text);
@@ -2071,6 +2382,9 @@ fn generate_mei_serialize_impl_for_element(
         if elem.ident == parent && defs.elements.contains_key(child) {
             child_types.insert(child.to_string());
         }
+    }
+    if EXTRA_TEXT_CONTENT.contains(&elem.ident.as_str()) {
+        has_text = true;
     }
 
     let has_children = !child_types.is_empty() || has_text;
@@ -2099,6 +2413,7 @@ fn generate_mei_serialize_impl_for_element(
                 let mut attrs = Vec::new();
                 #(#collect_lines)*
                 #(#local_collect_lines)*
+                #(#extra_attr_collect_lines)*
                 attrs
             }
 
@@ -2381,6 +2696,18 @@ fn generate_mei_deserialize_impl_for_element(elem: &Element, defs: &OddDefinitio
         })
         .collect();
 
+    // EXTRA_ATTRS: extract extra local attributes not in the RNG schema
+    let extra_attr_extract_lines: Vec<TokenStream> = EXTRA_ATTRS
+        .iter()
+        .filter(|(e, _)| *e == elem.ident)
+        .filter(|(_, a)| !elem.local_attributes.iter().any(|la| la.ident == *a))
+        .map(|(_, attr_name)| {
+            let field_name =
+                make_safe_ident(&attr_name.replace(['.', '-', ':'], "_").to_snake_case());
+            quote! { extract_attr!(attrs, #attr_name, string result.#field_name); }
+        })
+        .collect();
+
     let mut child_types: HashSet<String> = HashSet::new();
     let mut has_text = false;
     collect_content_refs(&elem.content, defs, &mut child_types, &mut has_text);
@@ -2388,6 +2715,9 @@ fn generate_mei_deserialize_impl_for_element(elem: &Element, defs: &OddDefinitio
         if elem.ident == parent && defs.elements.contains_key(child) {
             child_types.insert(child.to_string());
         }
+    }
+    if EXTRA_TEXT_CONTENT.contains(&elem.ident.as_str()) {
+        has_text = true;
     }
 
     let has_children = !child_types.is_empty() || has_text;
@@ -2509,6 +2839,7 @@ fn generate_mei_deserialize_impl_for_element(elem: &Element, defs: &OddDefinitio
                 let mut result = #name::default();
                 #(#extract_lines)*
                 #(#local_extract_lines)*
+                #(#extra_attr_extract_lines)*
                 #children_parsing
                 Ok(result)
             }

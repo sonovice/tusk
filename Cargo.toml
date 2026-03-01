@@ -8,6 +8,9 @@ members = [
     "crates/formats/lilypond",
     "crates/bindings/cli",
 
+    # Roundtrip tests (consolidated)
+    "tests/roundtrip",
+
     # Format codegen (standalone, no cross-deps)
     "crates/formats/mei/codegen",
     "crates/formats/musicxml/codegen",
@@ -15,7 +18,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "1.1.0"
+version = "1.2.0"
 edition = "2024"
 authors = ["Simon Waloschek"]
 license = "MIT"

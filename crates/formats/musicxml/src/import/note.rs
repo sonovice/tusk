@@ -489,8 +489,11 @@ pub fn convert_chord(
         .children
         .iter()
         .filter_map(|cc| {
-            let ChordChild::Note(note) = cc;
-            note.common.xml_id.clone()
+            if let ChordChild::Note(note) = cc {
+                note.common.xml_id.clone()
+            } else {
+                None
+            }
         })
         .collect();
     let chord_id = mei_chord.common.xml_id.clone().unwrap_or_default();
@@ -558,7 +561,10 @@ fn convert_articulations(
     if let Some(ref notations) = note.notations {
         if let Some(ref artics) = notations.articulations {
             let tokens = articulations_to_mei(artics);
-            mei_note.note_anl.artic = tokens.first().copied();
+            mei_note.note_anl.artic = tokens
+                .first()
+                .copied()
+                .map(|a| tusk_model::SpaceSeparated::new(vec![a]));
         }
     }
 }
@@ -1504,7 +1510,8 @@ fn process_technical(
     // Up-bow / down-bow → native MEI @artic + TechArticulation in NoteExtras
     for v in &tech.up_bow {
         if mei_note.note_anl.artic.is_none() {
-            mei_note.note_anl.artic = Some(DataArticulation::Upbow);
+            mei_note.note_anl.artic =
+                Some(tusk_model::SpaceSeparated::new(vec![DataArticulation::Upbow]));
         }
         let mut data = TechnicalDetailData::UpBow;
         // For tech-artic with placement, use TechArticulation wrapper
@@ -1526,7 +1533,8 @@ fn process_technical(
     }
     for v in &tech.down_bow {
         if mei_note.note_anl.artic.is_none() {
-            mei_note.note_anl.artic = Some(DataArticulation::Dnbow);
+            mei_note.note_anl.artic =
+                Some(tusk_model::SpaceSeparated::new(vec![DataArticulation::Dnbow]));
         }
         let placement_str = match v.placement {
             Some(AboveBelow::Below) => Some("below"),
@@ -1567,7 +1575,8 @@ fn process_technical(
     // Snap-pizzicato → native MEI @artic + TechArticulation
     for v in &tech.snap_pizzicato {
         if mei_note.note_anl.artic.is_none() {
-            mei_note.note_anl.artic = Some(DataArticulation::Snap);
+            mei_note.note_anl.artic =
+                Some(tusk_model::SpaceSeparated::new(vec![DataArticulation::Snap]));
         }
         let placement_str = match v.placement {
             Some(AboveBelow::Below) => Some("below"),
@@ -1612,7 +1621,8 @@ fn process_technical(
     for v in &tech.stopped {
         if v.smufl.is_none() {
             if mei_note.note_anl.artic.is_none() {
-                mei_note.note_anl.artic = Some(DataArticulation::Stop);
+                mei_note.note_anl.artic =
+                    Some(tusk_model::SpaceSeparated::new(vec![DataArticulation::Stop]));
             }
             let placement_str = match v.placement {
                 Some(AboveBelow::Below) => Some("below"),
@@ -3146,7 +3156,7 @@ mod tests {
             .children
             .iter()
             .filter_map(|c| {
-                let ChordChild::Note(n) = c;
+                let ChordChild::Note(n) = c else { return None };
                 n.note_log.pname.as_ref().map(|p| p.0.as_str())
             })
             .collect();
@@ -3176,9 +3186,12 @@ mod tests {
         let notes: Vec<_> = mei_chord
             .children
             .iter()
-            .map(|c| {
-                let ChordChild::Note(n) = c;
-                n.as_ref()
+            .filter_map(|c| {
+                if let ChordChild::Note(n) = c {
+                    Some(n.as_ref())
+                } else {
+                    None
+                }
             })
             .collect();
 

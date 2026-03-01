@@ -332,10 +332,29 @@ fn convert_to_relative(items: &mut [Music], ref_step: char, ref_oct: i8) -> (cha
                     }
                 }
             }
-            Music::Sequential(inner) | Music::Simultaneous(inner) => {
+            Music::Sequential(inner) => {
                 let (s, o) = convert_to_relative(inner, current_step, current_oct);
                 current_step = s;
                 current_oct = o;
+            }
+            Music::Simultaneous(inner) => {
+                // In \relative mode, each voice in << >> resets to the
+                // entering reference pitch. After << >>, the reference
+                // comes from the first voice only.
+                let enter_step = current_step;
+                let enter_oct = current_oct;
+                let mut first_result = None;
+                for voice in inner.iter_mut() {
+                    let (s, o) =
+                        convert_to_relative_music(voice, enter_step, enter_oct);
+                    if first_result.is_none() {
+                        first_result = Some((s, o));
+                    }
+                }
+                if let Some((s, o)) = first_result {
+                    current_step = s;
+                    current_oct = o;
+                }
             }
             _ => {}
         }
@@ -346,8 +365,17 @@ fn convert_to_relative(items: &mut [Music], ref_step: char, ref_oct: i8) -> (cha
 /// Convert a single Music node from absolute to relative.
 fn convert_to_relative_music(music: &mut Music, ref_step: char, ref_oct: i8) -> (char, i8) {
     match music {
-        Music::Sequential(items) | Music::Simultaneous(items) => {
-            convert_to_relative(items, ref_step, ref_oct)
+        Music::Sequential(items) => convert_to_relative(items, ref_step, ref_oct),
+        Music::Simultaneous(items) => {
+            // Each voice resets to entering reference
+            let mut first_result = None;
+            for voice in items.iter_mut() {
+                let (s, o) = convert_to_relative_music(voice, ref_step, ref_oct);
+                if first_result.is_none() {
+                    first_result = Some((s, o));
+                }
+            }
+            first_result.unwrap_or((ref_step, ref_oct))
         }
         _ => convert_to_relative(std::slice::from_mut(music), ref_step, ref_oct),
     }

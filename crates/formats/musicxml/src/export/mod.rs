@@ -437,11 +437,13 @@ fn credits_from_pg_head(
                     PgHeadChild::AnchoredText(at) => {
                         let mut t = String::new();
                         for at_child in &at.children {
-                            let AnchoredTextChild::Text(s) = at_child;
-                            t.push_str(s);
+                            if let AnchoredTextChild::Text(s) = at_child {
+                                t.push_str(s);
+                            }
                         }
                         t
                     }
+                    _ => continue,
                 };
                 if !text.is_empty() {
                     credits.push(Credit {

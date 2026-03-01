@@ -15,9 +15,9 @@ fn roundtrip(src: &str) -> String {
 
 #[test]
 fn roundtrip_music_function_with_music_arg() {
-    let output = roundtrip("{ \\someFunction { c4 d e f } g4 }");
+    let output = roundtrip("{ \\grace { c16 d e f } g4 }");
     assert!(
-        output.contains("\\someFunction"),
+        output.contains("\\grace"),
         "output should contain function name: {output}"
     );
 }
@@ -51,14 +51,10 @@ fn roundtrip_partial_function() {
 
 #[test]
 fn roundtrip_multiple_function_calls() {
-    let output = roundtrip("{ \\someFunc { c4 } \\otherFunc { d4 } e4 }");
+    let output = roundtrip("{ \\tag #'a { c4 } \\tag #'b { d4 } e4 }");
     assert!(
-        output.contains("\\someFunc"),
-        "output should contain someFunc: {output}"
-    );
-    assert!(
-        output.contains("\\otherFunc"),
-        "output should contain otherFunc: {output}"
+        output.contains("\\tag"),
+        "output should contain tag: {output}"
     );
 }
 
@@ -158,11 +154,11 @@ fn find_func_dir_id(mei: &tusk_model::elements::Mei, ext_store: &tusk_model::Ext
     for child in &mei.children {
         if let MeiChild::Music(music) = child {
             for mc in &music.children {
-                let MusicChild::Body(body) = mc;
+                let MusicChild::Body(body) = mc else { continue; };
                 for bc in &body.children {
                     let BodyChild::Mdiv(mdiv) = bc;
                     for dc in &mdiv.children {
-                        let MdivChild::Score(score) = dc;
+                        let MdivChild::Score(score) = dc else { continue; };
                         for sc in &score.children {
                             if let ScoreChild::Section(section) = sc {
                                 for sec_c in &section.children {

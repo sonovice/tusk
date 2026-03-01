@@ -193,8 +193,9 @@ pub fn extract_label_text(staff_grp: &tusk_model::elements::StaffGrp) -> Option<
         if let StaffGrpChild::Label(label) = child {
             let mut text = String::new();
             for label_child in &label.children {
-                let LabelChild::Text(t) = label_child;
-                text.push_str(t);
+                if let LabelChild::Text(t) = label_child {
+                    text.push_str(t);
+                }
             }
             if !text.is_empty() {
                 return Some(text);
@@ -212,8 +213,9 @@ pub fn extract_label_abbr_text(staff_grp: &tusk_model::elements::StaffGrp) -> Op
         if let StaffGrpChild::LabelAbbr(label_abbr) = child {
             let mut text = String::new();
             for label_child in &label_abbr.children {
-                let LabelAbbrChild::Text(t) = label_child;
-                text.push_str(t);
+                if let LabelAbbrChild::Text(t) = label_child {
+                    text.push_str(t);
+                }
             }
             if !text.is_empty() {
                 return Some(text);
@@ -231,8 +233,9 @@ pub fn extract_staff_def_label(staff_def: &tusk_model::elements::StaffDef) -> Op
         if let StaffDefChild::Label(label) = child {
             let mut text = String::new();
             for label_child in &label.children {
-                let LabelChild::Text(t) = label_child;
-                text.push_str(t);
+                if let LabelChild::Text(t) = label_child {
+                    text.push_str(t);
+                }
             }
             if !text.is_empty() {
                 return Some(text);
@@ -250,8 +253,9 @@ pub fn extract_staff_def_label_abbr(staff_def: &tusk_model::elements::StaffDef) 
         if let StaffDefChild::LabelAbbr(label_abbr) = child {
             let mut text = String::new();
             for label_child in &label_abbr.children {
-                let LabelAbbrChild::Text(t) = label_child;
-                text.push_str(t);
+                if let LabelAbbrChild::Text(t) = label_child {
+                    text.push_str(t);
+                }
             }
             if !text.is_empty() {
                 return Some(text);
@@ -268,7 +272,7 @@ pub fn extract_title_from_file_desc(file_desc: &tusk_model::elements::FileDesc) 
     for child in &file_desc.children {
         if let FileDescChild::TitleStmt(title_stmt) = child {
             for ts_child in &title_stmt.children {
-                let TitleStmtChild::Title(title) = ts_child;
+                let TitleStmtChild::Title(title) = ts_child else { continue };
                 // Collect text content from title children
                 let mut text = String::new();
                 for title_child in &title.children {
@@ -291,9 +295,12 @@ pub fn find_body_in_music(
 ) -> Option<&tusk_model::elements::Body> {
     use tusk_model::elements::MusicChild;
 
-    music.children.first().map(|child| {
-        let MusicChild::Body(body) = child;
-        body.as_ref()
+    music.children.first().and_then(|child| {
+        if let MusicChild::Body(body) = child {
+            Some(body.as_ref())
+        } else {
+            None
+        }
     })
 }
 
@@ -303,9 +310,12 @@ pub fn find_first_mdiv_in_body(
 ) -> Option<&tusk_model::elements::Mdiv> {
     use tusk_model::elements::BodyChild;
 
-    body.children.first().map(|child| {
-        let BodyChild::Mdiv(mdiv) = child;
-        mdiv.as_ref()
+    body.children.first().and_then(|child| {
+        if let BodyChild::Mdiv(mdiv) = child {
+            Some(mdiv.as_ref())
+        } else {
+            None
+        }
     })
 }
 
@@ -315,9 +325,12 @@ pub fn find_score_in_mdiv(
 ) -> Option<&tusk_model::elements::Score> {
     use tusk_model::elements::MdivChild;
 
-    mdiv.children.first().map(|child| {
-        let MdivChild::Score(score) = child;
-        score.as_ref()
+    mdiv.children.first().and_then(|child| {
+        if let MdivChild::Score(score) = child {
+            Some(score.as_ref())
+        } else {
+            None
+        }
     })
 }
 

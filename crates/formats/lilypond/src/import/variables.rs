@@ -157,6 +157,10 @@ pub(super) fn resolve_identifiers(music: &Music, var_map: &HashMap<String, Music
         Music::LyricMode { body } => Music::LyricMode {
             body: Box::new(resolve_identifiers(body, var_map)),
         },
+        Music::LyricsTo { voice_id, lyrics } => Music::LyricsTo {
+            voice_id: voice_id.clone(),
+            lyrics: Box::new(resolve_identifiers(lyrics, var_map)),
+        },
         Music::Once { music: inner } => Music::Once {
             music: Box::new(resolve_identifiers(inner, var_map)),
         },

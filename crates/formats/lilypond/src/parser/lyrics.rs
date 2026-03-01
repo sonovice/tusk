@@ -135,7 +135,18 @@ impl<'src> Parser<'src> {
                 self.advance()?;
                 Ok(Music::BarCheck)
             }
-            // Identifier reference (e.g. \markup, \set, etc.)
+            // \markup in lyrics: parse as a lyric syllable with markup content
+            Token::Markup => {
+                let markup = self.parse_markup()?;
+                let duration = self.parse_optional_duration()?;
+                let post_events = self.parse_lyric_post_events();
+                Ok(Music::LyricMarkup(LyricMarkupEvent {
+                    markup,
+                    duration,
+                    post_events,
+                }))
+            }
+            // Identifier reference (e.g. \set, etc.)
             Token::EscapedWord(_) => {
                 let tok = self.advance()?;
                 match tok.token {
@@ -161,9 +172,12 @@ impl<'src> Parser<'src> {
             }
             // Underscore alone as lyric skip (LilyPond's `_` in lyric mode)
             Token::Underscore => {
-                self.advance()?;
-                // Check for `__` (extender) — but standalone `_` is a skip
-                if *self.peek() == Token::Underscore {
+                let first = self.advance()?;
+                // Check for `__` (extender) — two ADJACENT underscores with no whitespace.
+                // `_ _` (with whitespace) is two separate lyric skips.
+                if *self.peek() == Token::Underscore
+                    && first.span.end == self.current.span.start
+                {
                     // This is actually `__` at the start — not valid as a standalone element
                     // Treat as skip with extender
                     self.advance()?;
@@ -203,29 +217,35 @@ impl<'src> Parser<'src> {
         let mut events = Vec::new();
         loop {
             match self.peek() {
-                // `--` lyric hyphen: two consecutive Dash tokens
+                // `--` lyric hyphen: two ADJACENT Dash tokens (no whitespace)
                 Token::Dash => {
                     let saved = self.current.clone();
                     let _ = self.advance();
-                    if *self.peek() == Token::Dash {
+                    if *self.peek() == Token::Dash
+                        && saved.span.end == self.current.span.start
+                    {
                         let _ = self.advance();
                         events.push(PostEvent::LyricHyphen);
                     } else {
-                        // Single dash — backtrack, not a lyric post-event
-                        self.current = saved;
+                        // Single dash or non-adjacent — backtrack properly,
+                        // saving the consumed token as lookahead
+                        self.lookahead = Some(std::mem::replace(&mut self.current, saved));
                         break;
                     }
                 }
-                // `__` lyric extender: two consecutive Underscore tokens
+                // `__` lyric extender: two ADJACENT Underscore tokens (no whitespace)
                 Token::Underscore => {
                     let saved = self.current.clone();
                     let _ = self.advance();
-                    if *self.peek() == Token::Underscore {
+                    if *self.peek() == Token::Underscore
+                        && saved.span.end == self.current.span.start
+                    {
                         let _ = self.advance();
                         events.push(PostEvent::LyricExtender);
                     } else {
-                        // Single underscore — backtrack
-                        self.current = saved;
+                        // Single underscore or non-adjacent — backtrack properly,
+                        // saving the consumed token as lookahead
+                        self.lookahead = Some(std::mem::replace(&mut self.current, saved));
                         break;
                     }
                 }

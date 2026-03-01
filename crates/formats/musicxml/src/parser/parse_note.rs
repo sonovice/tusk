@@ -125,6 +125,7 @@ pub fn parse_note<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
                 b"cue" => cue = Some(Empty),
                 b"chord" => chord = Some(Empty),
                 b"rest" => rest = Some(parse_rest_empty(&e)?),
+                b"unpitched" => unpitched = Some(Unpitched::default()),
                 b"tie" => ties.push(parse_tie(&e)?),
                 b"dot" => dots.push(parse_dot(&e)?),
                 b"instrument" => {

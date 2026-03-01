@@ -14,6 +14,16 @@ use std::path::Path;
 
 use crate::ast::*;
 
+/// Attributes that should be typed as space-separated lists.
+/// Only include attributes that actually appear with multiple values in MEI files
+/// AND where downstream code has been updated to handle the list type.
+const SPACE_SEPARATED_ATTRS: &[&str] = &["artic", "artic.ges"];
+
+/// Attribute define names (RNG) where <list> should produce SpaceSeparated<T>.
+/// Many MEI attributes use <list> in the schema (staff, layer, tie, etc.) but
+/// we only enable SpaceSeparated for defines where downstream code handles it.
+const LIST_ATTR_DEFINES: &[&str] = &["mei_att.duration.additive.attribute.dur"];
+
 /// Parse MEI RNG file and produce OddDefinitions for the generator.
 pub fn parse_rng_file(path: &Path) -> Result<OddDefinitions> {
     let content = fs::read_to_string(path)
@@ -38,6 +48,8 @@ struct RngDefine {
     element_name: Option<String>,
     doc: String,
     att_name: Option<String>,
+    /// True if the attribute value is wrapped in `<list>` (space-separated).
+    has_list: bool,
 }
 
 fn get_attr(e: &BytesStart, key: &[u8]) -> Option<String> {
@@ -95,6 +107,9 @@ fn collect_rng_defines(content: &[u8]) -> Result<HashMap<String, RngDefine>> {
                             b"attribute" => {
                                 cur.att_name = get_attr(&e, b"name");
                             }
+                            b"list" => {
+                                cur.has_list = true;
+                            }
                             b"a:documentation" => {
                                 if let Ok(Event::Text(t)) = reader.read_event_into(&mut buf) {
                                     let s = t.unescape().unwrap_or_default().to_string();
@@ -123,6 +138,9 @@ fn collect_rng_defines(content: &[u8]) -> Result<HashMap<String, RngDefine>> {
                             }
                             b"text" => {
                                 cur.has_text = true;
+                            }
+                            b"list" => {
+                                cur.has_list = true;
                             }
                             _ => {}
                         }
@@ -234,6 +252,19 @@ fn rng_to_odd(defines: &HashMap<String, RngDefine>) -> Result<OddDefinitions> {
                                     .as_ref()
                                     .map(|t| AttributeDataType::Ref(t.clone()))
                             });
+                        // Wrap in List for attributes known to be space-separated lists,
+                        // or where the RNG schema uses <list> AND the define is whitelisted
+                        let datatype = if SPACE_SEPARATED_ATTRS.contains(&an.as_str())
+                            || (attr_def.has_list
+                                && LIST_ATTR_DEFINES.contains(&r.as_str()))
+                        {
+                            datatype.map(|inner| AttributeDataType::List {
+                                inner: Box::new(inner),
+                                min_occurs: 1,
+                            })
+                        } else {
+                            datatype
+                        };
                         attributes.push(Attribute {
                             ident: an.clone(),
                             desc: attr_def.doc.clone(),

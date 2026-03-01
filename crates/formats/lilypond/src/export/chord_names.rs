@@ -301,7 +301,7 @@ fn extract_measure_time_sig(measure: &tusk_model::elements::Measure) -> Option<(
     for mc in &measure.children {
         if let MeasureChild::Staff(staff) = mc {
             for sc in &staff.children {
-                let StaffChild::Layer(layer) = sc;
+                let StaffChild::Layer(layer) = sc else { continue; };
                 for lc in &layer.children {
                     if let LayerChild::MeterSig(ms) = lc {
                         let count: u32 = ms.meter_sig_log.count

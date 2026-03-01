@@ -295,6 +295,19 @@ pub struct LyricEvent {
     pub post_events: Vec<PostEvent>,
 }
 
+/// A lyric event with markup content instead of plain text.
+///
+/// In lyric mode, `\markup { ... }` can serve as a lyric syllable.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LyricMarkupEvent {
+    /// The markup content.
+    pub markup: super::Markup,
+    /// Duration; `None` means "use default/previous duration".
+    pub duration: Option<super::Duration>,
+    /// Post-events (hyphens, extenders, etc.) attached after the duration.
+    pub post_events: Vec<PostEvent>,
+}
+
 /// A chord repetition event (`q` with optional duration + post-events).
 ///
 /// Repeats the pitches of the most recent chord. Corresponds to

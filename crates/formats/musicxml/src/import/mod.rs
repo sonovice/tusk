@@ -466,9 +466,12 @@ mod tests {
                 let title = ts
                     .children
                     .iter()
-                    .map(|c| {
-                        let tusk_model::elements::TitleStmtChild::Title(t) = c;
-                        t
+                    .filter_map(|c| {
+                        if let tusk_model::elements::TitleStmtChild::Title(t) = c {
+                            Some(t)
+                        } else {
+                            None
+                        }
                     })
                     .next();
                 assert!(title.is_some());
@@ -554,7 +557,7 @@ mod tests {
         for child in &file_desc.children {
             if let FileDescChild::TitleStmt(ts) = child {
                 for ts_child in &ts.children {
-                    let TitleStmtChild::Title(title) = ts_child;
+                    let TitleStmtChild::Title(title) = ts_child else { continue };
                     for t_child in &title.children {
                         let TitleChild::Text(s) = t_child else {
                             continue;

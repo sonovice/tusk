@@ -51,15 +51,56 @@ pub(super) fn extract_voices(music: &Music) -> Vec<Vec<&Music>> {
     vec![vec![music]]
 }
 
-/// Unwrap `\relative` / `\transpose` / `\fixed` / single-item Sequential
-/// to find the structurally significant inner music.
+/// Unwrap structural wrappers to find inner `Simultaneous` music for voice splitting.
+///
+/// Traverses `\relative`, `\transpose`, `\fixed`, single-item Sequential,
+/// ContextedMusic (Voice etc.), and Sequential-with-prefix-items to find
+/// the inner `<< { } { } >>` that represents multiple voices.
 fn unwrap_pitch_context(music: &Music) -> &Music {
     match music {
         Music::Relative { body, .. } | Music::Fixed { body, .. } => unwrap_pitch_context(body),
-        Music::Transpose { body, .. } => unwrap_pitch_context(body),
+        Music::Transpose { body, .. } | Music::DrumMode { body } => unwrap_pitch_context(body),
         Music::Sequential(items) if items.len() == 1 => unwrap_pitch_context(&items[0]),
+        // Sequential with a Simultaneous as last item preceded by non-note prefix
+        // items (e.g. `{ \set ... << { } { } >> }`) — unwrap to the Simultaneous
+        Music::Sequential(items) if items.len() > 1 => {
+            if let Some(last) = items.last()
+                && matches!(last, Music::Simultaneous(_))
+                && items[..items.len() - 1].iter().all(|m| is_prefix_item(m))
+            {
+                last
+            } else {
+                music
+            }
+        }
+        // Unwrap ContextedMusic (e.g. `\context Voice = "name" { ... }`)
+        // to find inner Simultaneous for voice splitting
+        Music::ContextedMusic { music: inner, .. } => {
+            let unwrapped = unwrap_pitch_context(inner);
+            if matches!(unwrapped, Music::Simultaneous(_)) {
+                unwrapped
+            } else {
+                music
+            }
+        }
         _ => music,
     }
+}
+
+/// Check if a music item is a non-note prefix (settings, overrides, etc.)
+/// that can be hoisted before voice splitting.
+fn is_prefix_item(music: &Music) -> bool {
+    matches!(
+        music,
+        Music::Set { .. }
+            | Music::Unset { .. }
+            | Music::Override { .. }
+            | Music::Revert { .. }
+            | Music::Identifier(_)
+            | Music::MusicFunction { .. }
+            | Music::BarCheck
+            | Music::LineComment(_)
+    )
 }
 
 /// Try to split Simultaneous music into separate voice streams.

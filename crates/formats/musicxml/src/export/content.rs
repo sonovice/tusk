@@ -45,8 +45,9 @@ fn pre_assign_slur_numbers(
         for child in &measure.children {
             if let MeasureChild::Staff(staff) = child {
                 for sc in &staff.children {
-                    let StaffChild::Layer(layer) = sc;
-                    collect_note_ids_from_layer(&layer.children, m_idx, &mut note_to_measure);
+                    if let StaffChild::Layer(layer) = sc {
+                        collect_note_ids_from_layer(&layer.children, m_idx, &mut note_to_measure);
+                    }
                 }
             }
         }
@@ -160,9 +161,10 @@ fn collect_note_ids_from_layer(
                 }
                 // Also collect IDs from notes within the chord
                 for note in &chord.children {
-                    let tusk_model::elements::ChordChild::Note(n) = note;
-                    if let Some(ref id) = n.common.xml_id {
-                        map.insert(id.clone(), measure_idx);
+                    if let tusk_model::elements::ChordChild::Note(n) = note {
+                        if let Some(ref id) = n.common.xml_id {
+                            map.insert(id.clone(), measure_idx);
+                        }
                     }
                 }
             }
@@ -185,6 +187,7 @@ fn collect_note_ids_from_layer(
             | LayerChild::KeySig(_)
             | LayerChild::MeterSig(_)
             | LayerChild::Clef(_) => {}
+            _ => {}
         }
     }
 }
@@ -214,9 +217,10 @@ fn collect_note_ids_from_beam(
                     map.insert(id.clone(), measure_idx);
                 }
                 for note in &chord.children {
-                    let tusk_model::elements::ChordChild::Note(n) = note;
-                    if let Some(ref id) = n.common.xml_id {
-                        map.insert(id.clone(), measure_idx);
+                    if let tusk_model::elements::ChordChild::Note(n) = note {
+                        if let Some(ref id) = n.common.xml_id {
+                            map.insert(id.clone(), measure_idx);
+                        }
                     }
                 }
             }
@@ -229,6 +233,7 @@ fn collect_note_ids_from_beam(
             BeamChild::FTrem(ftrem) => {
                 collect_note_ids_from_ftrem(&ftrem.children, measure_idx, map);
             }
+            _ => {}
         }
     }
 }
@@ -252,9 +257,10 @@ fn collect_note_ids_from_btrem(
                     map.insert(id.clone(), measure_idx);
                 }
                 for note in &chord.children {
-                    let tusk_model::elements::ChordChild::Note(n) = note;
-                    if let Some(ref id) = n.common.xml_id {
-                        map.insert(id.clone(), measure_idx);
+                    if let tusk_model::elements::ChordChild::Note(n) = note {
+                        if let Some(ref id) = n.common.xml_id {
+                            map.insert(id.clone(), measure_idx);
+                        }
                     }
                 }
             }
@@ -281,9 +287,10 @@ fn collect_note_ids_from_ftrem(
                     map.insert(id.clone(), measure_idx);
                 }
                 for note in &chord.children {
-                    let tusk_model::elements::ChordChild::Note(n) = note;
-                    if let Some(ref id) = n.common.xml_id {
-                        map.insert(id.clone(), measure_idx);
+                    if let tusk_model::elements::ChordChild::Note(n) = note {
+                        if let Some(ref id) = n.common.xml_id {
+                            map.insert(id.clone(), measure_idx);
+                        }
                     }
                 }
             }
@@ -739,6 +746,7 @@ fn collect_staff_defs_from_staff_grp<'a>(
             // These StaffGrp children carry display/grouping metadata only —
             // not needed when collecting staffDefs for part→staff mapping.
             StaffGrpChild::GrpSym(_) | StaffGrpChild::Label(_) | StaffGrpChild::LabelAbbr(_) => {}
+            _ => {}
         }
     }
 }
@@ -764,6 +772,7 @@ fn collect_measures_from_section<'a>(
             SectionChild::Expansion(_) => {
                 tracing::debug!("Skipping MEI <expansion> — no MusicXML equivalent");
             }
+            _ => {}
         }
     }
 }
@@ -787,6 +796,7 @@ fn collect_measures_from_ending<'a>(
             EndingChild::Expansion(_) => {
                 tracing::debug!("Skipping MEI <expansion> inside <ending>");
             }
+            _ => {}
         }
     }
 
@@ -1310,6 +1320,7 @@ fn convert_direction_events(
             | MeasureChild::MNum(_)
             | MeasureChild::Breath(_)
             | MeasureChild::Caesura(_) => {}
+            _ => {}
         }
     }
     Ok(())
@@ -1595,25 +1606,32 @@ fn resolve_chord_to_first_note_id(
     for mc in &mei_measure.children {
         if let MeasureChild::Staff(staff) = mc {
             for sc in &staff.children {
-                let tusk_model::elements::StaffChild::Layer(layer) = sc;
-                for lc in &layer.children {
-                    if let tusk_model::elements::LayerChild::Chord(chord) = lc {
-                        if chord.common.xml_id.as_deref() == Some(id) {
-                            return chord.children.first().and_then(|cc| {
-                                let tusk_model::elements::ChordChild::Note(n) = cc;
-                                n.common.xml_id.clone()
-                            });
-                        }
-                    }
-                    // Also check inside beams
-                    if let tusk_model::elements::LayerChild::Beam(beam) = lc {
-                        for bc in &beam.children {
-                            if let tusk_model::elements::BeamChild::Chord(chord) = bc {
-                                if chord.common.xml_id.as_deref() == Some(id) {
-                                    return chord.children.first().and_then(|cc| {
-                                        let tusk_model::elements::ChordChild::Note(n) = cc;
+                if let tusk_model::elements::StaffChild::Layer(layer) = sc {
+                    for lc in &layer.children {
+                        if let tusk_model::elements::LayerChild::Chord(chord) = lc {
+                            if chord.common.xml_id.as_deref() == Some(id) {
+                                return chord.children.iter().find_map(|cc| {
+                                    if let tusk_model::elements::ChordChild::Note(n) = cc {
                                         n.common.xml_id.clone()
-                                    });
+                                    } else {
+                                        None
+                                    }
+                                });
+                            }
+                        }
+                        // Also check inside beams
+                        if let tusk_model::elements::LayerChild::Beam(beam) = lc {
+                            for bc in &beam.children {
+                                if let tusk_model::elements::BeamChild::Chord(chord) = bc {
+                                    if chord.common.xml_id.as_deref() == Some(id) {
+                                        return chord.children.iter().find_map(|cc| {
+                                            if let tusk_model::elements::ChordChild::Note(n) = cc {
+                                                n.common.xml_id.clone()
+                                            } else {
+                                                None
+                                            }
+                                        });
+                                    }
                                 }
                             }
                         }
@@ -1966,6 +1984,7 @@ fn convert_ornament_events(
             | MeasureChild::Fb(_)
             | MeasureChild::Breath(_)
             | MeasureChild::Caesura(_) => {}
+            _ => {}
         }
     }
     Ok(())
@@ -2463,10 +2482,11 @@ fn convert_staff_content(
     use crate::model::attributes::Attributes;
 
     // Find all layers in the staff
-    let layer_count = staff.children.len();
-    for (layer_idx, child) in staff.children.iter().enumerate() {
-        let StaffChild::Layer(layer) = child;
-
+    let layers: Vec<_> = staff.children.iter().filter_map(|c| {
+        if let StaffChild::Layer(layer) = c { Some(layer) } else { None }
+    }).collect();
+    let layer_count = layers.len();
+    for (layer_idx, layer) in layers.iter().enumerate() {
         // Derive MusicXML voice number from MEI layer @n and staff number.
         // For single-staff parts: voice = layer @n (typically 1).
         // For multi-staff parts: offset by (staff-1) * layers_per_staff
@@ -2593,6 +2613,7 @@ fn convert_staff_content(
                 LayerChild::KeySig(_) | LayerChild::MeterSig(_) | LayerChild::Clef(_) => {
                     unreachable!("inline attribute elements handled before this match")
                 }
+                _ => {}
             }
             i += 1;
         }
@@ -2657,7 +2678,12 @@ fn merge_inline_keysig(
 
     if let Some(ref sig) = keysig.key_sig_log.sig {
         if let Some(fifths) = convert_mei_keysig_to_fifths(&sig.0) {
-            attrs.keys.push(Key::traditional(fifths, None));
+            let mut key = Key::traditional(fifths, None);
+            // Restore print-object="yes" from visible=true (redundant-but-forced keySig).
+            if keysig.key_sig_vis.visible == Some(tusk_model::data::DataBoolean::True) {
+                key.print_object = Some(crate::model::data::YesNo::Yes);
+            }
+            attrs.keys.push(key);
         }
     }
 }
@@ -2719,6 +2745,10 @@ fn merge_inline_clef(
         .and_then(|s| s.parse::<u32>().ok())
         .unwrap_or(staff_n as u32);
     mxml_clef.number = Some(clef_number);
+    // Restore print-object="yes" from visible=true (redundant-but-forced clef).
+    if clef.clef_vis.visible == Some(tusk_model::data::DataBoolean::True) {
+        mxml_clef.print_object = Some(crate::model::data::YesNo::Yes);
+    }
 
     attrs.clefs.push(mxml_clef);
 }
@@ -2838,6 +2868,7 @@ fn collect_beam_events(
                     events.push((first_idx, false));
                 }
             }
+            _ => {}
         }
     }
     Ok(events)
@@ -3051,8 +3082,9 @@ fn calculate_smart_divisions(mei_measures: &[&tusk_model::elements::Measure]) ->
         for child in &measure.children {
             if let MeasureChild::Staff(staff) = child {
                 for sc in &staff.children {
-                    let StaffChild::Layer(layer) = sc;
-                    find_smallest_duration_in_layer(&layer.children, &mut smallest_duration);
+                    if let StaffChild::Layer(layer) = sc {
+                        find_smallest_duration_in_layer(&layer.children, &mut smallest_duration);
+                    }
                 }
             }
         }
@@ -3124,6 +3156,7 @@ fn find_smallest_duration_in_layer(
             | LayerChild::KeySig(_)
             | LayerChild::MeterSig(_)
             | LayerChild::Clef(_) => {}
+            _ => {}
         }
     }
 }
@@ -3171,6 +3204,7 @@ fn find_smallest_duration_in_beam(
             BeamChild::FTrem(ftrem) => {
                 find_smallest_duration_in_ftrem(&ftrem.children, smallest);
             }
+            _ => {}
         }
     }
 }
@@ -3730,9 +3764,12 @@ fn convert_notation_dynamics(
         let text_content: String = dynam
             .children
             .iter()
-            .map(|child| {
-                let DynamChild::Text(t) = child;
-                t.as_str()
+            .filter_map(|child| {
+                if let DynamChild::Text(t) = child {
+                    Some(t.as_str())
+                } else {
+                    None
+                }
             })
             .collect::<Vec<_>>()
             .join("");

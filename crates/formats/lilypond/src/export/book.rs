@@ -25,13 +25,13 @@ pub(super) fn find_book_entries<'a>(mei: &'a Mei, ext_store: &ExtensionStore) ->
     for child in &mei.children {
         if let MeiChild::Music(music) = child {
             for mc in &music.children {
-                let tusk_model::elements::MusicChild::Body(body) = mc;
+                let tusk_model::elements::MusicChild::Body(body) = mc else { continue; };
                 for bc in &body.children {
                     let BodyChild::Mdiv(mdiv) = bc;
                     let bs = mdiv.common.xml_id.as_deref().and_then(|id| ext_store.book_structure(id));
                     if let Some(bs) = bs {
                         for mdiv_child in &mdiv.children {
-                            let tusk_model::elements::MdivChild::Score(score) = mdiv_child;
+                            let tusk_model::elements::MdivChild::Score(score) = mdiv_child else { continue; };
                             entries.push(MdivEntry {
                                 score,
                                 book_structure: bs.clone(),

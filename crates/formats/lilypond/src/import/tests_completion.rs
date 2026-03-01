@@ -15,11 +15,11 @@ fn first_staff(mei: &Mei) -> Option<&Staff> {
     for child in &mei.children {
         if let MeiChild::Music(music) = child {
             for mc in &music.children {
-                let tusk_model::elements::MusicChild::Body(body) = mc;
+                let tusk_model::elements::MusicChild::Body(body) = mc else { continue; };
                 for bc in &body.children {
                     let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
                     for dc in &mdiv.children {
-                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        let tusk_model::elements::MdivChild::Score(score) = dc else { continue; };
                         for sc in &score.children {
                             if let ScoreChild::Section(section) = sc {
                                 for sec_c in &section.children {
@@ -45,8 +45,7 @@ fn first_staff(mei: &Mei) -> Option<&Staff> {
 
 fn first_layer_children(mei: &Mei) -> &Vec<tusk_model::elements::LayerChild> {
     let staff = first_staff(mei).expect("should have a staff");
-    if let Some(sc) = staff.children.first() {
-        let StaffChild::Layer(layer) = sc;
+    if let Some(StaffChild::Layer(layer)) = staff.children.first() {
         return &layer.children;
     }
     panic!("no layer found");
@@ -56,11 +55,11 @@ fn measure_children(mei: &Mei) -> &Vec<tusk_model::elements::MeasureChild> {
     for child in &mei.children {
         if let MeiChild::Music(music) = child {
             for mc in &music.children {
-                let tusk_model::elements::MusicChild::Body(body) = mc;
+                let tusk_model::elements::MusicChild::Body(body) = mc else { continue; };
                 for bc in &body.children {
                     let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
                     for dc in &mdiv.children {
-                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        let tusk_model::elements::MdivChild::Score(score) = dc else { continue; };
                         for sc in &score.children {
                             if let ScoreChild::Section(section) = sc {
                                 for sec_c in &section.children {
@@ -350,7 +349,7 @@ fn property_override_stored_in_ext_store() {
 
 #[test]
 fn music_function_stored_in_ext_store() {
-    let src = r#"{ \tag "part" c4 }"#;
+    let src = r#"{ \tag "part" { c4 } d4 }"#;
     let (mei, ext_store) = parse_and_import(src);
     let mc = measure_children(&mei);
     let func_dirs: Vec<_> = mc

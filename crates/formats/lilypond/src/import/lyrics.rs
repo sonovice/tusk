@@ -141,6 +141,9 @@ pub(super) fn extract_lyricsto(music: &Music) -> Option<LyricsInfo> {
 /// Matches syllables to notes 1:1 (in order). Each syllable becomes a
 /// `<verse n="VERSE_NUM"><syl>text</syl></verse>` child on the note.
 ///
+/// Skips grace notes and tied-to notes (matching the export behavior in
+/// `extract_lyrics_from_children`). Rests are also skipped.
+///
 /// `verse_n` is 1-based (first lyrics = verse 1, second = verse 2, etc.)
 pub(super) fn attach_lyrics_to_layer(
     layer_children: &mut [tusk_model::elements::LayerChild],
@@ -155,6 +158,13 @@ pub(super) fn attach_lyrics_to_layer(
         }
         match child {
             tusk_model::elements::LayerChild::Note(note) => {
+                // Skip grace notes and tied-to notes (matching export behavior)
+                if note.note_log.grace.is_some() {
+                    continue;
+                }
+                if is_tied_to(note.note_anl.tie.as_ref()) {
+                    continue;
+                }
                 let syl = &syllables[syl_idx];
                 syl_idx += 1;
                 if !syl.text.is_empty() {
@@ -163,6 +173,13 @@ pub(super) fn attach_lyrics_to_layer(
                 }
             }
             tusk_model::elements::LayerChild::Chord(chord) => {
+                // Skip grace chords and tied-to chords
+                if chord.chord_log.grace.is_some() {
+                    continue;
+                }
+                if is_tied_to(chord.chord_anl.tie.as_ref()) {
+                    continue;
+                }
                 let syl = &syllables[syl_idx];
                 syl_idx += 1;
                 if !syl.text.is_empty() {
@@ -175,11 +192,6 @@ pub(super) fn attach_lyrics_to_layer(
                     }
                 }
             }
-            tusk_model::elements::LayerChild::Rest(_)
-            | tusk_model::elements::LayerChild::MRest(_) => {
-                // Rests consume a syllable slot (skip/silence)
-                syl_idx += 1;
-            }
             tusk_model::elements::LayerChild::Beam(beam) => {
                 // Process notes inside beam
                 for bc in &mut beam.children {
@@ -188,6 +200,12 @@ pub(super) fn attach_lyrics_to_layer(
                     }
                     match bc {
                         tusk_model::elements::BeamChild::Note(note) => {
+                            if note.note_log.grace.is_some() {
+                                continue;
+                            }
+                            if is_tied_to(note.note_anl.tie.as_ref()) {
+                                continue;
+                            }
                             let syl = &syllables[syl_idx];
                             syl_idx += 1;
                             if !syl.text.is_empty() {
@@ -196,6 +214,12 @@ pub(super) fn attach_lyrics_to_layer(
                             }
                         }
                         tusk_model::elements::BeamChild::Chord(chord) => {
+                            if chord.chord_log.grace.is_some() {
+                                continue;
+                            }
+                            if is_tied_to(chord.chord_anl.tie.as_ref()) {
+                                continue;
+                            }
                             let syl = &syllables[syl_idx];
                             syl_idx += 1;
                             if !syl.text.is_empty()
@@ -206,16 +230,20 @@ pub(super) fn attach_lyrics_to_layer(
                                 note.children.push(NoteChild::Verse(Box::new(verse)));
                             }
                         }
-                        tusk_model::elements::BeamChild::Rest(_) => {
-                            syl_idx += 1;
-                        }
+                        // Rests inside beams: skip (no syllable consumed)
                         _ => {}
                     }
                 }
             }
+            // Rests, spaces, clefs: skip (no syllable consumed)
             _ => {}
         }
     }
+}
+
+/// Check if a tie value indicates a tied-to note (middle or terminal).
+fn is_tied_to(tie: Option<&tusk_model::generated::data::DataTie>) -> bool {
+    tie.is_some_and(|t| t.0 == "m" || t.0 == "t")
 }
 
 /// Counter for generating synthetic syl IDs.
@@ -300,7 +328,7 @@ fn collect_syls_from_layer<'a>(
             }
             tusk_model::elements::LayerChild::Chord(chord) => {
                 for cc in &mut chord.children {
-                    let tusk_model::elements::ChordChild::Note(note) = cc;
+                    let tusk_model::elements::ChordChild::Note(note) = cc else { continue; };
                     collect_syls_from_note_children(&mut note.children, &verse_n_str, syls);
                 }
             }
@@ -312,7 +340,7 @@ fn collect_syls_from_layer<'a>(
                         }
                         tusk_model::elements::BeamChild::Chord(chord) => {
                             for cc in &mut chord.children {
-                                let tusk_model::elements::ChordChild::Note(note) = cc;
+                                let tusk_model::elements::ChordChild::Note(note) = cc else { continue; };
                                 collect_syls_from_note_children(
                                     &mut note.children,
                                     &verse_n_str,

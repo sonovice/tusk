@@ -664,7 +664,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
                         }
                         if tie_pending {
                             for child in &mut mei_chord.children {
-                                let tusk_model::elements::ChordChild::Note(n) = child;
+                                let tusk_model::elements::ChordChild::Note(n) = child else { continue; };
                                 n.note_anl.tie = Some(DataTie::from("t".to_string()));
                             }
                             tie_pending = false;
@@ -677,7 +677,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
                         let pe = post_events.clone();
                         if pe.contains(&PostEvent::Tie) {
                             for child in &mut mei_chord.children {
-                                let tusk_model::elements::ChordChild::Note(n) = child;
+                                let tusk_model::elements::ChordChild::Note(n) = child else { continue; };
                                 match &n.note_anl.tie {
                                     Some(t) if t.0 == "t" => {
                                         n.note_anl.tie = Some(DataTie::from("m".to_string()));

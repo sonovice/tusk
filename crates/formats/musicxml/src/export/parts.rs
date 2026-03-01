@@ -31,14 +31,41 @@ pub fn convert_mei_part_list(
 ) -> ConversionResult<PartList> {
     let mut part_list = PartList::default();
 
+    // Pre-collect all staffDef xml:ids to avoid collisions when
+    // auto-generating IDs for staffDefs that lack one.
+    let mut reserved_ids = std::collections::HashSet::new();
+    for child in &score_def.children {
+        if let ScoreDefChild::StaffGrp(staff_grp) = child {
+            collect_staff_def_ids(staff_grp, &mut reserved_ids);
+        }
+    }
+
     // Find staffGrp in scoreDef children
     for child in &score_def.children {
         if let ScoreDefChild::StaffGrp(staff_grp) = child {
-            convert_mei_staff_grp_to_part_list(staff_grp, &mut part_list, ctx, 1)?;
+            convert_mei_staff_grp_to_part_list(staff_grp, &mut part_list, ctx, 1, &reserved_ids)?;
         }
     }
 
     Ok(part_list)
+}
+
+/// Recursively collect all xml:ids from staffDefs and staffGrps.
+fn collect_staff_def_ids(staff_grp: &StaffGrp, ids: &mut std::collections::HashSet<String>) {
+    if let Some(ref id) = staff_grp.common.xml_id {
+        ids.insert(id.clone());
+    }
+    for child in &staff_grp.children {
+        match child {
+            StaffGrpChild::StaffDef(sd) => {
+                if let Some(ref id) = sd.basic.xml_id {
+                    ids.insert(id.clone());
+                }
+            }
+            StaffGrpChild::StaffGrp(nested) => collect_staff_def_ids(nested, ids),
+            _ => {}
+        }
+    }
 }
 
 /// Recursively convert MEI staffGrp to MusicXML part-list items.
@@ -49,11 +76,24 @@ pub fn convert_mei_staff_grp_to_part_list(
     part_list: &mut PartList,
     ctx: &mut ConversionContext,
     group_num: u32,
+    reserved_ids: &std::collections::HashSet<String>,
 ) -> ConversionResult<u32> {
     use crate::model::data::StartStop;
     use crate::model::elements::PartGroup;
 
     let mut current_group_num = group_num;
+
+    // If this staffGrp itself is a multi-staff part (brace + bar.thru +
+    // direct StaffDef children with no labels), short-circuit to a single
+    // ScorePart.  This handles the case where a top-level staffGrp has
+    // brace+bar.thru with direct StaffDef children (no nested staffGrp wrapper).
+    if is_multi_staff_part(staff_grp) {
+        let score_part = convert_multi_staff_grp_to_score_part(staff_grp, ctx)?;
+        part_list
+            .items
+            .push(PartListItem::ScorePart(Box::new(score_part)));
+        return Ok(current_group_num);
+    }
 
     // Only emit a part-group if this staffGrp has explicit grouping attributes
     // (symbol, bar_thru, label, or group-details label). A plain staffGrp with
@@ -95,7 +135,8 @@ pub fn convert_mei_staff_grp_to_part_list(
     for child in &staff_grp.children {
         match child {
             StaffGrpChild::StaffDef(staff_def) => {
-                let score_part = convert_mei_staff_def_to_score_part(staff_def, ctx)?;
+                let score_part =
+                    convert_mei_staff_def_to_score_part(staff_def, ctx, reserved_ids)?;
                 part_list
                     .items
                     .push(PartListItem::ScorePart(Box::new(score_part)));
@@ -113,6 +154,7 @@ pub fn convert_mei_staff_grp_to_part_list(
                         part_list,
                         ctx,
                         current_group_num,
+                        reserved_ids,
                     )?;
                 }
             }
@@ -201,6 +243,7 @@ pub fn convert_mei_staff_grp_barline(
 fn is_multi_staff_part(staff_grp: &StaffGrp) -> bool {
     let has_bar_thru =
         staff_grp.staff_grp_vis.bar_thru == Some(tusk_model::data::DataBoolean::True);
+    let has_brace = staff_grp.staff_grp_vis.symbol.as_deref() == Some("brace");
 
     let staff_defs: Vec<&StaffDef> = staff_grp
         .children
@@ -220,7 +263,9 @@ fn is_multi_staff_part(staff_grp: &StaffGrp) -> bool {
         .any(|c| matches!(c, StaffGrpChild::StaffGrp(_)));
 
     // Check that individual staffDefs don't have labels
-    // (multi-staff parts have labels on the staffGrp, not individual staves)
+    // (multi-staff parts have labels on the staffGrp, not individual staves).
+    // Exception: brace+bar.thru always indicates a multi-staff instrument
+    // (e.g., piano) even when staves carry redundant labels.
     let staff_defs_have_labels = staff_defs
         .iter()
         .any(|sd| extract_staff_def_label(sd).is_some());
@@ -312,14 +357,23 @@ fn convert_multi_staff_grp_to_score_part(
 pub fn convert_mei_staff_def_to_score_part(
     staff_def: &StaffDef,
     ctx: &mut ConversionContext,
+    reserved_ids: &std::collections::HashSet<String>,
 ) -> ConversionResult<ScorePart> {
-    // Generate part ID from staff number or xml:id
-    let part_id = staff_def
-        .basic
-        .xml_id
-        .clone()
-        .or_else(|| staff_def.n_integer.n.as_ref().map(|n| format!("P{}", n)))
-        .unwrap_or_else(|| ctx.generate_id_with_suffix("part"));
+    // Generate part ID from xml:id or staff number.
+    // Avoid collisions: "P{n}" could clash with another staffDef's xml:id.
+    let part_id = if let Some(id) = staff_def.basic.xml_id.clone() {
+        id
+    } else if let Some(n) = staff_def.n_integer.n.as_ref() {
+        let candidate = format!("P{n}");
+        if reserved_ids.contains(&candidate) {
+            // Collides with an existing xml:id — use a disambiguated ID.
+            format!("P{n}-auto")
+        } else {
+            candidate
+        }
+    } else {
+        ctx.generate_id_with_suffix("part")
+    };
 
     // Extract label (part name) from staffDef children
     let part_name = extract_staff_def_label(staff_def).unwrap_or_default();
@@ -555,7 +609,8 @@ mod tests {
             .push(StaffDefChild::Label(Box::new(label)));
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
-        let result = convert_mei_staff_def_to_score_part(&staff_def, &mut ctx);
+        let no_reserved = std::collections::HashSet::new();
+        let result = convert_mei_staff_def_to_score_part(&staff_def, &mut ctx, &no_reserved);
         assert!(result.is_ok());
 
         let score_part = result.unwrap();
@@ -586,7 +641,8 @@ mod tests {
             .push(StaffDefChild::LabelAbbr(Box::new(label_abbr)));
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
-        let result = convert_mei_staff_def_to_score_part(&staff_def, &mut ctx);
+        let no_reserved = std::collections::HashSet::new();
+        let result = convert_mei_staff_def_to_score_part(&staff_def, &mut ctx, &no_reserved);
         assert!(result.is_ok());
 
         let score_part = result.unwrap();
@@ -604,7 +660,8 @@ mod tests {
         staff_def.n_integer.n = Some("3".to_string());
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
-        let result = convert_mei_staff_def_to_score_part(&staff_def, &mut ctx);
+        let no_reserved = std::collections::HashSet::new();
+        let result = convert_mei_staff_def_to_score_part(&staff_def, &mut ctx, &no_reserved);
         assert!(result.is_ok());
 
         let score_part = result.unwrap();

@@ -1325,6 +1325,7 @@ impl<'a> Serializer<'a> {
                 self.write_music(lyrics);
             }
             Music::Lyric(le) => self.write_lyric_event(le),
+            Music::LyricMarkup(lme) => self.write_lyric_markup_event(lme),
             Music::Markup(m) => {
                 self.out.push_str("\\markup ");
                 self.write_markup(m);
@@ -1493,6 +1494,11 @@ impl<'a> Serializer<'a> {
             SchemeExpr::Bool(true) => self.out.push_str("#t"),
             SchemeExpr::Bool(false) => self.out.push_str("#f"),
             SchemeExpr::Integer(n) => self.out.push_str(&n.to_string()),
+            SchemeExpr::Fraction(n, d) => {
+                self.out.push_str(&n.to_string());
+                self.out.push('/');
+                self.out.push_str(&d.to_string());
+            }
             SchemeExpr::Float(f) => {
                 let s = f.to_string();
                 self.out.push_str(&s);

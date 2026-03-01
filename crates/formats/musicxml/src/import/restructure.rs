@@ -250,9 +250,16 @@ pub fn emit_inline_attribute_changes(
     for key in &attrs.keys {
         if let KeyContent::Traditional(trad) = &key.content {
             let tracked = ctx.tracked_attrs().key_fifths.get(&part_id).copied();
-            if emit_global && tracked.is_some() && tracked != Some(trad.fifths) {
+            // Emit when: value changed, OR print-object="yes" forces display.
+            let force_print = key.print_object == Some(crate::model::data::YesNo::Yes);
+            let changed = tracked != Some(trad.fifths);
+            if emit_global && tracked.is_some() && (changed || force_print) {
                 let mut keysig = tusk_model::elements::KeySig::default();
                 keysig.key_sig_log.sig = Some(convert_key_fifths(trad.fifths));
+                // Mark redundant-but-forced key sigs so export can restore print-object="yes".
+                if !changed && force_print {
+                    keysig.key_sig_vis.visible = Some(tusk_model::data::DataBoolean::True);
+                }
                 inline_children.push(LayerChild::KeySig(Box::new(keysig)));
             }
             ctx.tracked_attrs_mut()
@@ -299,7 +306,9 @@ pub fn emit_inline_attribute_changes(
         );
         let key = (part_id.clone(), local_staff);
         let tracked = ctx.tracked_attrs().clef.get(&key).cloned();
-        if tracked.is_some() && tracked.as_ref() != Some(&new_val) {
+        let force_print = clef.print_object == Some(crate::model::data::YesNo::Yes);
+        let changed = tracked.as_ref() != Some(&new_val);
+        if tracked.is_some() && (changed || force_print) {
             let (shape, line, dis, dis_place) = convert_clef_attributes(clef);
             let mut mei_clef = tusk_model::elements::Clef::default();
             mei_clef.clef_log.shape = shape;
@@ -307,6 +316,10 @@ pub fn emit_inline_attribute_changes(
             mei_clef.clef_log.dis = dis;
             mei_clef.clef_log.dis_place = dis_place;
             mei_clef.event.staff = Some(local_staff.to_string());
+            // Mark redundant-but-forced clefs so export can restore print-object="yes".
+            if !changed && force_print {
+                mei_clef.clef_vis.visible = Some(tusk_model::data::DataBoolean::True);
+            }
             inline_children.push(LayerChild::Clef(Box::new(mei_clef)));
         }
         ctx.tracked_attrs_mut().clef.insert(key, new_val);
@@ -323,8 +336,11 @@ struct BeamRange {
     end: usize,
 }
 
-/// Check if a MusicXML note has a measured tremolo (start/stop/single) ornament.
-fn note_has_tremolo(note: &crate::model::note::Note) -> bool {
+/// Check if a MusicXML note has a fingered tremolo (start/stop) ornament.
+///
+/// Only start/stop (fTrem) counts — single tremolo (bTrem) notes keep their
+/// beam because the beam and tremolo serve independent purposes.
+fn note_has_ftrem(note: &crate::model::note::Note) -> bool {
     if let Some(ref notations) = note.notations {
         if let Some(ref ornaments) = notations.ornaments {
             if let Some(ref t) = ornaments.tremolo {
@@ -332,7 +348,6 @@ fn note_has_tremolo(note: &crate::model::note::Note) -> bool {
                     t.tremolo_type,
                     crate::model::data::TremoloType::Start
                         | crate::model::data::TremoloType::Stop
-                        | crate::model::data::TremoloType::Single
                 );
             }
         }
@@ -346,7 +361,7 @@ fn detect_beam_groups(notes: &[&crate::model::note::Note]) -> Vec<BeamRange> {
     let mut groups = Vec::new();
     let mut beam_start: Option<usize> = None;
     let mut event_index = 0;
-    let mut all_tremolo_in_group = true;
+    let mut all_ftrem_in_group = true;
 
     for note in notes {
         if note.is_chord() {
@@ -364,18 +379,20 @@ fn detect_beam_groups(notes: &[&crate::model::note::Note]) -> Vec<BeamRange> {
 
         if has_begin && beam_start.is_none() {
             beam_start = Some(event_index);
-            all_tremolo_in_group = true;
+            all_ftrem_in_group = true;
         }
 
-        if beam_start.is_some() && !note_has_tremolo(note) {
-            all_tremolo_in_group = false;
+        if beam_start.is_some() && !note_has_ftrem(note) {
+            all_ftrem_in_group = false;
         }
 
         if has_end {
             if let Some(start) = beam_start {
-                // Suppress beam groups where all notes are tremolo —
-                // the tremolo container (bTrem/fTrem) handles the visual grouping.
-                if !all_tremolo_in_group {
+                // Suppress beam groups where all notes are fTrem (fingered tremolo)
+                // — the fTrem container groups start/stop pairs, making the beam
+                // redundant. Single-tremolo (bTrem) notes keep their beam because
+                // beam and tremolo serve independent purposes.
+                if !all_ftrem_in_group {
                     groups.push(BeamRange {
                         start,
                         end: event_index,

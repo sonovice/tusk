@@ -334,25 +334,55 @@ fn attach_lyricsto_from_simultaneous(items: &[Music], staves: &mut [StaffInfo<'_
             && let Some(info) = lyrics::extract_lyricsto(inner)
         {
             attach_lyricsto_info(info, staves);
+            continue;
+        }
+        // Recurse into nested << >> blocks
+        if let Music::Simultaneous(nested_items) = item {
+            attach_lyricsto_from_simultaneous(nested_items, staves);
         }
     }
 }
 
-/// Attach a LyricsTo info to the staff whose name matches the voice_id.
+/// Attach a LyricsTo info to the staff whose name or inner voice name
+/// matches the voice_id.
 fn attach_lyricsto_info(info: lyrics::LyricsInfo, staves: &mut [StaffInfo<'_>]) {
     if let lyrics::LyricsStyle::LyricsTo { ref voice_id } = info.style {
-        // Find the staff with this name
+        // First: match staff name directly
         for staff in staves.iter_mut() {
             if staff.name.as_deref() == Some(voice_id) {
                 staff.lyrics.push(info);
                 return;
             }
         }
-        // If no named match found, attach to first staff
+        // Second: match inner voice name (e.g. \context Voice = "name" inside a Staff)
+        for staff in staves.iter_mut() {
+            if staff_has_voice_named(staff, voice_id) {
+                staff.lyrics.push(info);
+                return;
+            }
+        }
+        // Fallback: attach to first staff
         if let Some(staff) = staves.first_mut() {
             staff.lyrics.push(info);
         }
     }
+}
+
+/// Check if a staff's voice music contains a named Voice context.
+fn staff_has_voice_named(staff: &StaffInfo<'_>, voice_id: &str) -> bool {
+    for voice in &staff.voices {
+        for item in voice {
+            if let Music::ContextedMusic {
+                context_type, name: Some(name), ..
+            } = item
+            {
+                if is_voice_context(context_type) && name == voice_id {
+                    return true;
+                }
+            }
+        }
+    }
+    false
 }
 
 /// Check if a context type is a staff group (StaffGroup, PianoStaff, etc.)
@@ -431,45 +461,61 @@ fn extract_staves_chords_figures_from_simultaneous<'a>(
     let mut figured_bass = Vec::new();
     let mut n = 1u32;
 
-    for item in items {
-        if let Music::ContextedMusic {
-            keyword,
-            context_type,
-            name,
-            with_block,
-            music: inner,
-        } = item
-        {
-            if is_staff_context(context_type) || is_voice_context(context_type) {
-                let voices = extract_voices(inner);
-                staves.push(StaffInfo {
-                    n,
-                    name: name.clone(),
-                    context_type: context_type.clone(),
-                    keyword: Some(*keyword),
-                    with_block: with_block.clone(),
-                    voices,
-                    lyrics: Vec::new(),
-                    original_music: Some(inner),
-                });
-                n += 1;
-            } else if context_type == "ChordNames" {
-                chord_names.push(ChordNamesInfo {
-                    name: name.clone(),
-                    with_block: with_block.clone(),
-                    music: inner,
-                });
-            } else if context_type == "FiguredBass" {
-                figured_bass.push(FiguredBassInfo {
-                    name: name.clone(),
-                    with_block: with_block.clone(),
-                    music: inner,
-                });
-            }
-        }
-    }
+    extract_staves_chords_figures_inner(items, &mut staves, &mut chord_names, &mut figured_bass, &mut n);
 
     (staves, chord_names, figured_bass)
+}
+
+fn extract_staves_chords_figures_inner<'a>(
+    items: &'a [Music],
+    staves: &mut Vec<StaffInfo<'a>>,
+    chord_names: &mut Vec<ChordNamesInfo<'a>>,
+    figured_bass: &mut Vec<FiguredBassInfo<'a>>,
+    n: &mut u32,
+) {
+    for item in items {
+        match item {
+            Music::ContextedMusic {
+                keyword,
+                context_type,
+                name,
+                with_block,
+                music: inner,
+            } => {
+                if is_staff_context(context_type) || is_voice_context(context_type) {
+                    let voices = extract_voices(inner);
+                    staves.push(StaffInfo {
+                        n: *n,
+                        name: name.clone(),
+                        context_type: context_type.clone(),
+                        keyword: Some(*keyword),
+                        with_block: with_block.clone(),
+                        voices,
+                        lyrics: Vec::new(),
+                        original_music: Some(inner),
+                    });
+                    *n += 1;
+                } else if context_type == "ChordNames" {
+                    chord_names.push(ChordNamesInfo {
+                        name: name.clone(),
+                        with_block: with_block.clone(),
+                        music: inner,
+                    });
+                } else if context_type == "FiguredBass" {
+                    figured_bass.push(FiguredBassInfo {
+                        name: name.clone(),
+                        with_block: with_block.clone(),
+                        music: inner,
+                    });
+                }
+            }
+            // Recurse into nested << >> blocks to find staff/voice contexts
+            Music::Simultaneous(nested_items) => {
+                extract_staves_chords_figures_inner(nested_items, staves, chord_names, figured_bass, n);
+            }
+            _ => {}
+        }
+    }
 }
 
 /// Check if a context type is a voice-level context.
@@ -533,12 +579,13 @@ pub(super) fn build_score_def_from_staves(
         // Set initial clef/key/time on staffDef and build event sequence
         let event_seq = build_event_sequence(&events, &mut staff_def);
 
-        // Detect relative/transpose context from the original music (before voice extraction)
-        let pitch_ctx = if let Some(orig) = staff_info.original_music {
-            detect_pitch_context_inner(orig)
-        } else {
-            detect_pitch_context_ext(&staff_info.voices)
-        };
+        // Detect relative/transpose context from the original music (before voice extraction),
+        // falling back to scanning extracted voices if the original music wraps the context
+        // inside a multi-item sequential (e.g. `{ \set ... \relative { ... } }`).
+        let pitch_ctx = staff_info
+            .original_music
+            .and_then(|orig| detect_pitch_context_inner(orig))
+            .or_else(|| detect_pitch_context_ext(&staff_info.voices));
 
         // Staff context → ext_store
         let staff_ctx = build_staff_context(staff_info);
@@ -607,6 +654,9 @@ pub(super) fn build_score_def_from_staves(
 
 /// Build a StaffContext extension from staff info.
 fn build_staff_context(staff: &StaffInfo<'_>) -> StaffContext {
+    // Detect inner voice name (e.g. `\context Voice = "middle"` inside a Staff)
+    let inner_voice_name = find_inner_voice_name(staff);
+
     StaffContext {
         context_type: staff.context_type.clone(),
         name: staff.name.clone(),
@@ -619,6 +669,47 @@ fn build_staff_context(staff: &StaffInfo<'_>) -> StaffContext {
             ContextKeyword::New => ContextKeywordExt::New,
             ContextKeyword::Context => ContextKeywordExt::Context,
         }),
+        inner_voice_name,
+    }
+}
+
+/// Find a named inner Voice context in a staff's voice music.
+fn find_inner_voice_name(staff: &StaffInfo<'_>) -> Option<String> {
+    // Check extracted voices for ContextedMusic wrapping a Voice
+    for voice in &staff.voices {
+        for item in voice {
+            if let Music::ContextedMusic {
+                context_type,
+                name: Some(name),
+                ..
+            } = item
+            {
+                if is_voice_context(context_type) {
+                    return Some(name.clone());
+                }
+            }
+        }
+    }
+    // Check original_music — extract_voices may have unwrapped a ContextedMusic(Voice)
+    if let Some(orig) = staff.original_music {
+        if let Some(name) = find_voice_name_in_music(orig) {
+            return Some(name);
+        }
+    }
+    None
+}
+
+/// Recursively search music for a named Voice context.
+fn find_voice_name_in_music(music: &Music) -> Option<String> {
+    match music {
+        Music::ContextedMusic {
+            context_type,
+            name: Some(name),
+            ..
+        } if is_voice_context(context_type) => Some(name.clone()),
+        Music::ContextedMusic { music: inner, .. } => find_voice_name_in_music(inner),
+        Music::Sequential(items) if items.len() == 1 => find_voice_name_in_music(&items[0]),
+        _ => None,
     }
 }
 
@@ -633,6 +724,7 @@ fn build_group_context(group: &GroupInfo) -> StaffContext {
             .filter(|items| !items.is_empty())
             .map(|items| serialize_with_block(items)),
         keyword: None,
+        inner_voice_name: None,
     }
 }
 
@@ -648,6 +740,7 @@ fn build_chord_names_context(chord_names: &[ChordNamesInfo<'_>]) -> Option<Staff
             .filter(|items| !items.is_empty())
             .map(|items| serialize_with_block(items)),
         keyword: None,
+        inner_voice_name: None,
     })
 }
 
@@ -663,6 +756,7 @@ fn build_figured_bass_context(figured_bass: &[FiguredBassInfo<'_>]) -> Option<St
             .filter(|items| !items.is_empty())
             .map(|items| serialize_with_block(items)),
         keyword: None,
+        inner_voice_name: None,
     })
 }
 
@@ -723,8 +817,15 @@ fn detect_pitch_context_inner(music: &Music) -> Option<ExtPitchContext> {
             })
         }
         Music::ContextedMusic { music, .. } => detect_pitch_context_inner(music),
-        // Unwrap single-item Sequential (e.g. `{ \transpose c c' { } }` from export)
-        Music::Sequential(items) if items.len() == 1 => detect_pitch_context_inner(&items[0]),
+        // Scan Sequential items for pitch context wrappers (e.g. `{ \set ... \relative { } }`)
+        Music::Sequential(items) => {
+            for item in items {
+                if let Some(pc) = detect_pitch_context_inner(item) {
+                    return Some(pc);
+                }
+            }
+            None
+        }
         // Look through Simultaneous children (e.g. `<< { \relative {...} } \lyricsto ... >>`)
         Music::Simultaneous(items) => {
             for item in items {
@@ -757,7 +858,11 @@ fn build_lyrics_info_ext(infos: &[lyrics::LyricsInfo]) -> Option<ExtLyricsInfo> 
         lyrics::LyricsStyle::LyricsTo { voice_id } => Some(ExtLyricsInfo {
             style: LyricsStyle::LyricsTo,
             voice_id: Some(voice_id.clone()),
-            count: None,
+            count: if infos.len() > 1 {
+                Some(infos.len())
+            } else {
+                None
+            },
         }),
         lyrics::LyricsStyle::LyricMode => Some(ExtLyricsInfo {
             style: LyricsStyle::LyricMode,

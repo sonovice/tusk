@@ -23,6 +23,7 @@ pub fn parse_direction<R: BufRead>(
         _ => None,
     });
     let directive = get_attr(start, "directive")?.and_then(|s| parse_yes_no_opt(&s));
+    let id = get_attr(start, "id")?;
 
     let mut direction_types: Vec<DirectionType> = Vec::new();
     let mut offset: Option<Offset> = None;
@@ -82,7 +83,7 @@ pub fn parse_direction<R: BufRead>(
         listening,
         placement,
         directive,
-        id: None,
+        id,
     })
 }
 
@@ -327,12 +328,18 @@ pub(crate) fn parse_dynamics<R: BufRead>(reader: &mut Reader<R>) -> Result<Dynam
     loop {
         match reader.read_event_into(&mut buf)? {
             Event::Start(e) => {
-                let dyn_value = parse_dynamics_element(e.name().as_ref());
-                if let Some(v) = dyn_value {
-                    values.push(v);
+                if e.name().as_ref() == b"other-dynamics" {
+                    let text = read_text(reader, b"other-dynamics")?;
+                    if !text.is_empty() {
+                        values.push(DynamicsValue::OtherDynamics(text));
+                    }
+                } else {
+                    let dyn_value = parse_dynamics_element(e.name().as_ref());
+                    if let Some(v) = dyn_value {
+                        values.push(v);
+                    }
+                    skip_to_end(reader, e.name().as_ref())?;
                 }
-                // Skip to end of the dynamics element
-                skip_to_end(reader, e.name().as_ref())?;
             }
             Event::Empty(e) => {
                 let dyn_value = parse_dynamics_element(e.name().as_ref());

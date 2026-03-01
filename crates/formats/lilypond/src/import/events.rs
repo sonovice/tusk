@@ -396,6 +396,13 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
             }
         }
         Music::Override { .. } | Music::Revert { .. } | Music::Set { .. } | Music::Unset { .. } => {
+            // Skip \set melismaBusyProperties — it's an export artifact that
+            // disable_slur_melisma() will re-add as needed.
+            if let Music::Set { path, .. } = music {
+                if matches!(path.segments.first(), Some(crate::model::property::PathSegment::Named(s)) if s == "melismaBusyProperties") {
+                    return;
+                }
+            }
             let serialized = crate::serializer::serialize_property_op(music);
             events.push(LyEvent::PropertyOp(serialized));
         }
@@ -419,7 +426,8 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
             let serialized = crate::serializer::serialize_scheme_expr(expr);
             events.push(LyEvent::SchemeMusic(serialized));
         }
-        Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) | Music::LineComment(_) => {}
+        Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) | Music::LineComment(_)
+        | Music::LyricMarkup(_) => {}
     }
 }
 

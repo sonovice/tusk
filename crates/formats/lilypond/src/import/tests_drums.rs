@@ -16,11 +16,11 @@ fn layer_notes(mei: &Mei) -> Vec<&tusk_model::elements::Note> {
     for child in &mei.children {
         if let MeiChild::Music(music) = child {
             for mc in &music.children {
-                let tusk_model::elements::MusicChild::Body(body) = mc;
+                let tusk_model::elements::MusicChild::Body(body) = mc else { continue; };
                 for bc in &body.children {
                     let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
                     for dc in &mdiv.children {
-                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        let tusk_model::elements::MdivChild::Score(score) = dc else { continue; };
                         for sc in &score.children {
                             if let ScoreChild::Section(section) = sc {
                                 for sec_c in &section.children {
@@ -30,7 +30,7 @@ fn layer_notes(mei: &Mei) -> Vec<&tusk_model::elements::Note> {
                                                 for lc in &staff.children {
                                                     let tusk_model::elements::StaffChild::Layer(
                                                         layer,
-                                                    ) = lc;
+                                                    ) = lc else { continue; };
                                                     for item in &layer.children {
                                                         if let LayerChild::Note(note) = item {
                                                             notes.push(note.as_ref());
@@ -129,11 +129,11 @@ fn import_drum_staff_context() {
     for child in &mei.children {
         if let MeiChild::Music(music) = child {
             for mc in &music.children {
-                let tusk_model::elements::MusicChild::Body(body) = mc;
+                let tusk_model::elements::MusicChild::Body(body) = mc else { continue; };
                 for bc in &body.children {
                     let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
                     for dc in &mdiv.children {
-                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        let tusk_model::elements::MdivChild::Score(score) = dc else { continue; };
                         for sc in &score.children {
                             if let ScoreChild::ScoreDef(sd) = sc {
                                 for sdc in &sd.children {

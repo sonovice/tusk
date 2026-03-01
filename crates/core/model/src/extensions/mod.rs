@@ -258,6 +258,9 @@ pub struct StaffContext {
     /// Whether `\new` or `\context` was used.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub keyword: Option<ContextKeywordExt>,
+    /// Inner voice context name (e.g. `\context Voice = "name"` inside a Staff).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inner_voice_name: Option<String>,
 }
 
 /// Whether `\new` or `\context` was used.

@@ -16,11 +16,11 @@ fn measure_harms(mei: &Mei) -> Vec<&tusk_model::elements::Harm> {
     for child in &mei.children {
         if let MeiChild::Music(music) = child {
             for mc in &music.children {
-                let tusk_model::elements::MusicChild::Body(body) = mc;
+                let tusk_model::elements::MusicChild::Body(body) = mc else { continue; };
                 for bc in &body.children {
                     let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
                     for dc in &mdiv.children {
-                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        let tusk_model::elements::MdivChild::Score(score) = dc else { continue; };
                         for sc in &score.children {
                             if let ScoreChild::Section(section) = sc {
                                 for sec_c in &section.children {
@@ -66,9 +66,8 @@ fn harm_has_text_child() {
     let (mei, _ext_store) = parse_and_import("\\chordmode { c:m7 }");
     let harms = measure_harms(&mei);
     assert_eq!(harms.len(), 1);
-    let text = match &harms[0].children[0] {
-        HarmChild::Text(t) => t.as_str(),
-    };
+    let HarmChild::Text(text) = &harms[0].children[0] else { panic!("expected Text"); };
+    let text = text.as_str();
     // Should contain the serialized chord mode event
     assert!(text.contains("c"), "text should contain root: {text}");
     assert!(text.contains("m"), "text should contain m: {text}");

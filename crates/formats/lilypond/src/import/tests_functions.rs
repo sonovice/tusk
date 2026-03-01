@@ -16,11 +16,11 @@ fn collect_dirs(mei: &Mei) -> Vec<&tusk_model::elements::Dir> {
     for child in &mei.children {
         if let MeiChild::Music(music) = child {
             for mc in &music.children {
-                let tusk_model::elements::MusicChild::Body(body) = mc;
+                let tusk_model::elements::MusicChild::Body(body) = mc else { continue; };
                 for bc in &body.children {
                     let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
                     for dc in &mdiv.children {
-                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        let tusk_model::elements::MdivChild::Score(score) = dc else { continue; };
                         for sc in &score.children {
                             if let tusk_model::elements::ScoreChild::Section(section) = sc {
                                 for sec_c in &section.children {
@@ -46,7 +46,7 @@ fn collect_dirs(mei: &Mei) -> Vec<&tusk_model::elements::Dir> {
 
 #[test]
 fn import_music_function_creates_dir() {
-    let (mei, ext_store) = parse_and_import("{ \\someFunction { c4 d e f } g4 }");
+    let (mei, ext_store) = parse_and_import("{ \\tag #'print { c4 d e f } g4 }");
     let dirs = collect_dirs(&mei);
     let func_dirs: Vec<_> = dirs
         .iter()
@@ -60,7 +60,7 @@ fn import_music_function_creates_dir() {
     assert_eq!(func_dirs.len(), 1, "expected one function dir");
     let id = func_dirs[0].common.xml_id.as_deref().unwrap();
     let fc = ext_store.function_call(id).unwrap();
-    assert_eq!(fc.name, "someFunction");
+    assert_eq!(fc.name, "tag");
 }
 
 #[test]
@@ -84,7 +84,7 @@ fn import_music_function_with_string_arg() {
 
 #[test]
 fn import_music_function_has_startid() {
-    let (mei, ext_store) = parse_and_import("{ \\someFunction { c4 d } e4 }");
+    let (mei, ext_store) = parse_and_import("{ \\tag #'print { c4 d } e4 }");
     let dirs = collect_dirs(&mei);
     let func_dirs: Vec<_> = dirs
         .iter()

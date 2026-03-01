@@ -168,7 +168,7 @@ pub(super) fn convert_mei_chord(chord: &tusk_model::elements::Chord, ext_store: 
     // Chord tie: if any child note has @tie="i" or "m", the chord has a tie
     let mut post_events = Vec::new();
     let has_tie = chord.children.iter().any(|child| {
-        let ChordChild::Note(note) = child;
+        let ChordChild::Note(note) = child else { return false; };
         matches!(note.note_anl.tie.as_ref(), Some(t) if t.0 == "i" || t.0 == "m")
     });
     if has_tie {
@@ -189,9 +189,9 @@ pub(super) fn convert_mei_chord(chord: &tusk_model::elements::Chord, ext_store: 
     let pitches: Vec<Pitch> = chord
         .children
         .iter()
-        .map(|child| {
-            let ChordChild::Note(note) = child;
-            extract_pitch_from_note(note, defaults)
+        .filter_map(|child| {
+            let ChordChild::Note(note) = child else { return None; };
+            Some(extract_pitch_from_note(note, defaults))
         })
         .collect();
 

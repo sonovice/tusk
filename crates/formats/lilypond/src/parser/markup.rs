@@ -313,6 +313,11 @@ impl<'src> Parser<'src> {
                 self.advance()?;
                 self.parse_command_args(name)
             }
+            // \override as markup command (keyword token, not EscapedWord)
+            Token::Override => {
+                self.advance()?;
+                self.parse_command_args("override".to_string())
+            }
             // Unknown \word: treat as identifier
             Token::EscapedWord(_) => {
                 let tok = self.advance()?;
@@ -385,6 +390,10 @@ impl<'src> Parser<'src> {
                 let name = name.clone();
                 self.advance()?;
                 self.parse_command_args(name)
+            }
+            Token::Override => {
+                self.advance()?;
+                self.parse_command_args("override".to_string())
             }
             Token::EscapedWord(_) => {
                 let tok = self.advance()?;
@@ -460,7 +469,7 @@ impl<'src> Parser<'src> {
                     break;
                 }
                 // Composed markup as final arg
-                Token::EscapedWord(_) | Token::Score => {
+                Token::EscapedWord(_) | Token::Score | Token::Override => {
                     let inner = self.parse_markup_composed()?;
                     args.push(inner);
                     break;

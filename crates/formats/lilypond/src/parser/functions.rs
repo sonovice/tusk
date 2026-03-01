@@ -9,6 +9,69 @@ use crate::model::*;
 // Valid steno duration base values.
 const STENO_DURATIONS: &[u64] = &[1, 2, 4, 8, 16, 32, 64, 128, 256];
 
+/// Number of trailing music arguments a known function takes.
+/// Returns 0 for zero-arg identifiers, None for unknown functions.
+fn music_arg_count(name: &str) -> Option<u8> {
+    Some(match name {
+        // — 1 music arg —
+        // Standard library (ly/music-functions-init.ly)
+        "absolute" | "acciaccatura" | "afterGraceFraction" | "appoggiatura"
+        | "autoChange" | "balloonText" | "clef" | "compoundMeter"
+        | "crossStaff" | "cueClef" | "cueDuring" | "cueDuringWithClef"
+        | "displayLilyMusic" | "displayMusic" | "enablePolymeter"
+        | "featherDurations" | "footnote" | "grace" | "harmonicsOn"
+        | "keepWithTag" | "magnifyMusic" | "musicMap" | "ottava"
+        | "parallelMusic" | "parenthesize"
+        | "partCombineForce"
+        | "phrasingSlurDashPattern" | "pitchedTrill" | "quoteDuring"
+        | "removeWithTag" | "scaleDurations"
+        | "settingsFrom" | "shape" | "shiftDurations"
+        | "slashedGrace" | "slurDashPattern" | "stringTuning"
+        | "styledNoteHeads" | "tabChordRepeats" | "tabChordRepetition"
+        | "tieDashPattern" | "tuplet" | "tweak"
+        | "unfoldRepeats" | "voices" | "volta" | "vshape" | "withMusicProperty" => 1,
+        // tag: takes (symbol? ly:music?)
+        "tag" => 1,
+        // — 2 music args —
+        "appendToTag" | "pushToTag"
+        | "partCombine" | "partCombineDown" | "partCombineUp" => 2,
+        // — 0 music args (known identifiers / void functions) —
+        "cadenzaOn" | "cadenzaOff" | "break" | "noBreak" | "pageBreak"
+        | "noPageBreak" | "pageTurn" | "noPageTurn"
+        | "voiceOne" | "voiceTwo" | "voiceThree" | "voiceFour"
+        | "oneVoice" | "autoBeamOn" | "autoBeamOff" | "stemUp" | "stemDown"
+        | "stemNeutral" | "slurUp" | "slurDown" | "slurNeutral"
+        | "phrasingSlurUp" | "phrasingSlurDown" | "phrasingSlurNeutral"
+        | "tieUp" | "tieDown" | "tieNeutral" | "tieSolid" | "tieDashed"
+        | "tieDotted" | "tieHalfSolid" | "tieHalfDashed"
+        | "dynamicUp" | "dynamicDown" | "dynamicNeutral"
+        | "tupletUp" | "tupletDown" | "tupletNeutral"
+        | "textLengthOn" | "textLengthOff" | "textSpannerUp"
+        | "textSpannerDown" | "textSpannerNeutral"
+        | "bassFigureExtendersOn" | "bassFigureExtendersOff"
+        | "harmonicsOff" | "arpeggioArrowUp" | "arpeggioArrowDown"
+        | "arpeggioNormal" | "arpeggioBracket" | "arpeggioParenthesis"
+        | "arpeggioParenthesisDashed" | "dotsUp" | "dotsDown" | "dotsNeutral"
+        | "hideNotes" | "unHideNotes" | "showStaffSwitch" | "hideStaffSwitch"
+        | "compressMMRests" | "expandMMRests" | "expandFullBarRests"
+        | "mergeDifferentlyDottedOn" | "mergeDifferentlyDottedOff"
+        | "mergeDifferentlyHeadedOn" | "mergeDifferentlyHeadedOff"
+        | "shiftOn" | "shiftOff" | "shiftOnn" | "shiftOnnn"
+        | "pointAndClickOn" | "pointAndClickOff"
+        | "balloonLengthOn" | "balloonLengthOff"
+        | "deadNotesOn" | "deadNotesOff"
+        | "predefinedFretboardsOn" | "predefinedFretboardsOff"
+        | "sostenutoOn" | "sostenutoOff" | "sustainOn" | "sustainOff"
+        | "unaCorda" | "treCorde" | "melisma" | "melismaEnd"
+        | "kievanOn" | "kievanOff" | "staffHighlight"
+        | "small" | "normalsize" | "teeny" | "tiny" | "large" | "huge"
+        | "defaultTimeSignature" | "numericTimeSignature"
+        | "sectionLabel" | "segnoMark" | "codaMark"
+        | "longa" | "breve" | "maxima" => 0,
+        _ => return None,
+    })
+}
+
 impl<'src> Parser<'src> {
     // ──────────────────────────────────────────────────────────────────
     // Identifier or music function call
@@ -26,7 +89,7 @@ impl<'src> Parser<'src> {
             _ => unreachable!(),
         };
 
-        let args = self.parse_function_args()?;
+        let args = self.parse_function_args(&name)?;
 
         // Check for \etc (partial application)
         if *self.peek() == Token::Etc {
@@ -41,17 +104,20 @@ impl<'src> Parser<'src> {
         }
     }
 
-    /// Greedily collect function arguments after a function name.
+    /// Collect function arguments after a function name.
     ///
-    /// Consumes tokens that are unambiguously function arguments:
+    /// Consumes tokens that are unambiguously non-music function arguments:
     /// - String literals
     /// - Numeric literals (unsigned or real), including fractions `N/M`
     /// - Scheme expressions (`#...`)
     /// - `\default`
     /// - Duration values (e.g. `4.` when an unsigned is a valid steno duration)
     /// - Symbol lists (`Staff.NoteHead.color` — dot-separated symbol chains)
-    /// - Identifier arguments (`\varName`)
-    /// - Braced music `{ ... }` and simultaneous music `<< ... >>`
+    ///
+    /// Then, for functions known to take music arguments (via the function
+    /// signature database), consumes trailing `{ ... }` or `<< ... >>` blocks.
+    /// Unknown functions do NOT consume music blocks, preventing greedy
+    /// consumption that would make serializer roundtrips inconsistent.
     ///
     /// **`pitch_or_music` note**: Bare note names (`Token::NoteName`) are NOT
     /// consumed here because we lack function signature information to
@@ -61,7 +127,7 @@ impl<'src> Parser<'src> {
     /// a following pitch is parsed as a separate music event by the caller.
     ///
     /// Stops when encountering tokens that can't be function arguments.
-    fn parse_function_args(&mut self) -> Result<Vec<FunctionArg>, ParseError> {
+    fn parse_function_args(&mut self, name: &str) -> Result<Vec<FunctionArg>, ParseError> {
         let mut args = Vec::new();
         loop {
             // Check for symbol list first (requires two-token lookahead)
@@ -127,17 +193,25 @@ impl<'src> Parser<'src> {
                     self.advance()?;
                     args.push(FunctionArg::Default);
                 }
-                Token::BraceOpen => {
-                    let m = self.parse_sequential_music()?;
-                    args.push(FunctionArg::Music(m));
-                }
-                Token::DoubleAngleOpen => {
-                    let m = self.parse_simultaneous_music()?;
-                    args.push(FunctionArg::Music(m));
-                }
                 _ => break,
             }
         }
+
+        // Consume trailing music args for known functions.
+        // Unknown functions never consume music — this prevents greedy
+        // consumption that causes serializer roundtrip inconsistencies.
+        // Skip music consumption if \etc follows (partial application).
+        if !matches!(self.peek(), Token::Etc) {
+            let music_args = music_arg_count(name).unwrap_or(0);
+            for _ in 0..music_args {
+                if self.at_eof() || matches!(self.peek(), Token::Etc) {
+                    break;
+                }
+                let m = self.parse_pitch_or_music()?;
+                args.push(FunctionArg::Music(m));
+            }
+        }
+
         Ok(args)
     }
 

@@ -121,7 +121,22 @@ impl<'src> Parser<'src> {
             Token::Unsigned(n) => {
                 let val = n as i64;
                 self.advance()?;
-                Ok(SchemeExpr::Integer(val))
+                // Check for fraction: #N/M → rational number
+                if *self.peek() == Token::Slash {
+                    let saved = self.current.clone();
+                    self.advance()?; // consume /
+                    if let Token::Unsigned(denom) = self.peek() {
+                        let denom = *denom;
+                        self.advance()?;
+                        Ok(SchemeExpr::Fraction(val, denom as i64))
+                    } else {
+                        // Not a fraction — backtrack
+                        self.lookahead = Some(std::mem::replace(&mut self.current, saved));
+                        Ok(SchemeExpr::Integer(val))
+                    }
+                } else {
+                    Ok(SchemeExpr::Integer(val))
+                }
             }
             Token::Real(f) => {
                 self.advance()?;
@@ -134,6 +149,18 @@ impl<'src> Parser<'src> {
                     Token::Unsigned(n) => {
                         let val = -(n as i64);
                         self.advance()?;
+                        // Check for fraction: #-N/M
+                        if *self.peek() == Token::Slash {
+                            let saved = self.current.clone();
+                            self.advance()?;
+                            if let Token::Unsigned(denom) = self.peek() {
+                                let denom = *denom;
+                                self.advance()?;
+                                return Ok(SchemeExpr::Fraction(val, denom as i64));
+                            } else {
+                                self.lookahead = Some(std::mem::replace(&mut self.current, saved));
+                            }
+                        }
                         Ok(SchemeExpr::Integer(val))
                     }
                     Token::Real(f) => {
@@ -203,6 +230,7 @@ pub(crate) fn scheme_expr_to_suffix(expr: &SchemeExpr) -> String {
         SchemeExpr::Bool(true) => "#t".to_string(),
         SchemeExpr::Bool(false) => "#f".to_string(),
         SchemeExpr::Integer(n) => n.to_string(),
+        SchemeExpr::Fraction(n, d) => format!("{n}/{d}"),
         SchemeExpr::Float(f) => f.to_string(),
         SchemeExpr::String(s) => {
             format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))

@@ -174,6 +174,7 @@ pub fn restructure_endings(
                 SectionChild::Expansion(exp) => {
                     mei_ending.children.push(EndingChild::Expansion(exp));
                 }
+                _ => {}
             }
         }
 

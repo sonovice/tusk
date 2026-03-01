@@ -69,7 +69,7 @@ fn header_title_populates_mei_title() {
                     for fc in &fd.children {
                         if let tusk_model::elements::FileDescChild::TitleStmt(ts) = fc {
                             assert!(!ts.children.is_empty(), "titleStmt should have title");
-                            let tusk_model::elements::TitleStmtChild::Title(t) = &ts.children[0];
+                            let tusk_model::elements::TitleStmtChild::Title(t) = &ts.children[0] else { panic!("expected Title"); };
                             assert!(!t.children.is_empty());
                             let tusk_model::elements::TitleChild::Text(s) = &t.children[0] else {
                                 panic!("expected text child");

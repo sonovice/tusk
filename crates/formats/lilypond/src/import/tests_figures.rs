@@ -16,11 +16,11 @@ fn measure_fbs(mei: &Mei) -> Vec<&tusk_model::elements::Fb> {
     for child in &mei.children {
         if let MeiChild::Music(music) = child {
             for mc in &music.children {
-                let tusk_model::elements::MusicChild::Body(body) = mc;
+                let tusk_model::elements::MusicChild::Body(body) = mc else { continue; };
                 for bc in &body.children {
                     let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
                     for dc in &mdiv.children {
-                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        let tusk_model::elements::MdivChild::Score(score) = dc else { continue; };
                         for sc in &score.children {
                             if let ScoreChild::Section(section) = sc {
                                 for sec_c in &section.children {
@@ -72,9 +72,8 @@ fn fb_has_f_children() {
     let text0: String = f0
         .children
         .iter()
-        .map(|c| {
-            let tusk_model::elements::FChild::Text(t) = c;
-            t.as_str()
+        .filter_map(|c| {
+            if let tusk_model::elements::FChild::Text(t) = c { Some(t.as_str()) } else { None }
         })
         .collect();
     assert_eq!(text0, "6");
@@ -83,9 +82,8 @@ fn fb_has_f_children() {
     let text1: String = f1
         .children
         .iter()
-        .map(|c| {
-            let tusk_model::elements::FChild::Text(t) = c;
-            t.as_str()
+        .filter_map(|c| {
+            if let tusk_model::elements::FChild::Text(t) = c { Some(t.as_str()) } else { None }
         })
         .collect();
     assert_eq!(text1, "4");
@@ -123,9 +121,8 @@ fn fb_alterations_in_text() {
     let text0: String = f0
         .children
         .iter()
-        .map(|c| {
-            let tusk_model::elements::FChild::Text(t) = c;
-            t.as_str()
+        .filter_map(|c| {
+            if let tusk_model::elements::FChild::Text(t) = c { Some(t.as_str()) } else { None }
         })
         .collect();
     assert_eq!(text0, "6#", "sharp alteration should show as #");
@@ -133,9 +130,8 @@ fn fb_alterations_in_text() {
     let text1: String = f1
         .children
         .iter()
-        .map(|c| {
-            let tusk_model::elements::FChild::Text(t) = c;
-            t.as_str()
+        .filter_map(|c| {
+            if let tusk_model::elements::FChild::Text(t) = c { Some(t.as_str()) } else { None }
         })
         .collect();
     assert_eq!(text1, "4b", "flat alteration should show as b");
@@ -151,9 +147,8 @@ fn fb_figure_space() {
     let text1: String = f1
         .children
         .iter()
-        .map(|c| {
-            let tusk_model::elements::FChild::Text(t) = c;
-            t.as_str()
+        .filter_map(|c| {
+            if let tusk_model::elements::FChild::Text(t) = c { Some(t.as_str()) } else { None }
         })
         .collect();
     assert_eq!(text1, "_", "figure space should show as _");

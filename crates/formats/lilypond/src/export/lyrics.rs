@@ -8,6 +8,7 @@ use tusk_model::{LyricsInfo as ExtLyricsInfo, LyricsStyle};
 use tusk_model::extensions::ExtensionStore;
 
 use crate::model::Music;
+use crate::model::property::PathSegment;
 use crate::model::note::{LyricEvent, PostEvent};
 use crate::model::property::{PropertyPath, PropertyValue};
 use crate::model::scheme::SchemeExpr;
@@ -23,8 +24,8 @@ pub(super) struct LyricsExportInfo {
 pub(super) enum LyricsExportStyle {
     /// `\addlyrics { ... }` with verse identifiers (may be numeric "1" or arbitrary "part1verse1")
     AddLyrics { verse_ids: Vec<String> },
-    /// `\lyricsto "voice_id" { ... }`
-    LyricsTo { voice_id: String },
+    /// `\lyricsto "voice_id" { ... }` with optional multi-verse count
+    LyricsTo { voice_id: String, count: usize },
     /// `\lyricmode { ... }` (standalone)
     LyricMode,
 }
@@ -37,6 +38,7 @@ pub(super) fn ext_lyrics_info_to_export(ext: &ExtLyricsInfo) -> Option<LyricsExp
         },
         LyricsStyle::LyricsTo => LyricsExportStyle::LyricsTo {
             voice_id: ext.voice_id.clone().unwrap_or_default(),
+            count: ext.count.unwrap_or(1) as usize,
         },
         LyricsStyle::LyricMode => LyricsExportStyle::LyricMode,
     };
@@ -110,7 +112,7 @@ fn is_tied_to_chord(chord: &tusk_model::elements::Chord) -> bool {
         return true;
     }
     chord.children.iter().any(|cc| {
-        let tusk_model::elements::ChordChild::Note(note) = cc;
+        let tusk_model::elements::ChordChild::Note(note) = cc else { return false; };
         is_tied_to_note(note)
     })
 }
@@ -140,7 +142,7 @@ fn extract_lyrics_from_children(children: &[LayerChild], verse_id: &str, lyrics:
                     continue;
                 }
                 let lyric = chord.children.first().and_then(|cc| {
-                    let tusk_model::elements::ChordChild::Note(note) = cc;
+                    let tusk_model::elements::ChordChild::Note(note) = cc else { return None; };
                     extract_lyric_from_note_children(&note.children, verse_n_str, ext_store)
                 });
                 if let Some(lyric) = lyric {
@@ -169,7 +171,7 @@ fn extract_lyrics_from_children(children: &[LayerChild], verse_id: &str, lyrics:
                                 continue;
                             }
                             let lyric = chord.children.first().and_then(|cc| {
-                                let tusk_model::elements::ChordChild::Note(note) = cc;
+                                let tusk_model::elements::ChordChild::Note(note) = cc else { return None; };
                                 extract_lyric_from_note_children(&note.children, verse_n_str, ext_store)
                             });
                             if let Some(lyric) = lyric {
@@ -219,9 +221,9 @@ fn verse_to_lyric_event(verse: &tusk_model::elements::Verse, ext_store: &Extensi
     let text = syl
         .children
         .first()
-        .map(|sc| {
-            let SylChild::Text(t) = sc;
-            t.clone()
+        .and_then(|sc| {
+            let SylChild::Text(t) = sc else { return None; };
+            Some(t.clone())
         })
         .unwrap_or_default();
 
@@ -288,12 +290,44 @@ fn disable_slur_melisma(music: Music) -> Music {
         Music::DrumMode { body } => Music::DrumMode {
             body: Box::new(disable_slur_melisma(*body)),
         },
-        // { item1 item2 ... } → prepend \set
+        // \relative / \fixed → inject into body
+        Music::Relative { pitch, body } => Music::Relative {
+            pitch,
+            body: Box::new(disable_slur_melisma(*body)),
+        },
+        Music::Fixed { pitch, body } => Music::Fixed {
+            pitch,
+            body: Box::new(disable_slur_melisma(*body)),
+        },
+        // { item1 item2 ... } → prepend \set (if not already present)
         Music::Sequential(mut items) => {
-            items.insert(0, melisma_set_cmd());
+            if !has_melisma_set(&items) {
+                items.insert(0, melisma_set_cmd());
+            }
             Music::Sequential(items)
         }
         other => Music::Sequential(vec![melisma_set_cmd(), other]),
+    }
+}
+
+/// Check if a `\set melismaBusyProperties` is already present (recursive).
+fn has_melisma_set(items: &[Music]) -> bool {
+    items.iter().any(|item| has_melisma_set_inner(item))
+}
+
+fn has_melisma_set_inner(music: &Music) -> bool {
+    match music {
+        Music::Set { path, .. } => {
+            matches!(path.segments.first(), Some(PathSegment::Named(s)) if s == "melismaBusyProperties")
+        }
+        Music::Sequential(items) | Music::Simultaneous(items) => {
+            items.iter().any(|item| has_melisma_set_inner(item))
+        }
+        Music::Relative { body, .. }
+        | Music::Fixed { body, .. }
+        | Music::DrumMode { body, .. } => has_melisma_set_inner(body),
+        Music::ContextedMusic { music, .. } => has_melisma_set_inner(music),
+        _ => false,
     }
 }
 
@@ -311,6 +345,9 @@ pub(super) fn wrap_music_with_lyricsto(
 ) -> (Music, Vec<Music>) {
     let verse_ids: Vec<String> = match &info.style {
         LyricsExportStyle::AddLyrics { verse_ids } => verse_ids.clone(),
+        LyricsExportStyle::LyricsTo { count, .. } => {
+            (1..=*count).map(|n| n.to_string()).collect()
+        }
         _ => vec!["1".to_string()],
     };
 
@@ -371,25 +408,31 @@ pub(super) fn wrap_music_with_lyrics(
                 }
             }
         }
-        LyricsExportStyle::LyricsTo { voice_id } => {
-            let first_id = "1";
-            let lyric_items = extract_lyrics_from_layers(layer_slices, first_id, ext_store, measure_numbers);
-            if lyric_items.is_empty() {
+        LyricsExportStyle::LyricsTo { voice_id, count } => {
+            let verse_ids: Vec<String> = (1..=*count).map(|n| n.to_string()).collect();
+            let mut lyrics_ctxs = Vec::new();
+            for verse_id_str in &verse_ids {
+                let lyric_items = extract_lyrics_from_layers(layer_slices, verse_id_str, ext_store, measure_numbers);
+                if !lyric_items.is_empty() {
+                    let lyrics_to = Music::LyricsTo {
+                        voice_id: voice_id.clone(),
+                        lyrics: Box::new(Music::Sequential(lyric_items)),
+                    };
+                    lyrics_ctxs.push(Music::ContextedMusic {
+                        keyword: crate::model::ContextKeyword::New,
+                        context_type: "Lyrics".to_string(),
+                        name: None,
+                        with_block: None,
+                        music: Box::new(lyrics_to),
+                    });
+                }
+            }
+            if lyrics_ctxs.is_empty() {
                 staff_music
             } else {
-                // \lyricsto already implies lyric mode — no \lyricmode wrapper needed
-                let lyrics_to = Music::LyricsTo {
-                    voice_id: voice_id.clone(),
-                    lyrics: Box::new(Music::Sequential(lyric_items)),
-                };
-                let lyrics_ctx = Music::ContextedMusic {
-                    keyword: crate::model::ContextKeyword::New,
-                    context_type: "Lyrics".to_string(),
-                    name: None,
-                    with_block: None,
-                    music: Box::new(lyrics_to),
-                };
-                Music::Simultaneous(vec![staff_music, lyrics_ctx])
+                let mut items = vec![staff_music];
+                items.extend(lyrics_ctxs);
+                Music::Simultaneous(items)
             }
         }
         LyricsExportStyle::LyricMode => {

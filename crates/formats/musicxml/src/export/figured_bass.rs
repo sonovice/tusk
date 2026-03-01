@@ -193,17 +193,20 @@ fn create_fallback_figured_bass(fb: &Fb, local_staff_n: usize) -> FiguredBass {
     let figures = fb
         .children
         .iter()
-        .map(|child| {
-            let FbChild::F(f) = child;
+        .filter_map(|child| {
+            let FbChild::F(f) = child else { return None };
             let text: String = f
                 .children
                 .iter()
-                .map(|c| {
-                    let FChild::Text(t) = c;
-                    t.as_str()
+                .filter_map(|c| {
+                    if let FChild::Text(t) = c {
+                        Some(t.as_str())
+                    } else {
+                        None
+                    }
                 })
                 .collect();
-            Figure {
+            Some(Figure {
                 prefix: None,
                 figure_number: if text.is_empty() {
                     None
@@ -219,7 +222,7 @@ fn create_fallback_figured_bass(fb: &Fb, local_staff_n: usize) -> FiguredBass {
                 },
                 suffix: None,
                 extend: None,
-            }
+            })
         })
         .collect();
 

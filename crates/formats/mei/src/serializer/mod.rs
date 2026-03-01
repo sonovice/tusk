@@ -17,9 +17,31 @@ pub(crate) mod impls;
 
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
+use std::borrow::Cow;
 use std::fmt::Display;
 use std::io::Write;
 use thiserror::Error;
+
+/// Escape text content for XML: only `<`, `>`, `&` — NOT `"` or `'`.
+///
+/// `BytesText::new()` escapes `"` → `&quot;` which is valid but problematic:
+/// readers with `trim_text(true)` eat whitespace after `&quot;` on re-parse.
+fn escape_text_content(text: &str) -> Cow<'_, str> {
+    if text.contains('&') || text.contains('<') || text.contains('>') {
+        let mut out = String::with_capacity(text.len() + 8);
+        for ch in text.chars() {
+            match ch {
+                '&' => out.push_str("&amp;"),
+                '<' => out.push_str("&lt;"),
+                '>' => out.push_str("&gt;"),
+                _ => out.push(ch),
+            }
+        }
+        Cow::Owned(out)
+    } else {
+        Cow::Borrowed(text)
+    }
+}
 
 /// Errors that can occur during MEI serialization.
 #[derive(Error, Debug)]
@@ -214,8 +236,14 @@ impl<W: Write> MeiWriter<W> {
     }
 
     /// Write text content.
+    ///
+    /// Uses `BytesText::from_escaped` with manual escaping of only `<`, `>`, `&`
+    /// (NOT `"` or `'`). Quotes are valid in XML text content and must not be
+    /// entity-encoded to avoid whitespace trimming issues on re-parse.
     pub fn write_text(&mut self, text: &str) -> SerializeResult<()> {
-        self.writer.write_event(Event::Text(BytesText::new(text)))?;
+        let escaped = escape_text_content(text);
+        self.writer
+            .write_event(Event::Text(BytesText::from_escaped(&*escaped)))?;
         Ok(())
     }
 
