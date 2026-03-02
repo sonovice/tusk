@@ -76,6 +76,8 @@ pub enum ToplevelExpression {
     Markup(Markup),
     /// Top-level `\markuplist { ... }`.
     MarkupList(MarkupList),
+    /// `\language "english"` — note naming convention.
+    Language(String),
 }
 
 // ---------------------------------------------------------------------------
@@ -177,6 +179,8 @@ pub struct MidiBlock {
 pub enum MidiItem {
     Assignment(Assignment),
     ContextBlock(ContextModBlock),
+    /// `\tempo 4 = 120` inside a `\midi` block.
+    Tempo(Music),
 }
 
 /// `\paper { ... }` block (body opaque for now).
@@ -237,10 +241,12 @@ pub enum ContextModItem {
 // Assignments
 // ---------------------------------------------------------------------------
 
-/// `name = value` assignment.
+/// `name = value` or `name #'sub = value` assignment.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Assignment {
     pub name: String,
+    /// Optional Scheme sub-property path (e.g. `#'padding` in `markup-system-spacing #'padding = #3`).
+    pub sub_property: Option<SchemeExpr>,
     pub value: AssignmentValue,
 }
 

@@ -26,6 +26,7 @@ fn main() {
 
     generate_lilypond_regression(&fixtures, &out_dir);
     generate_cross_format_tests(&fixtures, &out_dir);
+    generate_mutopia_tests(&fixtures, &out_dir);
 }
 
 // ============================================================================
@@ -393,6 +394,113 @@ fn ident_from_relpath(relpath: &str, prefix: &str) -> String {
         ident.insert(0, 'n');
     }
     ident
+}
+
+// ============================================================================
+// Mutopia LilyPond tests
+// ============================================================================
+
+/// Probe a LilyPond file through the pipeline at build time.
+/// Returns how far it gets: None (can't parse), Some(false) (parse ok, roundtrip untested),
+/// Some(true) (full roundtrip works).
+fn probe_lilypond(src: &str) -> Option<bool> {
+    use tusk_lilypond::{parser::Parser, import::import as ly_import, export::export as ly_export, serializer};
+
+    let file = Parser::new(src).and_then(|p| p.parse()).ok()?;
+    let (mei, ext) = ly_import(&file).ok()?;
+    let f2 = ly_export(&mei, &ext).ok()?;
+    let _ly1 = serializer::serialize(&f2);
+    Some(true)
+}
+
+fn generate_mutopia_tests(fixtures: &Path, out_dir: &str) {
+    let mutopia_dir = fixtures.join("lilypond/MutopiaProject");
+
+    if !mutopia_dir.exists() {
+        fs::write(format!("{out_dir}/mutopia_lilypond_via_mei.rs"), "").unwrap();
+        fs::write(format!("{out_dir}/mutopia_lilypond_via_musicxml.rs"), "").unwrap();
+        return;
+    }
+
+    // Collect all .ly files recursively
+    let mut ly_files = Vec::new();
+    collect_recursive_inner(&mutopia_dir, "ly", "", fixtures, &mut ly_files);
+
+    // Filter: must be valid UTF-8 and standalone (no \include)
+    ly_files.retain(|(_, relpath)| {
+        let path = fixtures.join(relpath);
+        let Ok(src) = fs::read_to_string(&path) else {
+            return false;
+        };
+        !src.contains("\\include \"") && !src.contains("\\include #")
+    });
+    ly_files.sort_by(|a, b| a.1.cmp(&b.1));
+
+    // Probe each file through the pipeline; only generate tests for files that work
+    let mut seen = std::collections::HashMap::<String, usize>::new();
+
+    let mut mei_code = String::from(
+        "#[allow(non_snake_case)]\nmod generated_mutopia {\n",
+    );
+    let mut mxml_code = String::from(
+        "#[allow(non_snake_case)]\nmod generated_mutopia {\n",
+    );
+
+    let mut generated = 0u32;
+    let mut skipped = 0u32;
+
+    for (_, relpath) in &ly_files {
+        let path = fixtures.join(relpath);
+        let src = fs::read_to_string(&path).unwrap_or_default();
+
+        // Only generate tests for files that make it through the pipeline
+        if probe_lilypond(&src).is_none() {
+            skipped += 1;
+            continue;
+        }
+
+        let base = format!(
+            "mutopia_{}",
+            ident_from_relpath(relpath, "lilypond/MutopiaProject/")
+        );
+        let count = seen.entry(base.clone()).or_insert(0);
+        let ident = if *count == 0 {
+            base.clone()
+        } else {
+            format!("{base}_{count}")
+        };
+        *count += 1;
+
+        mei_code.push_str(&format!(
+            r#"
+#[test]
+fn {ident}() {{
+    let src = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../fixtures/{relpath}")).unwrap();
+    tusk_roundtrip_tests::try_lilypond_via_mei(&src, "{ident}");
+}}
+"#
+        ));
+
+        mxml_code.push_str(&format!(
+            r#"
+#[test]
+fn {ident}() {{
+    let src = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../fixtures/{relpath}")).unwrap();
+    tusk_roundtrip_tests::try_lilypond_via_musicxml(&src, "{ident}");
+}}
+"#
+        ));
+
+        generated += 1;
+    }
+
+    mei_code.push_str("}\n");
+    mxml_code.push_str("}\n");
+
+    eprintln!("Mutopia: {generated} tests generated, {skipped} skipped (parse/import/export fail)");
+
+    fs::write(format!("{out_dir}/mutopia_lilypond_via_mei.rs"), mei_code).unwrap();
+    fs::write(format!("{out_dir}/mutopia_lilypond_via_musicxml.rs"), mxml_code).unwrap();
 }
 
 fn sanitize_ident(name: &str) -> String {

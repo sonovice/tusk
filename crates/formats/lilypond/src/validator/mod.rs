@@ -205,6 +205,7 @@ fn validate_toplevel(expr: &ToplevelExpression, errors: &mut Vec<ValidationError
             validate_music(m, errors);
             validate_span_balance(m, errors);
         }
+        ToplevelExpression::Language(_) => {}
     }
 }
 
@@ -354,6 +355,7 @@ fn validate_midi(mb: &MidiBlock, errors: &mut Vec<ValidationError>) {
                 }
             }
             MidiItem::ContextBlock(cb) => validate_context_mod_block(cb, errors),
+            MidiItem::Tempo(_) => {}
         }
     }
 }

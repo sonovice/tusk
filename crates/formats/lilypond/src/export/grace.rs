@@ -76,7 +76,9 @@ pub(super) fn collect_grace_types(layer_children: &[LayerChild], ext_store: &Ext
         match child {
             LayerChild::Beam(beam) => {
                 for bc in &beam.children {
-                    types.push(beam_child_grace_type(bc, ext_store));
+                    if super::beam_child_produces_item(bc) {
+                        types.push(beam_child_grace_type(bc, ext_store));
+                    }
                 }
             }
             _ => {
@@ -93,6 +95,7 @@ pub(super) fn collect_grace_types(layer_children: &[LayerChild], ext_store: &Ext
 /// non-grace note immediately before the grace group.
 pub(super) fn apply_grace_wrapping(
     items: &mut Vec<Music>,
+    item_ids: &mut Vec<Option<String>>,
     grace_types: &[Option<ExportGraceType>],
 ) {
     if items.is_empty() {
@@ -122,6 +125,12 @@ pub(super) fn apply_grace_wrapping(
     // Process groups in reverse order to avoid index shifting
     for (start, end, gt) in groups.into_iter().rev() {
         let grace_items: Vec<Music> = items.drain(start..=end).collect();
+        // Keep item_ids in sync: collapse the grace group's IDs into one entry
+        let first_id = item_ids.get(start).cloned().flatten();
+        if start < item_ids.len() {
+            let drain_end = end.min(item_ids.len() - 1);
+            item_ids.drain(start..=drain_end);
+        }
         let grace_body = if grace_items.len() == 1 {
             grace_items.into_iter().next().unwrap()
         } else {
@@ -136,6 +145,7 @@ pub(super) fn apply_grace_wrapping(
                         body: Box::new(grace_body),
                     },
                 );
+                item_ids.insert(start, first_id);
             }
             ExportGraceType::Acciaccatura => {
                 items.insert(
@@ -144,6 +154,7 @@ pub(super) fn apply_grace_wrapping(
                         body: Box::new(grace_body),
                     },
                 );
+                item_ids.insert(start, first_id);
             }
             ExportGraceType::Appoggiatura => {
                 items.insert(
@@ -152,11 +163,13 @@ pub(super) fn apply_grace_wrapping(
                         body: Box::new(grace_body),
                     },
                 );
+                item_ids.insert(start, first_id);
             }
             ExportGraceType::AfterGrace { fraction } => {
                 // AfterGrace: the main note is immediately before the grace group
                 if start > 0 {
                     let main = items.remove(start - 1);
+                    let main_id = item_ids.remove(start - 1);
                     items.insert(
                         start - 1,
                         Music::AfterGrace {
@@ -165,6 +178,8 @@ pub(super) fn apply_grace_wrapping(
                             grace: Box::new(grace_body),
                         },
                     );
+                    // Use the main note's ID for the combined AfterGrace
+                    item_ids.insert(start - 1, main_id);
                 } else {
                     // No preceding main note — fall back to regular grace
                     items.insert(
@@ -173,6 +188,7 @@ pub(super) fn apply_grace_wrapping(
                             body: Box::new(grace_body),
                         },
                     );
+                    item_ids.insert(start, first_id);
                 }
             }
         }

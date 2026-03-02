@@ -453,6 +453,7 @@ fn build_pitch_context_from_music(music: &Music) -> Option<PitchContext> {
             Some(ctx)
         }
         Music::Sequential(items) if items.len() == 1 => build_pitch_context_from_music(&items[0]),
+        Music::ContextedMusic { music: inner, .. } => build_pitch_context_from_music(inner),
         _ => None,
     }
 }

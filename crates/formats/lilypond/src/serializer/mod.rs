@@ -705,6 +705,11 @@ impl<'a> Serializer<'a> {
                 self.out.push_str("\\markuplist ");
                 self.write_markup_list(ml);
             }
+            ToplevelExpression::Language(lang) => {
+                self.out.push_str("\\language \"");
+                self.out.push_str(lang);
+                self.out.push('"');
+            }
         }
     }
 
@@ -847,6 +852,7 @@ impl<'a> Serializer<'a> {
             match item {
                 MidiItem::Assignment(a) => self.write_assignment(a),
                 MidiItem::ContextBlock(cb) => self.write_context_mod_block(cb),
+                MidiItem::Tempo(m) => self.write_music(m),
             }
             self.write_newline();
         }
@@ -966,6 +972,10 @@ impl<'a> Serializer<'a> {
             self.out.push('"');
         } else {
             self.out.push_str(&a.name);
+        }
+        if let Some(sub) = &a.sub_property {
+            self.out.push(' ');
+            self.write_scheme_expr(sub);
         }
         self.out.push_str(" = ");
         self.write_assignment_value(&a.value);

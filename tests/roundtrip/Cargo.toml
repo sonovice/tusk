@@ -11,3 +11,8 @@ tusk-mei = { workspace = true }
 tusk-musicxml = { workspace = true }
 tusk-lilypond = { workspace = true }
 tempfile = "3.24.0"
+
+[build-dependencies]
+tusk-lilypond = { workspace = true }
+tusk-mei = { workspace = true }
+tusk-model = { workspace = true }

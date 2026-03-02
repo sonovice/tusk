@@ -160,3 +160,5 @@ fn cross_format_full_roundtrip() {
 // ============================================================================
 
 include!(concat!(env!("OUT_DIR"), "/regression_cross_format.rs"));
+
+include!(concat!(env!("OUT_DIR"), "/mutopia_lilypond_via_musicxml.rs"));

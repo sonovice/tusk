@@ -33,3 +33,5 @@ fn golden_fragment_score_minimal() {
 // ============================================================================
 
 include!(concat!(env!("OUT_DIR"), "/cross_lilypond_via_mei.rs"));
+
+include!(concat!(env!("OUT_DIR"), "/mutopia_lilypond_via_mei.rs"));

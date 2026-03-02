@@ -61,6 +61,7 @@ pub fn midi_to_output_def(mb: &MidiBlock) -> OutputDef {
         match item {
             MidiItem::Assignment(a) => assignments.push(assignment_to_ext(a)),
             MidiItem::ContextBlock(cb) => context_blocks.push(context_block_to_ext(cb)),
+            MidiItem::Tempo(_) => {} // tempo in midi is informational, skip
         }
     }
     OutputDef {
@@ -196,6 +197,7 @@ pub fn output_def_to_midi(od: &OutputDef) -> MidiBlock {
 fn ext_to_assignment(ea: &ExtAssignment) -> model::Assignment {
     model::Assignment {
         name: ea.name.clone(),
+        sub_property: None,
         value: ext_to_assignment_value(&ea.value),
     }
 }
@@ -387,10 +389,12 @@ mod tests {
             fields: vec![
                 model::Assignment {
                     name: "title".into(),
+                    sub_property: None,
                     value: AssignmentValue::String("My Score".into()),
                 },
                 model::Assignment {
                     name: "tagline".into(),
+                    sub_property: None,
                     value: AssignmentValue::SchemeExpr(model::scheme::SchemeExpr::Bool(false)),
                 },
             ],

@@ -203,9 +203,25 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
         Music::Rest(rest) => events.push(LyEvent::Rest(rest.clone())),
         Music::Skip(skip) => events.push(LyEvent::Skip(skip.clone())),
         Music::MultiMeasureRest(mrest) => events.push(LyEvent::MeasureRest(mrest.clone())),
-        Music::Sequential(items) | Music::Simultaneous(items) => {
+        Music::Sequential(items) => {
             for item in items {
                 collect_events(item, events, ctx);
+            }
+        }
+        Music::Simultaneous(items) => {
+            // In \relative mode, each voice in << >> resets to the entering
+            // reference pitch. After << >>, reference comes from first voice.
+            let saved = ctx.clone();
+            let mut first_result = None;
+            for item in items {
+                let mut voice_ctx = saved.clone();
+                collect_events(item, events, &mut voice_ctx);
+                if first_result.is_none() {
+                    first_result = Some(voice_ctx);
+                }
+            }
+            if let Some(result) = first_result {
+                *ctx = result;
             }
         }
         Music::Relative { pitch, body } => {

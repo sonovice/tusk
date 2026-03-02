@@ -97,6 +97,7 @@ fn header_only_passes() {
         items: vec![ToplevelExpression::Header(HeaderBlock {
             fields: vec![Assignment {
                 name: "title".into(),
+                sub_property: None,
                 value: AssignmentValue::String("Test".into()),
             }],
         })],

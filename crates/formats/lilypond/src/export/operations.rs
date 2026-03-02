@@ -136,8 +136,11 @@ fn ext_value_to_function_arg(val: &tusk_model::ExtValue) -> crate::model::Functi
     use crate::model::FunctionArg;
     match val {
         tusk_model::ExtValue::Music(s) => {
-            // Parse serialized music back into AST
-            if let Some(m) = parse_music_str(s) {
+            // Parse serialized music back into AST.
+            // Strip slur events — the global slur map handles slur attachment
+            // separately, so keeping them here would duplicate slurs.
+            if let Some(mut m) = parse_music_str(s) {
+                strip_slur_events(&mut m);
                 FunctionArg::Music(m)
             } else {
                 FunctionArg::Music(Music::Unparsed(s.clone()))
@@ -170,6 +173,46 @@ fn ext_value_to_function_arg(val: &tusk_model::ExtValue) -> crate::model::Functi
             FunctionArg::Music(Music::Unparsed(s.clone()))
         }
         tusk_model::ExtValue::MarkupList(s) => FunctionArg::Music(Music::Unparsed(s.clone())),
+    }
+}
+
+/// Remove SlurStart/SlurEnd/PhrasingSlurStart/PhrasingSlurEnd from post_events
+/// in a Music tree. These are handled by the global slur map during export;
+/// keeping them in re-parsed function args would duplicate slurs.
+fn strip_slur_events(m: &mut Music) {
+    use crate::model::PostEvent;
+    fn strip_pe(events: &mut Vec<PostEvent>) {
+        events.retain(|pe| !matches!(pe,
+            PostEvent::SlurStart | PostEvent::SlurEnd |
+            PostEvent::PhrasingSlurStart | PostEvent::PhrasingSlurEnd
+        ));
+    }
+    match m {
+        Music::Note(n) => strip_pe(&mut n.post_events),
+        Music::Chord(c) => strip_pe(&mut c.post_events),
+        Music::Rest(r) => strip_pe(&mut r.post_events),
+        Music::Skip(s) => strip_pe(&mut s.post_events),
+        Music::MultiMeasureRest(r) => strip_pe(&mut r.post_events),
+        Music::ChordRepetition(cr) => strip_pe(&mut cr.post_events),
+        Music::Sequential(items) | Music::Simultaneous(items) => {
+            for item in items { strip_slur_events(item); }
+        }
+        Music::Relative { body, .. } | Music::Fixed { body, .. }
+        | Music::Grace { body } | Music::Acciaccatura { body }
+        | Music::Appoggiatura { body } | Music::Tuplet { body, .. }
+        | Music::Transpose { body, .. } | Music::Once { music: body }
+        | Music::ContextedMusic { music: body, .. } => strip_slur_events(body),
+        Music::Repeat { body, alternatives, .. } => {
+            strip_slur_events(body);
+            if let Some(alts) = alternatives {
+                for alt in alts { strip_slur_events(alt); }
+            }
+        }
+        Music::AfterGrace { main, grace, .. } => {
+            strip_slur_events(main);
+            strip_slur_events(grace);
+        }
+        _ => {}
     }
 }
 

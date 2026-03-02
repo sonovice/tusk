@@ -569,6 +569,7 @@ fn valid_assignment_passes() {
         version: None,
         items: vec![ToplevelExpression::Assignment(Assignment {
             name: "melody".into(),
+            sub_property: None,
             value: AssignmentValue::Music(Box::new(Music::Sequential(vec![make_note(vec![])]))),
         })],
     };
@@ -581,6 +582,7 @@ fn assignment_string_value_passes() {
         version: None,
         items: vec![ToplevelExpression::Assignment(Assignment {
             name: "myTitle".into(),
+            sub_property: None,
             value: AssignmentValue::String("Hello".into()),
         })],
     };
@@ -593,6 +595,7 @@ fn assignment_number_value_passes() {
         version: None,
         items: vec![ToplevelExpression::Assignment(Assignment {
             name: "myNum".into(),
+            sub_property: None,
             value: AssignmentValue::Number(42.0),
         })],
     };
@@ -605,6 +608,7 @@ fn assignment_identifier_value_passes() {
         version: None,
         items: vec![ToplevelExpression::Assignment(Assignment {
             name: "soprano".into(),
+            sub_property: None,
             value: AssignmentValue::Identifier("melody".into()),
         })],
     };
@@ -617,6 +621,7 @@ fn empty_assignment_name_fails() {
         version: None,
         items: vec![ToplevelExpression::Assignment(Assignment {
             name: String::new(),
+            sub_property: None,
             value: AssignmentValue::Number(1.0),
         })],
     };
@@ -633,6 +638,7 @@ fn assignment_with_invalid_music_value_fails() {
         version: None,
         items: vec![ToplevelExpression::Assignment(Assignment {
             name: "broken".into(),
+            sub_property: None,
             value: AssignmentValue::Music(Box::new(Music::Note(NoteEvent {
                 pitch: Pitch {
                     step: 'c',
@@ -666,6 +672,7 @@ fn assignment_then_score_passes() {
         items: vec![
             ToplevelExpression::Assignment(Assignment {
                 name: "melody".into(),
+                sub_property: None,
                 value: AssignmentValue::Music(Box::new(Music::Sequential(vec![make_note(vec![])]))),
             }),
             ToplevelExpression::Score(ScoreBlock {

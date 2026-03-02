@@ -255,23 +255,36 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                             for sc in &staff.children {
                                 let tusk_model::elements::StaffChild::Layer(layer) = sc else { continue; };
                                 raw_layers.push(&layer.children);
-                                let grace_types = collect_grace_types(&layer.children, ext_store);
+                                let mut grace_types = collect_grace_types(&layer.children, ext_store);
                                 let mut items = Vec::new();
                                 let mut item_ids = Vec::new();
+                                let mut gt_pos = 0;
                                 for lc in &layer.children {
                                     let start = items.len();
                                     convert_layer_child_to_items(lc, &post_event_map, &mut items, ext_store, &mei_defaults);
-                                    collect_layer_child_ids(lc, &mut item_ids, items.len() - start);
+                                    let count = items.len() - start;
+                                    collect_layer_child_ids(lc, &mut item_ids, count);
+                                    // Align grace_types: insert None for extra items
+                                    // (e.g. \change Staff) not accounted for by collect_grace_types
+                                    let gt_count = match lc {
+                                        LayerChild::Beam(beam) => beam.children.iter()
+                                            .filter(|bc| beam_child_produces_item(bc))
+                                            .count(),
+                                        _ => if count > 0 { 1 } else { 0 },
+                                    };
+                                    for _ in 0..count.saturating_sub(gt_count) {
+                                        grace_types.insert(gt_pos, None);
+                                    }
+                                    gt_pos += count;
                                 }
                                 let log1 = inject_property_ops(&mut items, &mut item_ids, &property_ops);
                                 let log2 = inject_function_ops(&mut items, &mut item_ids, &function_ops);
                                 let log3 = inject_scheme_music_ops(&mut items, &mut item_ids, &scheme_music_ops);
-                                let mut grace_types = grace_types;
                                 apply_insertion_log(&mut grace_types, &log1);
                                 apply_insertion_log(&mut grace_types, &log2);
                                 apply_insertion_log(&mut grace_types, &log3);
                                 apply_tuplet_wrapping(&mut items, &mut item_ids, &tuplet_spans, &mut grace_types);
-                                apply_grace_wrapping(&mut items, &grace_types);
+                                apply_grace_wrapping(&mut items, &mut item_ids, &grace_types);
                                 apply_repeat_wrapping(
                                     &mut items,
                                     &item_ids,
@@ -602,6 +615,7 @@ fn ext_assignment_to_model(ea: tusk_model::ExtAssignment) -> Option<crate::model
     };
     Some(Assignment {
         name: ea.name,
+        sub_property: None,
         value,
     })
 }
@@ -892,12 +906,14 @@ fn jazz_chord_name_with_block() -> Vec<crate::model::ContextModItem> {
     // majorSevenSymbol = \markup "maj7"
     let major_seven = ContextModItem::Assignment(Assignment {
         name: "majorSevenSymbol".to_string(),
+        sub_property: None,
         value: AssignmentValue::Markup(Markup::String("maj7".to_string())),
     });
 
     // chordNameExceptions = #(append (sequential-music-to-chord-exceptions #{ ... #} #t) ignatzekExceptions)
     let exceptions = ContextModItem::Assignment(Assignment {
         name: "chordNameExceptions".to_string(),
+        sub_property: None,
         value: AssignmentValue::SchemeExpr(SchemeExpr::Raw(
             concat!(
                 "(append\n",
@@ -1420,7 +1436,11 @@ fn collect_layer_child_ids(child: &LayerChild, ids: &mut Vec<Option<String>>, co
     match child {
         LayerChild::Beam(beam) => {
             for bc in &beam.children {
-                ids.push(beam_child_xml_id(bc).map(String::from));
+                // Only push ID if convert_beam_child would produce an item.
+                // Nested beams with >1 child return None, so skip them.
+                if beam_child_produces_item(bc) {
+                    ids.push(beam_child_xml_id(bc).map(String::from));
+                }
             }
         }
         _ => {
@@ -1523,6 +1543,15 @@ mod grace;
 use grace::{apply_grace_wrapping, collect_grace_types};
 
 use repeats::{apply_repeat_wrapping, collect_ending_spans, collect_repeat_spans};
+
+/// Check if a beam child would produce an item from `convert_beam_child`.
+/// Nested beams with >1 child return None (dropped), so they don't produce items.
+pub(crate) fn beam_child_produces_item(bc: &tusk_model::elements::BeamChild) -> bool {
+    match bc {
+        tusk_model::elements::BeamChild::Beam(inner) => inner.children.len() == 1,
+        _ => true,
+    }
+}
 
 mod chord_names;
 mod figured_bass;
@@ -1712,22 +1741,9 @@ fn convert_beam_child(child: &tusk_model::elements::BeamChild, ext_store: &Exten
         BeamChild::Note(note) => Some(convert_mei_note(note, ext_store, defaults)),
         BeamChild::Rest(rest) => Some(convert_mei_rest(rest, ext_store, defaults)),
         BeamChild::Chord(chord) => Some(convert_mei_chord(chord, ext_store, defaults)),
-        BeamChild::Beam(beam) => {
-            // Nested beams: flatten recursively (nested beams just continue the beam)
-            // This shouldn't produce beam markers for the inner beam since
-            // LilyPond uses a flat [ ... ] without nesting
-            let mut nested = Vec::new();
-            for bc in &beam.children {
-                if let Some(m) = convert_beam_child(bc, ext_store, defaults) {
-                    nested.push(m);
-                }
-            }
-            // Return first item if single, otherwise none (shouldn't occur in practice)
-            if nested.len() == 1 {
-                nested.into_iter().next()
-            } else {
-                None
-            }
+        BeamChild::Beam(_) => {
+            // Nested beams handled by flatten_beam_children at the call site.
+            None
         }
         _ => None,
     }

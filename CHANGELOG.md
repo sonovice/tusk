@@ -1,5 +1,53 @@
 # Changelog
 
+## [1.3.0] — 2026-03-02
+
+### LilyPond parser
+
+- **`\language` directive**: top-level `\language "english"` now parsed and
+  serialized as `ToplevelExpression::Language`.
+- **Assignment sub-properties**: `name #'padding = value` parsed with new
+  `sub_property` field on `Assignment`.
+- **`\tempo` in `\midi`**: `\tempo` inside `\midi {}` blocks now parsed as
+  `MidiItem::Tempo` instead of causing errors.
+- **Non-ASCII identifiers**: lexer handles UTF-8 multi-byte characters in
+  identifiers (accented letters, non-Latin scripts) instead of erroring.
+
+### LilyPond import (LilyPond → MEI)
+
+- **Simultaneous pitch context**: each voice in `<< >>` blocks now resets to
+  the entering reference pitch during event collection, fixing octave drift
+  when voices have different final pitches.
+- **ContextedMusic pitch traversal**: `build_pitch_context_from_music` now
+  traverses `\new Staff` / `\new Voice` wrappers to find the starting pitch
+  for `\relative` mode.
+
+### LilyPond export (MEI → LilyPond)
+
+- **Grace wrapping ID sync**: `apply_grace_wrapping` now maintains `item_ids`
+  in parallel with `items`, fixing repeat boundary misalignment after grace
+  note groups.
+- **Nested beam consistency**: `collect_layer_child_ids` and
+  `collect_grace_types` now skip multi-child nested `BeamChild::Beam` entries
+  that `convert_beam_child` drops, keeping parallel arrays in sync.
+- **Grace types alignment**: extra items injected by `\change Staff` context
+  changes now get corresponding `None` entries in `grace_types`, preventing
+  off-by-one misalignment in the tuplet/grace/repeat wrapping pipeline.
+- **Duplicate slur stripping**: re-parsed music arguments in function calls
+  (e.g. `\shape`) have slur events stripped, since the global slur map already
+  handles slur attachment. Fixes duplicate `SlurStart` causing unmatched slur
+  validation errors.
+
+### Test infrastructure
+
+- **MutopiaProject submodule**: 5681 LilyPond files from the MutopiaProject
+  added as a git submodule for real-world roundtrip testing.
+- **Mutopia roundtrip tests**: build-time pipeline probe generates per-file
+  `try_lilypond_via_mei` and `try_lilypond_via_musicxml` tests for all
+  standalone Mutopia files that pass the first pipeline pass (655 tests).
+- **`try_lilypond_via_musicxml` helper**: new cross-format pipeline helper for
+  LilyPond → MusicXML → LilyPond roundtrip testing.
+
 ## [1.2.0] — 2026-03-01
 
 ### LilyPond parser

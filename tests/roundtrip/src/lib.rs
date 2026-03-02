@@ -298,3 +298,22 @@ pub fn try_lilypond_via_mei(src: &str, name: &str) {
     };
     assert_stable(&ly1, &ly2, name);
 }
+
+/// LilyPond string → LilyPond string (via MusicXML roundtrip).
+pub fn lilypond_via_musicxml(ly: &str) -> Result<String, String> {
+    let mxml = lilypond_to_musicxml(ly)?;
+    musicxml_to_lilypond(&mxml)
+}
+
+/// Try LilyPond->MusicXML->LilyPond. Skip on error, panic on instability.
+pub fn try_lilypond_via_musicxml(src: &str, name: &str) {
+    let ly1 = match lilypond_via_musicxml(src) {
+        Ok(ly) => ly,
+        Err(_) => return,
+    };
+    let ly2 = match lilypond_via_musicxml(&ly1) {
+        Ok(ly) => ly,
+        Err(_) => return,
+    };
+    assert_stable(&ly1, &ly2, name);
+}

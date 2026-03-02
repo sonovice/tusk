@@ -158,9 +158,10 @@ impl<'src> Lexer<'src> {
             b'^' => self.single_char(Token::Caret, start),
             b'_' => self.single_char(Token::Underscore, start),
 
+            // Non-ASCII bytes → treat as word chars (accented letters, symbols, etc.)
+            0x80..=0xFF => self.lex_word(start),
+
             _ => {
-                // Decode the UTF-8 char at this position for the error message.
-                // If pos is somehow not on a char boundary, fall back to '?'.
                 let ch = if self.src.is_char_boundary(self.pos) {
                     self.src[self.pos..].chars().next().unwrap_or('?')
                 } else {
@@ -473,6 +474,16 @@ impl<'src> Lexer<'src> {
                         self.pos += 1;
                     } else {
                         break;
+                    }
+                }
+                // Non-ASCII continuation bytes (UTF-8 multi-byte chars)
+                0x80..=0xFF => {
+                    // Advance past entire UTF-8 character
+                    if self.src.is_char_boundary(self.pos) {
+                        let ch = self.src[self.pos..].chars().next().unwrap();
+                        self.pos += ch.len_utf8();
+                    } else {
+                        self.pos += 1;
                     }
                 }
                 _ => break,

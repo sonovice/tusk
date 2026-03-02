@@ -296,6 +296,11 @@ impl<'src> Parser<'src> {
             Token::Paper => Ok(ToplevelExpression::Paper(self.parse_paper_block()?)),
             Token::Layout => Ok(ToplevelExpression::Layout(self.parse_layout_block()?)),
             Token::Midi => Ok(ToplevelExpression::Midi(self.parse_midi_block()?)),
+            Token::Language => {
+                self.advance()?; // consume \language
+                let lang = self.expect_string()?;
+                Ok(ToplevelExpression::Language(lang))
+            }
             Token::Markup => {
                 let m = self.parse_markup()?;
                 Ok(ToplevelExpression::Markup(m))
@@ -337,7 +342,7 @@ impl<'src> Parser<'src> {
             // It's an assignment
             self.advance()?; // consume `=`
             let value = self.parse_assignment_value()?;
-            Ok(ToplevelExpression::Assignment(Assignment { name, value }))
+            Ok(ToplevelExpression::Assignment(Assignment { name, sub_property: None, value }))
         } else {
             // Backtrack: restore state and parse as music
             // We can't truly backtrack the lexer, so rebuild from saved position
@@ -365,7 +370,7 @@ impl<'src> Parser<'src> {
         let name = self.expect_string()?;
         self.expect(&Token::Equals)?;
         let value = self.parse_assignment_value()?;
-        Ok(ToplevelExpression::Assignment(Assignment { name, value }))
+        Ok(ToplevelExpression::Assignment(Assignment { name, sub_property: None, value }))
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -493,7 +498,7 @@ impl<'src> Parser<'src> {
                 let name = self.expect_string()?;
                 self.expect(&Token::Equals)?;
                 let value = self.parse_assignment_value()?;
-                Ok(BookItem::Assignment(Assignment { name, value }))
+                Ok(BookItem::Assignment(Assignment { name, sub_property: None, value }))
             }
             _ => Ok(BookItem::Music(self.parse_music()?)),
         }
@@ -512,7 +517,7 @@ impl<'src> Parser<'src> {
         if *self.peek() == Token::Equals {
             self.advance()?;
             let value = self.parse_assignment_value()?;
-            Ok(BookItem::Assignment(Assignment { name, value }))
+            Ok(BookItem::Assignment(Assignment { name, sub_property: None, value }))
         } else {
             // Backtrack
             let mut new_lexer = Lexer::new(self.src);
@@ -553,7 +558,7 @@ impl<'src> Parser<'src> {
                 let name = self.expect_string()?;
                 self.expect(&Token::Equals)?;
                 let value = self.parse_assignment_value()?;
-                Ok(BookPartItem::Assignment(Assignment { name, value }))
+                Ok(BookPartItem::Assignment(Assignment { name, sub_property: None, value }))
             }
             _ => Ok(BookPartItem::Music(self.parse_music()?)),
         }
@@ -572,7 +577,7 @@ impl<'src> Parser<'src> {
         if *self.peek() == Token::Equals {
             self.advance()?;
             let value = self.parse_assignment_value()?;
-            Ok(BookPartItem::Assignment(Assignment { name, value }))
+            Ok(BookPartItem::Assignment(Assignment { name, sub_property: None, value }))
         } else {
             let mut new_lexer = Lexer::new(self.src);
             loop {
@@ -618,7 +623,7 @@ impl<'src> Parser<'src> {
         self.advance()?;
         self.expect(&Token::Equals)?;
         let value = self.parse_header_value()?;
-        Ok(Assignment { name, value })
+        Ok(Assignment { name, sub_property: None, value })
     }
 
     fn parse_header_value(&mut self) -> Result<AssignmentValue, ParseError> {
@@ -700,6 +705,7 @@ impl<'src> Parser<'src> {
     fn parse_midi_item(&mut self) -> Result<MidiItem, ParseError> {
         match self.peek() {
             Token::Context => Ok(MidiItem::ContextBlock(self.parse_context_mod_block()?)),
+            Token::Tempo => Ok(MidiItem::Tempo(self.parse_tempo()?)),
             _ => {
                 let a = self.parse_output_def_assignment()?;
                 Ok(MidiItem::Assignment(a))
@@ -740,9 +746,15 @@ impl<'src> Parser<'src> {
             }
         };
         self.advance()?;
+        // Optional Scheme sub-property: `name #'padding = value`
+        let sub_property = if *self.peek() == Token::Hash {
+            Some(self.parse_scheme_expr()?)
+        } else {
+            None
+        };
         self.expect(&Token::Equals)?;
         let value = self.parse_assignment_value()?;
-        Ok(Assignment { name, value })
+        Ok(Assignment { name, sub_property, value })
     }
 
     // ──────────────────────────────────────────────────────────────────

@@ -1,3 +1,6 @@
 [submodule "tests/fixtures/mei/sample-encodings"]
 	path = tests/fixtures/mei/sample-encodings
 	url = https://github.com/music-encoding/sample-encodings.git
+[submodule "tests/fixtures/lilypond/MutopiaProject"]
+	path = tests/fixtures/lilypond/MutopiaProject
+	url = https://github.com/MutopiaProject/MutopiaProject.git

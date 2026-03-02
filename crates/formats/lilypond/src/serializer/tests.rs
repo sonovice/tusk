@@ -55,10 +55,12 @@ fn serialize_header_block() {
             fields: vec![
                 Assignment {
                     name: "title".into(),
+                    sub_property: None,
                     value: AssignmentValue::String("My Piece".into()),
                 },
                 Assignment {
                     name: "composer".into(),
+                    sub_property: None,
                     value: AssignmentValue::String("JS Bach".into()),
                 },
             ],
@@ -109,6 +111,7 @@ fn serialize_assignment() {
         version: None,
         items: vec![ToplevelExpression::Assignment(Assignment {
             name: "melody".into(),
+            sub_property: None,
             value: AssignmentValue::Music(Box::new(Music::Sequential(vec![
                 Music::Note(NoteEvent {
                     pitch: Pitch {
@@ -1232,6 +1235,7 @@ fn serialize_markup_assignment() {
         items: vec![ToplevelExpression::Header(HeaderBlock {
             fields: vec![Assignment {
                 name: "title".into(),
+                sub_property: None,
                 value: AssignmentValue::Markup(markup::Markup::String("My Title".into())),
             }],
         })],
