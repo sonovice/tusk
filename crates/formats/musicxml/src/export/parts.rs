@@ -243,8 +243,6 @@ pub fn convert_mei_staff_grp_barline(
 fn is_multi_staff_part(staff_grp: &StaffGrp) -> bool {
     let has_bar_thru =
         staff_grp.staff_grp_vis.bar_thru == Some(tusk_model::data::DataBoolean::True);
-    let has_brace = staff_grp.staff_grp_vis.symbol.as_deref() == Some("brace");
-
     let staff_defs: Vec<&StaffDef> = staff_grp
         .children
         .iter()

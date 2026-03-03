@@ -194,7 +194,7 @@ fn create_fallback_figured_bass(fb: &Fb, local_staff_n: usize) -> FiguredBass {
         .children
         .iter()
         .filter_map(|child| {
-            let FbChild::F(f) = child else { return None };
+            let FbChild::F(f) = child;
             let text: String = f
                 .children
                 .iter()

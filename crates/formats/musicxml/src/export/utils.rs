@@ -213,9 +213,8 @@ pub fn extract_label_abbr_text(staff_grp: &tusk_model::elements::StaffGrp) -> Op
         if let StaffGrpChild::LabelAbbr(label_abbr) = child {
             let mut text = String::new();
             for label_child in &label_abbr.children {
-                if let LabelAbbrChild::Text(t) = label_child {
-                    text.push_str(t);
-                }
+                let LabelAbbrChild::Text(t) = label_child;
+                text.push_str(t);
             }
             if !text.is_empty() {
                 return Some(text);
@@ -253,9 +252,8 @@ pub fn extract_staff_def_label_abbr(staff_def: &tusk_model::elements::StaffDef) 
         if let StaffDefChild::LabelAbbr(label_abbr) = child {
             let mut text = String::new();
             for label_child in &label_abbr.children {
-                if let LabelAbbrChild::Text(t) = label_child {
-                    text.push_str(t);
-                }
+                let LabelAbbrChild::Text(t) = label_child;
+                text.push_str(t);
             }
             if !text.is_empty() {
                 return Some(text);
@@ -310,12 +308,9 @@ pub fn find_first_mdiv_in_body(
 ) -> Option<&tusk_model::elements::Mdiv> {
     use tusk_model::elements::BodyChild;
 
-    body.children.first().and_then(|child| {
-        if let BodyChild::Mdiv(mdiv) = child {
-            Some(mdiv.as_ref())
-        } else {
-            None
-        }
+    body.children.first().map(|child| {
+        let BodyChild::Mdiv(mdiv) = child;
+        mdiv.as_ref()
     })
 }
 

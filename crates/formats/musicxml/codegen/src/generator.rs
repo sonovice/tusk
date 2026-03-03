@@ -67,6 +67,7 @@ pub fn generate(schema: &Schema, output: &Path) -> Result<()> {
 fn generate_data(schema: &Schema, path: &Path) -> Result<()> {
     let mut out = String::from(
         "//! MusicXML data types (generated from XSD). DO NOT EDIT.\n\n\
+         #[allow(unused_imports)]\n\
          use serde::{Deserialize, Serialize};\n\n",
     );
 

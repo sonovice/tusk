@@ -1,5 +1,6 @@
 //! MusicXML data types (generated from XSD). DO NOT EDIT.
 
+#[allow(unused_imports)]
 use serde::{Deserialize, Serialize};
 
 pub type UpDownStopContinue = String;
