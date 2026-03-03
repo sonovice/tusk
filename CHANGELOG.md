@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.3.1] — 2026-03-03
+
+### LilyPond parser
+
+- **`\include` directive**: top-level `\include "file.ly"` now parsed and
+  serialized as `ToplevelExpression::Include`, preserving file references
+  in the AST for files that contain musical content.
+- **Dotted property paths**: output-def assignments like
+  `system-system-spacing.minimum-distance = #15` in `\paper`/`\layout` blocks
+  now parsed correctly (converted to equivalent `#'sub-property` form internally).
+
 ## [1.3.0] — 2026-03-02
 
 ### LilyPond parser

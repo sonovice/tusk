@@ -205,7 +205,7 @@ fn validate_toplevel(expr: &ToplevelExpression, errors: &mut Vec<ValidationError
             validate_music(m, errors);
             validate_span_balance(m, errors);
         }
-        ToplevelExpression::Language(_) => {}
+        ToplevelExpression::Language(_) | ToplevelExpression::Include(_) => {}
     }
 }
 

@@ -301,6 +301,11 @@ impl<'src> Parser<'src> {
                 let lang = self.expect_string()?;
                 Ok(ToplevelExpression::Language(lang))
             }
+            Token::Include => {
+                self.advance()?; // consume \include
+                let path = self.expect_string()?;
+                Ok(ToplevelExpression::Include(path))
+            }
             Token::Markup => {
                 let m = self.parse_markup()?;
                 Ok(ToplevelExpression::Markup(m))
@@ -746,8 +751,25 @@ impl<'src> Parser<'src> {
             }
         };
         self.advance()?;
-        // Optional Scheme sub-property: `name #'padding = value`
-        let sub_property = if *self.peek() == Token::Hash {
+        // Optional sub-property via dot syntax: `name.sub-name = value`
+        // equivalent to Scheme form: `name #'sub-name = value`
+        let sub_property = if *self.peek() == Token::Dot {
+            self.advance()?; // consume dot
+            let sub = match &self.current.token {
+                Token::Symbol(s) => s.clone(),
+                Token::NoteName(s) => s.clone(),
+                _ => {
+                    return Err(ParseError::Unexpected {
+                        found: self.current.token.clone(),
+                        offset: self.offset(),
+                        expected: "sub-property name after '.'".into(),
+                    });
+                }
+            };
+            self.advance()?;
+            Some(SchemeExpr::Symbol(sub))
+        } else if *self.peek() == Token::Hash {
+            // Scheme sub-property: `name #'padding = value`
             Some(self.parse_scheme_expr()?)
         } else {
             None

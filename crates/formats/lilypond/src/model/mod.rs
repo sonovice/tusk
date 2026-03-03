@@ -78,6 +78,8 @@ pub enum ToplevelExpression {
     MarkupList(MarkupList),
     /// `\language "english"` — note naming convention.
     Language(String),
+    /// `\include "filename.ly"` — file inclusion directive.
+    Include(String),
 }
 
 // ---------------------------------------------------------------------------

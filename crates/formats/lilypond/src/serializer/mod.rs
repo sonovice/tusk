@@ -710,6 +710,11 @@ impl<'a> Serializer<'a> {
                 self.out.push_str(lang);
                 self.out.push('"');
             }
+            ToplevelExpression::Include(path) => {
+                self.out.push_str("\\include \"");
+                self.out.push_str(path);
+                self.out.push('"');
+            }
         }
     }
 
