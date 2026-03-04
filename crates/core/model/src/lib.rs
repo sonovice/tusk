@@ -46,8 +46,8 @@ pub use extensions::{
     MultiMeasureRestInfo, OrnamentInfo, OutputDef, OutputDefKind, PhrasingSlur, PitchContext,
     PitchedRest, PositionedEvent, PropertyOp, PropertyOpInfo, PropertyOpType, RepeatInfo,
     RepeatTypeExt, SchemeMusicInfo, SourceFormat, StaffContext, TUSK_EXT_NS, TempoInfo,
-    TextMarkInfo, TextScriptInfo, ToplevelMarkup, ToplevelMarkupKind, TremoloInfo, TupletInfo,
-    TweakInfo, VariableAssignments,
+    TextMarkInfo, TextScriptInfo, TieDirection, ToplevelMarkup, ToplevelMarkupKind, TremoloInfo,
+    TupletInfo, TweakInfo, VariableAssignments,
 };
 pub use musicxml_ext::{
     BarlineData, BassData, DegreeData, DirectionVisualData, DoubleData, EndingData, FirstFretData,

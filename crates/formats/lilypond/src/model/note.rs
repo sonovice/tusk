@@ -94,14 +94,24 @@ impl ScriptAbbreviation {
 pub enum PostEvent {
     /// Tie: `~`
     Tie,
+    /// Directed tie: `^~`, `_~`, `-~`
+    DirectedTie(Direction),
     /// Slur start: `(`
     SlurStart,
     /// Slur end: `)`
     SlurEnd,
+    /// Directed slur start: `^(`, `_(`, `-(`
+    DirectedSlurStart(Direction),
+    /// Directed slur end: `^)`, `_)`, `-)`
+    DirectedSlurEnd(Direction),
     /// Phrasing slur start: `\(`
     PhrasingSlurStart,
     /// Phrasing slur end: `\)`
     PhrasingSlurEnd,
+    /// Directed phrasing slur start: `^\(`, `_\(`, `-\(`
+    DirectedPhrasingSlurStart(Direction),
+    /// Directed phrasing slur end: `^\)`, `_\)`, `-\)`
+    DirectedPhrasingSlurEnd(Direction),
     /// Beam start: `[`
     BeamStart,
     /// Beam end: `]`
@@ -208,6 +218,8 @@ pub const KNOWN_ORNAMENTS: &[&str] = &[
     "segno",
     "coda",
     "varcoda",
+    // Arpeggio
+    "arpeggio",
 ];
 
 /// Returns `true` if the given name is a known LilyPond ornament/script name

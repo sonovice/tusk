@@ -421,6 +421,31 @@ impl<'src> Parser<'src> {
                     None
                 }
             },
+            // Directed tie: ^~ _~ -~
+            Token::Tilde => {
+                let _ = self.advance();
+                Some(PostEvent::DirectedTie(direction))
+            }
+            // Directed slur start: ^( _( -(
+            Token::ParenOpen => {
+                let _ = self.advance();
+                Some(PostEvent::DirectedSlurStart(direction))
+            }
+            // Directed slur end: ^) _) -)
+            Token::ParenClose => {
+                let _ = self.advance();
+                Some(PostEvent::DirectedSlurEnd(direction))
+            }
+            // Directed phrasing slur start: ^\( _\( -\(
+            Token::EscapedParenOpen => {
+                let _ = self.advance();
+                Some(PostEvent::DirectedPhrasingSlurStart(direction))
+            }
+            // Directed phrasing slur end: ^\) _\) -\)
+            Token::EscapedParenClose => {
+                let _ = self.advance();
+                Some(PostEvent::DirectedPhrasingSlurEnd(direction))
+            }
             _ => {
                 // Not a valid post-event after direction — backtrack
                 self.current = saved;

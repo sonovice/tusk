@@ -1,5 +1,48 @@
 # Changelog
 
+## [1.3.2] — 2026-03-04
+
+### LilyPond parser
+
+- **Directed post-events**: `^~ _~ -~` (directed ties), `^( _( -(` / `^) _) -)`
+  (directed slurs), and `^\( _\(` / `^\) _\)` (directed phrasing slurs) now
+  parsed and serialized with their direction preserved.
+- **Arpeggio ornament**: `\arpeggio` recognized as a known ornament.
+
+### LilyPond import (LilyPond → MEI)
+
+- **Hybrid measure splitting**: new measure splitter combines duration-based
+  splitting with bar check / bar line boundaries, fixing files that use
+  `\bar "||"` at section ends but have no bar checks within sections (previously
+  collapsed hundreds of notes into a single measure).
+- **Cross-voice slur resolution**: slurs starting inside a `<< >>` voice block
+  and ending outside it (or vice versa) are now correctly matched across voice
+  boundaries instead of being silently dropped.
+- **Directed tie/slur preservation**: tie direction (`^~ _~`) and slur curvedir
+  (`^( _(`) stored in `ExtensionStore` for lossless roundtrip.
+- **Multi-score ID uniqueness**: multiple `\score` blocks now generate unique
+  staffDef/staffGrp IDs per score, preventing event sequences from overwriting
+  each other in the extension store.
+- **Multiple bare `\score` blocks**: files with multiple `\score` blocks outside
+  `\book` now produce separate `<mdiv>` elements (previously only with `\book`).
+
+### LilyPond export (MEI → LilyPond)
+
+- **Directed slur/tie export**: MEI `@curvedir` on slurs and tie direction from
+  the extension store re-emitted as `^( _( ^~ _~` etc.
+- **Stable signature injection**: clef/key/time events skipped for non-first
+  measures (voice splitting changes note counts between passes, causing unstable
+  injection positions). Tempo/mark/markup events still injected.
+- **Empty measure suppression**: measures where all staves have empty layers are
+  skipped to prevent roundtrip instability.
+- **Repeat wrapping fixes**: cross-measure repeat boundary detection improved;
+  already-wrapped repeat IDs nulled out to prevent double-wrapping.
+
+### Roundtrip stability
+
+- All 2708 `lilypond_via_mei` tests pass (0 failures).
+- All 402 `mei_via_lilypond` tests pass (0 regressions).
+
 ## [1.3.1] — 2026-03-03
 
 ### LilyPond parser

@@ -120,6 +120,7 @@ where
 /// Assert that two strings are equal (for pipeline stabilization).
 pub fn assert_stable(a1: &str, a2: &str, context: &str) {
     if a1 != a2 {
+        eprintln!("=== PASS1 for {context} ===\n{a1}\n=== PASS2 for {context} ===\n{a2}\n=== END ===");
         let lines1: Vec<_> = a1.lines().collect();
         let lines2: Vec<_> = a2.lines().collect();
         let first_diff = lines1

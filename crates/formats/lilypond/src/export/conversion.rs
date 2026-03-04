@@ -172,7 +172,16 @@ pub(super) fn convert_mei_chord(chord: &tusk_model::elements::Chord, ext_store: 
         matches!(note.note_anl.tie.as_ref(), Some(t) if t.0 == "i" || t.0 == "m")
     });
     if has_tie {
-        post_events.push(PostEvent::Tie);
+        let tie_ev = chord.common.xml_id.as_deref()
+            .and_then(|id| ext_store.tie_direction(id))
+            .and_then(|td| match td.direction.as_str() {
+                "above" => Some(PostEvent::DirectedTie(crate::model::note::Direction::Up)),
+                "below" => Some(PostEvent::DirectedTie(crate::model::note::Direction::Down)),
+                "neutral" => Some(PostEvent::DirectedTie(crate::model::note::Direction::Neutral)),
+                _ => None,
+            })
+            .unwrap_or(PostEvent::Tie);
+        post_events.push(tie_ev);
     }
 
     // Restore tweak post-events from ext_store
@@ -236,11 +245,20 @@ pub(super) fn convert_mei_note(note: &tusk_model::elements::Note, ext_store: &Ex
     let duration = extract_note_duration(note, defaults);
     let mut post_events = Vec::new();
 
-    // @tie="i" or "m" -> PostEvent::Tie (start or continuation)
+    // @tie="i" or "m" -> PostEvent::Tie or DirectedTie
     if let Some(ref tie) = note.note_anl.tie
         && (tie.0 == "i" || tie.0 == "m")
     {
-        post_events.push(PostEvent::Tie);
+        let tie_ev = note.common.xml_id.as_deref()
+            .and_then(|id| ext_store.tie_direction(id))
+            .and_then(|td| match td.direction.as_str() {
+                "above" => Some(PostEvent::DirectedTie(crate::model::note::Direction::Up)),
+                "below" => Some(PostEvent::DirectedTie(crate::model::note::Direction::Down)),
+                "neutral" => Some(PostEvent::DirectedTie(crate::model::note::Direction::Neutral)),
+                _ => None,
+            })
+            .unwrap_or(PostEvent::Tie);
+        post_events.push(tie_ev);
     }
 
     // Restore tweak post-events from ext_store

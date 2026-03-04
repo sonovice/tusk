@@ -44,10 +44,19 @@ pub(super) fn extract_voices(music: &Music) -> Vec<Vec<&Music>> {
     }
     // Try unwrapping pitch context wrappers, then split with strict mode
     let inner = unwrap_pitch_context(music);
-    if !std::ptr::eq(inner, music)
-        && let Some(voices) = try_split_simultaneous(inner, false) {
+    if !std::ptr::eq(inner, music) {
+        if let Some(voices) = try_split_simultaneous(inner, false) {
             return voices;
         }
+        // Try splitting Sequential with embedded Simultaneous blocks
+        if let Some(voices) = try_split_sequential_with_simultaneous(inner) {
+            return voices;
+        }
+    }
+    // Try on original music too (may be a Sequential without wrappers)
+    if let Some(voices) = try_split_sequential_with_simultaneous(music) {
+        return voices;
+    }
     vec![vec![music]]
 }
 
@@ -69,18 +78,40 @@ fn unwrap_pitch_context(music: &Music) -> &Music {
                 && items[..items.len() - 1].iter().all(|m| is_prefix_item(m))
             {
                 last
+            }
+            // Single Simultaneous + only boundary markers (BarLine/BarCheck):
+            // e.g. `{ << { v1 } { v2 } >> \bar "|." }` — unwrap to the Sim
+            else if items.iter().filter(|m| matches!(m, Music::Simultaneous(_))).count() == 1
+                && items.iter().all(|m| {
+                    matches!(
+                        m,
+                        Music::Simultaneous(_) | Music::BarLine { .. } | Music::BarCheck
+                    )
+                })
+            {
+                items
+                    .iter()
+                    .find(|m| matches!(m, Music::Simultaneous(_)))
+                    .unwrap()
             } else {
                 music
             }
         }
         // Unwrap ContextedMusic (e.g. `\context Voice = "name" { ... }`)
-        // to find inner Simultaneous for voice splitting
+        // to find inner Simultaneous or Sequential-with-Sims for voice splitting.
+        // Pitch context (\relative etc.) is preserved via original_music in the caller.
         Music::ContextedMusic { music: inner, .. } => {
             let unwrapped = unwrap_pitch_context(inner);
-            if matches!(unwrapped, Music::Simultaneous(_)) {
-                unwrapped
-            } else {
-                music
+            match unwrapped {
+                Music::Simultaneous(_) => unwrapped,
+                // Return Sequential only if it contains Simultaneous blocks
+                // (the per-measure voice pattern from export)
+                Music::Sequential(items)
+                    if items.iter().any(|m| matches!(m, Music::Simultaneous(_))) =>
+                {
+                    unwrapped
+                }
+                _ => music,
             }
         }
         _ => music,
@@ -131,6 +162,151 @@ fn try_split_simultaneous(music: &Music, allow_context: bool) -> Option<Vec<Vec<
             }
         }
     None
+}
+
+/// Split a Sequential that contains embedded Simultaneous blocks into voices.
+///
+/// Handles patterns like `{ << { v1 } { v2 } >> | items | << { v1 } { v2 } >> }`
+/// where the export produced per-measure `<<>>` blocks separated by bar checks,
+/// with single-voice measures as flat items between them.
+///
+/// Validates per-segment (between BarChecks): each segment must be either
+/// a single Simultaneous (multi-voice measure) or all non-Simultaneous items
+/// (single-voice measure). Mixed segments (notes + `<<>>` in same measure)
+/// are rejected to avoid incorrectly splitting `{ notes <<>> }` patterns.
+fn try_split_sequential_with_simultaneous(music: &Music) -> Option<Vec<Vec<&Music>>> {
+    let items = match music {
+        Music::Sequential(items) if items.len() > 1 => items,
+        _ => return None,
+    };
+
+    // Segment items at BarCheck boundaries
+    let mut segments: Vec<Vec<&Music>> = vec![Vec::new()];
+    for item in items {
+        if matches!(item, Music::BarCheck) {
+            segments.push(Vec::new());
+        } else {
+            segments.last_mut().unwrap().push(item);
+        }
+    }
+    // Remove trailing empty segment
+    if segments.last().is_some_and(|s| s.is_empty()) {
+        segments.pop();
+    }
+
+    // Find the maximum voice count from Simultaneous blocks.
+    // Segments with Sim blocks may have varying voice counts (some voices
+    // may be empty in some measures), so we use the maximum and pad shorter
+    // blocks with their existing children.
+    let mut max_voice_count = 0usize;
+    let mut has_any_sim = false;
+    for seg in &segments {
+        let sim = seg.iter().find_map(|item| {
+            if let Music::Simultaneous(sim_items) = item {
+                Some(sim_items)
+            } else {
+                None
+            }
+        });
+        if let Some(sim_items) = sim {
+            // All non-Sim items in this segment must be non-note items
+            let non_sim_ok = seg
+                .iter()
+                .all(|item| matches!(item, Music::Simultaneous(_)) || is_non_note_item(item));
+            if non_sim_ok && sim_items.len() > 1 && sim_items.iter().all(|si| is_voice_like(si)) {
+                has_any_sim = true;
+                if sim_items.len() > max_voice_count {
+                    max_voice_count = sim_items.len();
+                }
+            }
+        }
+    }
+    if !has_any_sim || max_voice_count < 2 {
+        return None;
+    }
+    let voice_count = max_voice_count;
+
+    // Validate each segment: a Simultaneous segment may only contain
+    // Simultaneous blocks plus optional non-note items (no notes/chords mixed in).
+    // A non-Simultaneous segment must contain no Simultaneous items.
+    // Sim blocks may have fewer voices than voice_count (empty voices dropped
+    // by the export); those will produce fewer split items for that measure.
+    for seg in &segments {
+        let has_sim = seg.iter().any(|item| matches!(item, Music::Simultaneous(_)));
+        if has_sim {
+            // Check that non-Sim items are only non-note items
+            let has_content = seg.iter().any(|item| {
+                !matches!(item, Music::Simultaneous(_)) && !is_non_note_item(item)
+            });
+            if has_content {
+                return None; // Notes/chords mixed with <<>> in same segment
+            }
+            // Validate all Sim children are voice-like
+            for item in seg {
+                if let Music::Simultaneous(sim_items) = item {
+                    if sim_items.len() > voice_count
+                        || !sim_items.iter().all(|si| is_voice_like(si))
+                    {
+                        return None;
+                    }
+                }
+            }
+        }
+    }
+
+    // Build voices: Simultaneous children → respective voices,
+    // BarChecks → all voices (so measure boundaries align),
+    // other items → first voice only
+    let mut voices: Vec<Vec<&Music>> = (0..voice_count).map(|_| Vec::new()).collect();
+    for item in items {
+        if let Music::Simultaneous(sim_items) = item {
+            for (i, sim_item) in sim_items.iter().enumerate() {
+                voices[i].push(sim_item);
+            }
+        } else if matches!(item, Music::BarCheck) {
+            for voice in &mut voices {
+                voice.push(item);
+            }
+        } else {
+            voices[0].push(item);
+        }
+    }
+    Some(voices)
+}
+
+/// Check if a music item is a non-note item that can appear alongside a
+/// Simultaneous in a segment without invalidating voice splitting.
+/// These are boundary markers, comments, and control items the export places
+/// adjacent to `<<>>` blocks.
+fn is_non_note_item(music: &Music) -> bool {
+    matches!(
+        music,
+        Music::BarLine { .. }
+            | Music::LineComment(_)
+            | Music::Set { .. }
+            | Music::Unset { .. }
+            | Music::Override { .. }
+            | Music::Revert { .. }
+            | Music::MusicFunction { .. }
+    )
+}
+
+/// Check if a music item is voice-like (can be a child of Simultaneous for
+/// voice splitting).
+fn is_voice_like(music: &Music) -> bool {
+    matches!(
+        music,
+        Music::Sequential(_)
+            | Music::Note(_)
+            | Music::Chord(_)
+            | Music::ChordRepetition(_)
+            | Music::Rest(_)
+            | Music::MultiMeasureRest(_)
+            | Music::Relative { .. }
+            | Music::Fixed { .. }
+            | Music::Transpose { .. }
+            | Music::ContextedMusic { .. }
+    )
 }
 
 /// Check if a voice's music items are "bare" (no pitch context wrappers).

@@ -449,10 +449,10 @@ impl SpanCounts {
     fn count_post_events(&mut self, events: &[note::PostEvent]) {
         for ev in events {
             match ev {
-                note::PostEvent::SlurStart => self.slur_opens += 1,
-                note::PostEvent::SlurEnd => self.slur_closes += 1,
-                note::PostEvent::PhrasingSlurStart => self.phr_opens += 1,
-                note::PostEvent::PhrasingSlurEnd => self.phr_closes += 1,
+                note::PostEvent::SlurStart | note::PostEvent::DirectedSlurStart(_) => self.slur_opens += 1,
+                note::PostEvent::SlurEnd | note::PostEvent::DirectedSlurEnd(_) => self.slur_closes += 1,
+                note::PostEvent::PhrasingSlurStart | note::PostEvent::DirectedPhrasingSlurStart(_) => self.phr_opens += 1,
+                note::PostEvent::PhrasingSlurEnd | note::PostEvent::DirectedPhrasingSlurEnd(_) => self.phr_closes += 1,
                 note::PostEvent::BeamStart => self.beam_opens += 1,
                 note::PostEvent::BeamEnd => self.beam_closes += 1,
                 note::PostEvent::Crescendo | note::PostEvent::Decrescendo => {
@@ -460,6 +460,7 @@ impl SpanCounts {
                 }
                 note::PostEvent::HairpinEnd => self.hairpin_closes += 1,
                 note::PostEvent::Tie
+                | note::PostEvent::DirectedTie(_)
                 | note::PostEvent::Dynamic(_)
                 | note::PostEvent::Articulation { .. }
                 | note::PostEvent::Fingering { .. }

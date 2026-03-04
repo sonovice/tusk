@@ -109,7 +109,7 @@ pub(super) fn collect_ending_spans(measure_children: &[MeasureChild], ext_store:
 /// Processes innermost repeats first (smallest ranges) to handle nesting correctly.
 pub(super) fn apply_repeat_wrapping(
     items: &mut Vec<Music>,
-    item_ids: &[Option<String>],
+    item_ids: &mut Vec<Option<String>>,
     repeat_spans: &[RepeatSpanInfo],
     ending_spans: &[EndingSpanInfo],
 ) {
@@ -118,7 +118,7 @@ pub(super) fn apply_repeat_wrapping(
     }
 
     let mut ranges: Vec<(usize, usize, usize)> = Vec::new();
-    let mut ids: Vec<Option<String>> = item_ids.to_vec();
+    let ids = item_ids;
 
     for (si, span) in repeat_spans.iter().enumerate() {
         let start_idx = ids
@@ -131,20 +131,23 @@ pub(super) fn apply_repeat_wrapping(
             .or(start_idx);
 
         if let (Some(s), Some(be)) = (start_idx, body_end_idx) {
-            let full_end = if span.num_alternatives > 0 {
-                ending_spans
+            if span.num_alternatives > 0 {
+                // Find the furthest ending position in the ID list
+                let found_ending = ending_spans
                     .iter()
                     .filter(|e| e.index < span.num_alternatives)
                     .filter_map(|e| {
                         ids.iter()
                             .rposition(|id| id.as_deref().is_some_and(|i| i == e.end_id))
                     })
-                    .max()
-                    .unwrap_or(be)
+                    .max();
+                if let Some(full_end) = found_ending {
+                    ranges.push((s, full_end, si));
+                }
+                // If no endings found, skip — cross-measure pass will handle it
             } else {
-                be
-            };
-            ranges.push((s, full_end, si));
+                ranges.push((s, be, si));
+            }
         }
     }
 
@@ -178,9 +181,18 @@ pub(super) fn apply_repeat_wrapping(
         }
 
         if span.num_alternatives > 0 {
-            wrap_repeat_with_alternatives(items, &mut ids, bs, be, span, ending_spans);
+            wrap_repeat_with_alternatives(items, ids, bs, be, span, ending_spans);
         } else {
-            wrap_repeat_body_only(items, &mut ids, bs, be, span);
+            wrap_repeat_body_only(items, ids, bs, be, span);
+        }
+    }
+
+    // Null out IDs at positions of Repeat items to prevent the
+    // post-concatenation pass from re-wrapping already-handled repeats.
+    let len = items.len().min(ids.len());
+    for i in 0..len {
+        if matches!(&items[i], Music::Repeat { .. }) {
+            ids[i] = None;
         }
     }
 }
@@ -268,7 +280,6 @@ fn wrap_repeat_body_only(
     be: usize,
     span: &RepeatSpanInfo,
 ) {
-    let start_id = ids[bs].clone();
     let body_items: Vec<Music> = items.drain(bs..=be).collect();
     let repeat = Music::Repeat {
         repeat_type: span.repeat_type,
@@ -278,5 +289,7 @@ fn wrap_repeat_body_only(
     };
     items.insert(bs, repeat);
     ids.drain(bs..=be);
-    ids.insert(bs, start_id);
+    // Keep start_id so nested repeats sharing this start_id can still
+    // find the position.  Cleared to None at end of apply_repeat_wrapping.
+    ids.insert(bs, Some(span.start_id.clone()));
 }

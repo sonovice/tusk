@@ -185,6 +185,39 @@ fn reconstruct_initial_signatures(
     events
 }
 
+/// Count the total notes in a list of Music items.
+pub(super) fn total_note_count(items: &[Music]) -> u32 {
+    items.iter().map(note_count).sum()
+}
+
+/// Inject signature events from the event sequence into a measure's items,
+/// using only events whose position falls in [note_offset, note_offset + measure_note_count).
+///
+/// Skips Clef/KeySignature/TimeSignature events for non-first measures because
+/// voice splitting can change note counting between passes, causing these events
+/// to be injected at unstable positions. Tempo/Mark/TextMark/Markup events are
+/// kept since they don't cause roundtrip instability.
+pub(super) fn inject_measure_signature_events(
+    items: &mut Vec<Music>,
+    events: &[SignatureEvent],
+    note_offset: u32,
+) {
+    let measure_note_count = total_note_count(items);
+    // Filter events for this measure, skip clef/key/time (unstable positions)
+    let measure_events: Vec<SignatureEvent> = events
+        .iter()
+        .filter(|e| e.position >= note_offset && e.position < note_offset + measure_note_count)
+        .filter(|e| !matches!(e.music, Music::Clef(_) | Music::KeySignature(_) | Music::TimeSignature(_)))
+        .map(|e| SignatureEvent {
+            position: e.position - note_offset,
+            music: e.music.clone(),
+        })
+        .collect();
+    if !measure_events.is_empty() {
+        inject_signature_events(items, &measure_events);
+    }
+}
+
 /// Count how many note-stream positions a Music item occupies.
 ///
 /// Bare notes count as 1. Wrappers (Tuplet/Grace/Repeat) count as the
@@ -256,10 +289,9 @@ pub(super) fn inject_signature_events(items: &mut Vec<Music>, events: &[Signatur
         }
         new_items.push(item);
     }
-    // Any remaining events at end of stream
-    for (_pos, to_insert) in inserts {
-        new_items.extend(to_insert);
-    }
+    // Remaining events are for later measures (positions beyond this
+    // measure's note range). They're already represented in those
+    // measures' MEI layers, so discard them here.
     *items = new_items;
 }
 

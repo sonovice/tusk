@@ -184,7 +184,9 @@ fn strip_slur_events(m: &mut Music) {
     fn strip_pe(events: &mut Vec<PostEvent>) {
         events.retain(|pe| !matches!(pe,
             PostEvent::SlurStart | PostEvent::SlurEnd |
-            PostEvent::PhrasingSlurStart | PostEvent::PhrasingSlurEnd
+            PostEvent::DirectedSlurStart(_) | PostEvent::DirectedSlurEnd(_) |
+            PostEvent::PhrasingSlurStart | PostEvent::PhrasingSlurEnd |
+            PostEvent::DirectedPhrasingSlurStart(_) | PostEvent::DirectedPhrasingSlurEnd(_)
         ));
     }
     match m {

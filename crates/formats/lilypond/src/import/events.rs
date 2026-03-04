@@ -12,6 +12,7 @@ use crate::model::{self, Music, NoteEvent, PostEvent, RestEvent};
 ///
 /// Events own resolved copies of notes (not references) because relative/transpose
 /// resolution produces new Pitch values.
+#[derive(Clone)]
 pub(super) enum LyEvent {
     Note(NoteEvent),
     Chord {

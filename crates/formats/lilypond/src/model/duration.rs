@@ -33,6 +33,30 @@ impl Duration {
     pub fn is_valid_base(base: u32) -> bool {
         base > 0 && base.is_power_of_two() && base <= 128
     }
+
+    /// Duration in quarter-note units, including dots and multipliers.
+    pub fn quarters(&self) -> f64 {
+        // Base value: 1=whole(4q), 2=half(2q), 4=quarter(1q), 8=eighth(0.5q)
+        // Special: 0=breve(8q)
+        let base_q = if self.base == 0 {
+            8.0
+        } else {
+            4.0 / self.base as f64
+        };
+
+        // Dots: each dot adds half the previous increment
+        // 0 dots → 1.0, 1 dot → 1.5, 2 dots → 1.75, etc.
+        let dot_mult = 2.0 - 2.0f64.powi(-(self.dots as i32));
+
+        let mut q = base_q * dot_mult;
+
+        // Apply multipliers
+        for &(num, den) in &self.multipliers {
+            q *= num as f64 / den as f64;
+        }
+
+        q
+    }
 }
 
 #[cfg(test)]

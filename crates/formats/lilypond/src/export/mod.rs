@@ -185,6 +185,8 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
     let mut staff_layer_children: Vec<Vec<&[LayerChild]>> = Vec::new();
     let mut measure_numbers: Vec<String> = Vec::new();
     let mut staves_initialized = false;
+    // Per-staff note offset for event sequence injection across measures
+    let mut staff_note_offsets: Vec<u32> = Vec::new();
 
     // Track current time signature for measure-duration spacers.
     // Extract initial time sig from first staff's event sequence.
@@ -222,6 +224,8 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
 
     for child in &score.children {
         if let ScoreChild::Section(section) = child {
+
+
             for section_child in &section.children {
                 if let SectionChild::Measure(measure) = section_child {
                     let measure_n = measure
@@ -230,7 +234,6 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                         .as_ref()
                         .map(|n| n.0.clone())
                         .unwrap_or_else(|| (measure_numbers.len() + 1).to_string());
-                    measure_numbers.push(measure_n.clone());
 
                     let mut post_event_map = global_slur_map.clone();
                     collect_dynam_post_events(&measure.children, &mut post_event_map);
@@ -287,7 +290,7 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                                 apply_grace_wrapping(&mut items, &mut item_ids, &grace_types);
                                 apply_repeat_wrapping(
                                     &mut items,
-                                    &item_ids,
+                                    &mut item_ids,
                                     &repeat_spans,
                                     &ending_spans,
                                 );
@@ -296,6 +299,19 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                             all_staves.push((layers, raw_layers));
                         }
                     }
+
+                    // Skip empty measures (all staves have empty layers) to
+                    // prevent unstable roundtrip: re-import would merge the
+                    // empty measure into the previous one, changing structure.
+                    if staves_initialized
+                        && all_staves
+                            .iter()
+                            .all(|(layers, _)| layers.iter().all(|l| l.is_empty()))
+                    {
+                        continue;
+                    }
+
+                    measure_numbers.push(measure_n.clone());
 
                     // Detect time signature changes from first staff's first layer
                     if let Some((first_layers, _)) = all_staves.first() {
@@ -316,8 +332,12 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
 
                     // Accumulate into staff_music
                     let num_staves = all_staves.len();
-                    let measure_comment = Music::LineComment(format!("m.{}", measure_n));
+                    let measure_comment = Music::LineComment(format!("m.{}", measure_numbers.len()));
                     for (staff_idx, (layers, raw_layers)) in all_staves.into_iter().enumerate() {
+                        // Check if any MEI layer actually had mRest content
+                        let mei_has_mrest = raw_layers.iter().any(|layer|
+                            layer.iter().any(|child| matches!(child, LayerChild::MRest(_)))
+                        );
                         if !staves_initialized {
                             if let Some(seq) = event_sequences.get(staff_idx) {
                                 let mut first_layers = layers;
@@ -325,10 +345,22 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                                     inject_signature_events(first_layer, seq);
                                 }
                                 let mut measure_items = flatten_measure_layers(first_layers, inject_voice_cmds, spacer.clone());
+                                // Insert R only if MEI had mRest (not for genuinely empty layers)
+                                if measure_items.is_empty() && mei_has_mrest {
+                                    measure_items.push(make_measure_rest(&current_time_num, current_time_den));
+                                }
+                                let nc = signatures::total_note_count(&measure_items);
+                                staff_note_offsets.push(nc);
                                 measure_items.insert(0, measure_comment.clone());
                                 staff_music.push(vec![measure_items]);
                             } else {
                                 let mut measure_items = flatten_measure_layers(layers, inject_voice_cmds, spacer.clone());
+                                // Insert R only if MEI had mRest (not for genuinely empty layers)
+                                if measure_items.is_empty() && mei_has_mrest {
+                                    measure_items.push(make_measure_rest(&current_time_num, current_time_den));
+                                }
+                                let nc = signatures::total_note_count(&measure_items);
+                                staff_note_offsets.push(nc);
                                 measure_items.insert(0, measure_comment.clone());
                                 staff_music.push(vec![measure_items]);
                             }
@@ -341,8 +373,17 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                             measure_items.insert(0, measure_comment.clone());
                             staff_music.push(vec![measure_items]);
                             staff_layer_children.push(raw_layers.into_iter().take(1).collect());
+                            staff_note_offsets.push(0);
                         } else {
                             let mut measure_items = flatten_measure_layers(layers, inject_voice_cmds, spacer.clone());
+                            // Inject non-signature event sequence events for this measure
+                            // (tempo, mark, textmark, markup — NOT clef/key/time which are
+                            // unstable due to voice splitting note-count misalignment)
+                            if let Some(seq) = event_sequences.get(staff_idx) {
+                                let offset = staff_note_offsets[staff_idx];
+                                signatures::inject_measure_signature_events(&mut measure_items, seq, offset);
+                                staff_note_offsets[staff_idx] += signatures::total_note_count(&measure_items);
+                            }
                             // Reset measure position before \time changes to
                             // prevent "mid-measure time signature" warnings
                             // from tuplet timing rounding errors.
@@ -366,6 +407,10 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                             staff_layer_children[staff_idx].extend(raw_layers.into_iter().take(1));
                         }
                     }
+                    // Note: barlines from ly_end_barlines are NOT re-emitted here.
+                    // Re-emitting to all staves creates roundtrip instability
+                    // because the import may place barlines differently on
+                    // subsequent passes.
                     if !staves_initialized && num_staves > 0 {
                         staves_initialized = true;
                     }
@@ -1263,6 +1308,26 @@ fn flatten_measure_layers(
     }
 }
 
+/// Create a multi-measure rest for a given time signature.
+///
+/// Used to fill empty first measures so the measure count survives roundtrip.
+fn make_measure_rest(numerators: &[u32], denominator: u32) -> Music {
+    let total_num: u32 = numerators.iter().sum();
+    use crate::model::note::MultiMeasureRestEvent;
+    Music::MultiMeasureRest(MultiMeasureRestEvent {
+        duration: Some(Duration {
+            base: denominator,
+            dots: 0,
+            multipliers: if total_num != 1 {
+                vec![(total_num, 1)]
+            } else {
+                vec![]
+            },
+        }),
+        post_events: vec![],
+    })
+}
+
 /// Create a spacer skip for a given time signature to enforce measure duration.
 ///
 /// Produces e.g. `s4*4` for 4/4, `s4*5` for 5/4, `s4*2` for 2/4.
@@ -1834,6 +1899,15 @@ fn collect_post_events_for_beam_child(
     events
 }
 
+/// Map MEI curvedir string to LilyPond Direction.
+fn curvedir_to_ly_dir(cd: Option<&str>) -> Option<crate::model::note::Direction> {
+    match cd {
+        Some("above") => Some(crate::model::note::Direction::Up),
+        Some("below") => Some(crate::model::note::Direction::Down),
+        _ => None,
+    }
+}
+
 /// Collect slur/phrase control events from measure children into a map of
 /// note xml:id -> PostEvent list.
 fn collect_slur_post_events(measure_children: &[MeasureChild], ext_store: &ExtensionStore) -> HashMap<String, Vec<PostEvent>> {
@@ -1847,22 +1921,26 @@ fn collect_slur_post_events(measure_children: &[MeasureChild], ext_store: &Exten
                 .as_deref()
                 .is_some_and(|id| ext_store.phrasing_slur(id).is_some());
 
+            let dir = curvedir_to_ly_dir(slur.slur_vis.curvedir.as_deref());
+
             if let Some(ref startid) = slur.slur_log.startid {
                 let id = startid.0.trim_start_matches('#').to_string();
-                let event = if is_phrase {
-                    PostEvent::PhrasingSlurStart
-                } else {
-                    PostEvent::SlurStart
+                let event = match (is_phrase, dir) {
+                    (true, Some(d)) => PostEvent::DirectedPhrasingSlurStart(d),
+                    (true, None) => PostEvent::PhrasingSlurStart,
+                    (false, Some(d)) => PostEvent::DirectedSlurStart(d),
+                    (false, None) => PostEvent::SlurStart,
                 };
                 map.entry(id).or_default().push(event);
             }
 
             if let Some(ref endid) = slur.slur_log.endid {
                 let id = endid.0.trim_start_matches('#').to_string();
-                let event = if is_phrase {
-                    PostEvent::PhrasingSlurEnd
-                } else {
-                    PostEvent::SlurEnd
+                let event = match (is_phrase, dir) {
+                    (true, Some(d)) => PostEvent::DirectedPhrasingSlurEnd(d),
+                    (true, None) => PostEvent::PhrasingSlurEnd,
+                    (false, Some(d)) => PostEvent::DirectedSlurEnd(d),
+                    (false, None) => PostEvent::SlurEnd,
                 };
                 map.entry(id).or_default().push(event);
             }

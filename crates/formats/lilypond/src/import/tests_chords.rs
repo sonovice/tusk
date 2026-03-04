@@ -77,21 +77,22 @@ fn harm_has_text_child() {
 #[test]
 fn harm_has_tstamp_for_standalone() {
     // Standalone chordmode with no notes uses @tstamp
+    // Two whole notes split into 2 measures, each chord at beat 1
     let (mei, _ext_store) = parse_and_import("\\chordmode { c1 d1 }");
     let harms = measure_harms(&mei);
     assert_eq!(harms.len(), 2);
-    // First chord at beat 1
+    // First chord at beat 1 of measure 1
     assert!(
         harms[0].harm_log.tstamp.is_some(),
         "first harm should have @tstamp"
     );
     assert_eq!(harms[0].harm_log.tstamp.as_ref().unwrap().0, 1.0);
-    // Second chord at beat 5 (after a whole note = 4 beats)
+    // Second chord at beat 1 of measure 2
     assert!(
         harms[1].harm_log.tstamp.is_some(),
         "second harm should have @tstamp"
     );
-    assert_eq!(harms[1].harm_log.tstamp.as_ref().unwrap().0, 5.0);
+    assert_eq!(harms[1].harm_log.tstamp.as_ref().unwrap().0, 1.0);
 }
 
 #[test]

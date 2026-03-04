@@ -542,6 +542,7 @@ pub(super) fn build_score_def_from_staves(
     layout: &StaffLayout<'_>,
     assignments: &[crate::model::Assignment],
     ext_store: &mut ExtensionStore,
+    score_idx: usize,
 ) -> ScoreDef {
     let mut staff_grp = StaffGrp::default();
     let mut grp_counter = 0u32;
@@ -554,7 +555,7 @@ pub(super) fn build_score_def_from_staves(
         // Store group context metadata in ext_store
         let ctx = build_group_context(group);
         grp_counter += 1;
-        let grp_id = format!("ly-staffgrp-{grp_counter}");
+        let grp_id = format!("ly-staffgrp-s{score_idx}-{grp_counter}");
         staff_grp.common.xml_id = Some(grp_id.clone());
         ext_store.insert_staff_context(grp_id, ctx);
     }
@@ -563,8 +564,8 @@ pub(super) fn build_score_def_from_staves(
         let mut staff_def = StaffDef::default();
         staff_def.n_integer.n = Some(staff_info.n.to_string());
 
-        // Assign synthetic ID
-        let sd_id = format!("ly-staffdef-{}", staff_info.n);
+        // Assign synthetic ID (includes score_idx for multi-score uniqueness)
+        let sd_id = format!("ly-staffdef-s{score_idx}-{}", staff_info.n);
         staff_def.basic.xml_id = Some(sd_id.clone());
 
         // Collect events from all voices to find initial clef/key/time

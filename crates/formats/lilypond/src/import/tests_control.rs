@@ -72,6 +72,68 @@ fn layer_children(mei: &Mei) -> &[LayerChild] {
     &[]
 }
 
+/// Collect layer children from ALL measures (first layer of first staff per measure).
+fn all_layer_children(mei: &Mei) -> Vec<&[LayerChild]> {
+    let mut result = Vec::new();
+    for child in &mei.children {
+        if let MeiChild::Music(music) = child {
+            for mc in &music.children {
+                let tusk_model::elements::MusicChild::Body(body) = mc else { continue; };
+                for bc in &body.children {
+                    let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
+                    for dc in &mdiv.children {
+                        let tusk_model::elements::MdivChild::Score(score) = dc else { continue; };
+                        for sc in &score.children {
+                            if let ScoreChild::Section(section) = sc {
+                                for sec_c in &section.children {
+                                    if let SectionChild::Measure(measure) = sec_c {
+                                        for mc2 in &measure.children {
+                                            if let MeasureChild::Staff(staff) = mc2
+                                                && let Some(tusk_model::elements::StaffChild::Layer(layer)) = staff.children.first()
+                                            {
+                                                result.push(layer.children.as_slice());
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    result
+}
+
+/// Count the number of measures in the MEI.
+fn count_measures(mei: &Mei) -> usize {
+    let mut count = 0;
+    for child in &mei.children {
+        if let MeiChild::Music(music) = child {
+            for mc in &music.children {
+                let tusk_model::elements::MusicChild::Body(body) = mc else { continue; };
+                for bc in &body.children {
+                    let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
+                    for dc in &mdiv.children {
+                        let tusk_model::elements::MdivChild::Score(score) = dc else { continue; };
+                        for sc in &score.children {
+                            if let ScoreChild::Section(section) = sc {
+                                for sec_c in &section.children {
+                                    if let SectionChild::Measure(_) = sec_c {
+                                        count += 1;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    count
+}
+
 /// Walk MEI to find all Dir elements in the first measure.
 fn measure_dirs(mei: &Mei) -> Vec<&tusk_model::elements::Dir> {
     let mut dirs = Vec::new();
@@ -938,56 +1000,52 @@ fn first_staff_def(mei: &Mei) -> Option<&tusk_model::elements::StaffDef> {
 }
 
 #[test]
-fn import_bar_check_encoded_in_label() {
+fn import_bar_check_not_in_event_sequence() {
+    // Bar checks are handled by the measure splitter, not stored in event sequences
     let (mei, ext_store) = parse_and_import("{ c4 d e f | g4 a b c }");
     let sdef = first_staff_def(&mei).unwrap();
     let sdef_id = sdef.basic.xml_id.as_deref().unwrap();
-    let seq = ext_store.event_sequence(sdef_id).expect("should have event_sequence");
-    let has_bar_check = seq.events.iter().any(|e| matches!(e.event, tusk_model::ControlEvent::BarCheck));
-    assert!(has_bar_check, "event sequence should contain BarCheck");
+    // No event sequence when only notes + bar checks (no clef/key/time)
+    assert!(ext_store.event_sequence(sdef_id).is_none());
+    // Bar check should split into 2 measures
+    assert_eq!(count_measures(&mei), 2);
 }
 
 #[test]
-fn import_bar_line_encoded_in_label() {
+fn import_bar_line_not_in_event_sequence() {
+    // Bar lines are handled by the measure splitter, not stored in event sequences
     let (mei, ext_store) = parse_and_import("{ c4 d e f \\bar \"|.\" }");
     let sdef = first_staff_def(&mei).unwrap();
     let sdef_id = sdef.basic.xml_id.as_deref().unwrap();
-    let seq = ext_store.event_sequence(sdef_id).expect("should have event_sequence");
-    let has_bar_line = seq.events.iter().any(|e| matches!(e.event, tusk_model::ControlEvent::BarLine { .. }));
-    assert!(has_bar_line, "event sequence should contain BarLine");
+    assert!(ext_store.event_sequence(sdef_id).is_none());
 }
 
 #[test]
 fn import_bar_check_does_not_create_layer_children() {
     let (mei, _ext_store) = parse_and_import("{ c4 | d4 }");
-    let lc = layer_children(&mei);
-    // Bar check should not create any layer children -- only notes
+    // Bar check splits into 2 measures, each with 1 note — no spurious children
+    let total: usize = all_layer_children(&mei).iter().map(|lc| lc.len()).sum();
+    assert_eq!(total, 2, "expected 2 total layer children (notes only)");
     assert_eq!(
-        lc.len(),
+        count_measures(&mei),
         2,
-        "expected 2 layer children (notes only): {lc:?}"
+        "bar check should split into 2 measures"
     );
 }
 
 #[test]
 fn import_bar_line_does_not_create_layer_children() {
     let (mei, _ext_store) = parse_and_import("{ c4 d4 \\bar \"|.\" }");
-    let lc = layer_children(&mei);
-    assert_eq!(
-        lc.len(),
-        2,
-        "expected 2 layer children (notes only): {lc:?}"
-    );
+    // Barline splits after notes — no spurious children
+    let total: usize = all_layer_children(&mei).iter().map(|lc| lc.len()).sum();
+    assert_eq!(total, 2, "expected 2 total layer children (notes only)");
 }
 
 #[test]
-fn import_multiple_bar_checks_encoded() {
-    let (mei, ext_store) = parse_and_import("{ c4 | d4 | e4 }");
-    let sdef = first_staff_def(&mei).unwrap();
-    let sdef_id = sdef.basic.xml_id.as_deref().unwrap();
-    let seq = ext_store.event_sequence(sdef_id).expect("should have event_sequence");
-    let has_bar_check = seq.events.iter().any(|e| matches!(e.event, tusk_model::ControlEvent::BarCheck));
-    assert!(has_bar_check, "event sequence should contain BarCheck events");
+fn import_multiple_bar_checks_split_measures() {
+    // Multiple bar checks create multiple measures
+    let (mei, _ext_store) = parse_and_import("{ c4 | d4 | e4 }");
+    assert_eq!(count_measures(&mei), 3);
 }
 
 // ---------------------------------------------------------------------------

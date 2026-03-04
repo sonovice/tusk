@@ -66,7 +66,9 @@ pub(super) fn build_event_sequence(
                         denominator: ts.denominator,
                     },
                 });
-                if first_time {
+                // Only set on staffDef if this is the initial time sig (before any notes).
+                // A \time that appears after notes is a mid-stream change, not the opening meter.
+                if first_time && note_index == 0 {
                     staff_def.staff_def_log.meter_count = Some(count);
                     staff_def.staff_def_log.meter_unit = Some(ts.denominator.to_string());
                     first_time = false;
@@ -84,20 +86,11 @@ pub(super) fn build_event_sequence(
                     event: ControlEvent::AutoBeamOff,
                 });
             }
-            LyEvent::BarCheck => {
-                positioned.push(PositionedEvent {
-                    position: note_index,
-                    event: ControlEvent::BarCheck,
-                });
-            }
-            LyEvent::BarLine(bar_type) => {
-                positioned.push(PositionedEvent {
-                    position: note_index,
-                    event: ControlEvent::BarLine {
-                        bar_type: bar_type.clone(),
-                    },
-                });
-            }
+            // BarCheck and BarLine are handled by the measure splitter,
+            // and the export generates bar checks between measures.
+            // Don't store them in the event sequence.
+            LyEvent::BarCheck | LyEvent::BarLine(_) => {}
+
             LyEvent::Markup(serialized) => {
                 positioned.push(PositionedEvent {
                     position: note_index,

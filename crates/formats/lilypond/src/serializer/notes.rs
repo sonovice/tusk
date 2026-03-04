@@ -205,10 +205,30 @@ impl Serializer<'_> {
         for ev in events {
             match ev {
                 PostEvent::Tie => self.out.push('~'),
+                PostEvent::DirectedTie(dir) => {
+                    self.write_direction(*dir);
+                    self.out.push('~');
+                }
                 PostEvent::SlurStart => self.out.push('('),
                 PostEvent::SlurEnd => self.out.push(')'),
+                PostEvent::DirectedSlurStart(dir) => {
+                    self.write_direction(*dir);
+                    self.out.push('(');
+                }
+                PostEvent::DirectedSlurEnd(dir) => {
+                    self.write_direction(*dir);
+                    self.out.push(')');
+                }
                 PostEvent::PhrasingSlurStart => self.out.push_str("\\("),
                 PostEvent::PhrasingSlurEnd => self.out.push_str("\\)"),
+                PostEvent::DirectedPhrasingSlurStart(dir) => {
+                    self.write_direction(*dir);
+                    self.out.push_str("\\(");
+                }
+                PostEvent::DirectedPhrasingSlurEnd(dir) => {
+                    self.write_direction(*dir);
+                    self.out.push_str("\\)");
+                }
                 PostEvent::BeamStart => self.out.push('['),
                 PostEvent::BeamEnd => self.out.push(']'),
                 PostEvent::Crescendo => self.out.push_str("\\<"),

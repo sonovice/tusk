@@ -6,6 +6,7 @@ mod control_events;
 mod conversion;
 mod events;
 pub(crate) mod lyrics;
+mod measures;
 pub(crate) mod output_def_conv;
 mod output_defs;
 pub(crate) mod signatures;
@@ -109,14 +110,15 @@ pub fn import(file: &model::LilyPondFile) -> Result<(Mei, ExtensionStore), Impor
     // Collect all score entries (handling book/bookpart hierarchy)
     let entries = collect_score_entries(file);
 
-    // Use book-structured path only when \book wrappers exist
+    // Use book-structured path when \book wrappers exist OR multiple bare \score blocks
     let has_book = entries.iter().any(|e| e.book_structure.is_some());
+    let multi_score = !has_book && entries.len() > 1;
 
-    let mei_music = if has_book && !entries.is_empty() {
-        // Book-structured: one mdiv per score entry
+    let mei_music = if (has_book || multi_score) && !entries.is_empty() {
+        // Multiple scores: one mdiv per score entry
         build_music_multi(&entries, &assignments, &var_map, &toplevel_markups, &mut ext_store)?
     } else {
-        // Non-book: use find_music for backward-compatible behavior
+        // Single score: use find_music for backward-compatible behavior
         let raw_music = find_music(file).ok_or(ImportError::NoMusic)?;
         let music = resolve_identifiers(raw_music, &var_map);
         let score_block = entries.first().map(|e| e.score_block);
@@ -333,7 +335,7 @@ fn build_music_multi(
         // Only store toplevel markups on the first score
         let markups = if i == 0 { toplevel_markups } else { &[] };
         let mei_score =
-            build_score_from_music(resolved, Some(entry.score_block), assignments, markups, ext_store)?;
+            build_score_from_music(resolved, Some(entry.score_block), assignments, markups, ext_store, i)?;
 
         let mut mdiv = Mdiv::default();
         mdiv.common.n = Some(DataWord((i + 1).to_string()));
@@ -363,7 +365,7 @@ fn build_music_single(
     toplevel_markups: &[ToplevelMarkup],
     ext_store: &mut ExtensionStore,
 ) -> Result<tusk_model::elements::Music, ImportError> {
-    let score = build_score_from_music(ly_music, score_block, assignments, toplevel_markups, ext_store)?;
+    let score = build_score_from_music(ly_music, score_block, assignments, toplevel_markups, ext_store, 0)?;
 
     let mut mdiv = Mdiv::default();
     mdiv.children.push(MdivChild::Score(Box::new(score)));
@@ -389,6 +391,7 @@ fn build_score_from_music(
     assignments: &[Assignment],
     toplevel_markups: &[ToplevelMarkup],
     ext_store: &mut ExtensionStore,
+    score_idx: usize,
 ) -> Result<Score, ImportError> {
     let mut score = Score::default();
 
@@ -396,7 +399,7 @@ fn build_score_from_music(
     let staff_infos = analyze_staves(&ly_music);
 
     // Build ScoreDef with staffDef(s)
-    let mut score_def = build_score_def_from_staves(&staff_infos, assignments, ext_store);
+    let mut score_def = build_score_def_from_staves(&staff_infos, assignments, ext_store, score_idx);
 
     // Store score-level \header/\layout/\midi in ScoreDef via ext_store
     if let Some(sb) = score_block {
@@ -458,6 +461,67 @@ fn build_pitch_context_from_music(music: &Music) -> Option<PitchContext> {
     }
 }
 
+/// Collect events from split voice streams with synchronized pitch context.
+///
+/// When voices are split from `{ <<v0 v1>> | <<v0 v1>> }` via
+/// `try_split_sequential_with_simultaneous`, each voice gets its own event stream.
+/// In `\relative` mode, each `<<>>` block resets all voices to the entering
+/// reference, and after `<<>>` the reference comes from voice 0. Without
+/// synchronization, voice 1+ carry their own context across BarCheck boundaries,
+/// causing pitch drift.
+///
+/// This function processes voice segments (delimited by BarChecks) in lockstep,
+/// using voice 0's ending context as the starting context for the next segment.
+fn collect_events_synchronized(
+    voices: &[Vec<&Music>],
+    base_ctx: &PitchContext,
+) -> Vec<Vec<LyEvent>> {
+    let voice_count = voices.len();
+    let mut all_events: Vec<Vec<LyEvent>> = vec![Vec::new(); voice_count];
+
+    // Segment each voice at BarCheck boundaries
+    let segmented: Vec<Vec<Vec<&Music>>> = voices
+        .iter()
+        .map(|voice| {
+            let mut segments: Vec<Vec<&Music>> = Vec::new();
+            let mut current: Vec<&Music> = Vec::new();
+            for &item in voice.iter() {
+                if matches!(item, Music::BarCheck) {
+                    current.push(item);
+                    segments.push(std::mem::take(&mut current));
+                } else {
+                    current.push(item);
+                }
+            }
+            if !current.is_empty() {
+                segments.push(current);
+            }
+            segments
+        })
+        .collect();
+
+    let max_segments = segmented.iter().map(|s| s.len()).max().unwrap_or(0);
+    let mut shared_ctx = base_ctx.clone();
+
+    for seg_idx in 0..max_segments {
+        let mut voice_0_ctx = shared_ctx.clone();
+        for vi in 0..voice_count {
+            let mut ctx = shared_ctx.clone();
+            if let Some(seg) = segmented[vi].get(seg_idx) {
+                for &m in seg {
+                    collect_events(m, &mut all_events[vi], &mut ctx);
+                }
+            }
+            if vi == 0 {
+                voice_0_ctx = ctx;
+            }
+        }
+        shared_ctx = voice_0_ctx;
+    }
+
+    all_events
+}
+
 /// Get the xml:id of the last note/rest/chord in a layer.
 fn get_last_layer_child_id(layer: &Layer) -> Option<String> {
     match layer.children.last() {
@@ -472,11 +536,31 @@ fn get_last_layer_child_id(layer: &Layer) -> Option<String> {
 // Section building from staff layout
 // ---------------------------------------------------------------------------
 
+/// Map LilyPond direction to MEI curvedir string.
+fn ly_dir_to_curvedir(d: crate::model::note::Direction) -> String {
+    match d {
+        crate::model::note::Direction::Up => "above".to_string(),
+        crate::model::note::Direction::Down => "below".to_string(),
+        crate::model::note::Direction::Neutral => "above".to_string(), // default fallback
+    }
+}
+
 /// A pending slur or phrasing slur waiting for its end note.
 struct PendingSpanner {
     start_id: String,
     is_phrase: bool,
     staff_n: u32,
+    /// Curve direction from directed slur syntax (^( _( etc.)
+    curvedir: Option<String>,
+}
+
+/// An unmatched slur end (`)`) that had no matching start in this voice.
+/// Occurs when voice splitting puts slur start and end in different voices.
+struct DeferredSlurEnd {
+    end_id: String,
+    measure_idx: usize,
+    is_phrase: bool,
+    curvedir: Option<String>,
 }
 
 /// A pending hairpin (crescendo/decrescendo) waiting for its end note.
@@ -527,8 +611,6 @@ enum PendingTempoMark {
 fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut ExtensionStore) -> Result<Section, ImportError> {
     let mut section = Section::default();
     let mut id_counter = 0u32;
-    let mut measure = Measure::default();
-    measure.common.n = Some(DataWord("1".to_string()));
     let mut slur_counter = 0u32;
     let mut beam_counter = 0u32;
     let mut dynam_counter = 0u32;
@@ -544,12 +626,11 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
     let mut scm_counter = 0u32;
     let mut text_script_counter = 0u32;
 
-    for staff_info in &layout.staves {
-        let mut staff = Staff::default();
-        staff.n_integer.n = Some(staff_info.n.to_string());
+    // Phase 1: Collect and split events per voice into measure groups
+    let mut all_voice_groups: Vec<Vec<Vec<measures::MeasureGroup>>> = Vec::new();
+    let mut num_measures: usize = 1;
 
-        // When voices were split from inside a pitch context wrapper (\relative/\fixed),
-        // pre-initialize PitchContext so bare voice items get correct resolution.
+    for staff_info in &layout.staves {
         let split_pitch_ctx = if staff_info.voices.len() > 1
             && staff_info.voices.iter().all(|v| voice_needs_pitch_context(v))
         {
@@ -560,45 +641,100 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
             None
         };
 
-        for (voice_idx, voice_music) in staff_info.voices.iter().enumerate() {
-            let mut layer = Layer::default();
-            layer.n_integer.n = Some((voice_idx + 1).to_string());
-
-            let mut events = Vec::new();
-            let mut voice_ctx = split_pitch_ctx.clone().unwrap_or_else(PitchContext::new);
-            for m in voice_music {
-                collect_events(m, &mut events, &mut voice_ctx);
+        let mut staff_voice_groups = Vec::new();
+        if let Some(ref base_ctx) = split_pitch_ctx {
+            // Voices split from <<...>> blocks need synchronized pitch context.
+            // In \relative mode, each <<>> resets all voices to the entering
+            // reference; after <<>>, the reference comes from voice 0 only.
+            // Process segments between BarChecks in lockstep, syncing from voice 0.
+            let all_events = collect_events_synchronized(
+                &staff_info.voices, base_ctx,
+            );
+            for events in all_events {
+                let groups = measures::split_events_into_measures(events);
+                if groups.len() > num_measures {
+                    num_measures = groups.len();
+                }
+                staff_voice_groups.push(groups);
             }
+        } else {
+            for voice_music in &staff_info.voices {
+                let mut events = Vec::new();
+                let mut voice_ctx = PitchContext::new();
+                for m in voice_music {
+                    collect_events(m, &mut events, &mut voice_ctx);
+                }
+                let groups = measures::split_events_into_measures(events);
+                if groups.len() > num_measures {
+                    num_measures = groups.len();
+                }
+                staff_voice_groups.push(groups);
+            }
+        }
+        all_voice_groups.push(staff_voice_groups);
+    }
 
-            // Track beam start/end positions (index in layer.children)
+    // Phase 2: Create measures and process events per measure group
+    let mut measures: Vec<Measure> = (0..num_measures)
+        .map(|i| {
+            let mut m = Measure::default();
+            m.common.n = Some(DataWord((i + 1).to_string()));
+            m
+        })
+        .collect();
+
+    // Pre-create staff structures per measure
+    let mut staves_per_measure: Vec<Vec<Staff>> = layout
+        .staves
+        .iter()
+        .map(|si| {
+            (0..num_measures)
+                .map(|_| {
+                    let mut s = Staff::default();
+                    s.n_integer.n = Some(si.n.to_string());
+                    s
+                })
+                .collect()
+        })
+        .collect();
+
+    for (staff_idx, staff_info) in layout.staves.iter().enumerate() {
+        // Cross-voice slur tracking: when voice splitting (try_split_sequential_with_simultaneous)
+        // puts a slur start and end in different voices, we collect orphaned starts and
+        // deferred ends here at the staff level and resolve them after all voices are processed.
+        let mut orphaned_slur_starts: Vec<PendingSpanner> = Vec::new();
+        let mut deferred_slur_ends: Vec<DeferredSlurEnd> = Vec::new();
+
+        for (voice_idx, _voice_music) in staff_info.voices.iter().enumerate() {
+            // Per-voice state (persists across measure groups)
             let mut beam_starts: Vec<usize> = Vec::new();
-
-            // Track IDs of notes for tie/slur resolution
             let mut pending_slurs: Vec<PendingSpanner> = Vec::new();
             let mut pending_hairpins: Vec<PendingHairpin> = Vec::new();
             let mut pending_tuplets: Vec<PendingTuplet> = Vec::new();
             let mut pending_repeats: Vec<PendingRepeat> = Vec::new();
             let mut pending_alternatives: Vec<PendingAlternative> = Vec::new();
             let mut tie_pending = false;
-            // Track the last note/chord/rest xml:id for tuplet boundary resolution
             let mut last_note_id: Option<String> = None;
-            // Track current grace context for setting @grace on notes
             let mut current_grace: Option<GraceType> = None;
-            // Pending tempo/mark/textMark waiting for next note's startid
             let mut pending_tempo_marks: Vec<PendingTempoMark> = Vec::new();
-            // Pending inline chord names waiting for first note
             let mut pending_chord_names: Vec<(crate::model::note::ChordModeEvent, u32)> =
                 Vec::new();
-            // Pending property operations waiting for next note's startid
             let mut pending_property_ops: Vec<String> = Vec::new();
-            // Pending music function calls waiting for next note's startid
             let mut pending_function_ops: Vec<tusk_model::FunctionCall> = Vec::new();
-            // Pending Scheme music expressions waiting for next note's startid
             let mut pending_scheme_music: Vec<String> = Vec::new();
-            // Cross-staff override from \change Staff = "name"
             let mut cross_staff_override: Option<tusk_model::ContextChange> = None;
 
-            for event in &events {
+            // Track all layer children across measures for lyrics attachment
+            let mut voice_layer_children: Vec<Vec<LayerChild>> = Vec::new();
+
+            for (m_idx, group) in all_voice_groups[staff_idx][voice_idx].iter().enumerate() {
+                let mut layer = Layer::default();
+                layer.n_integer.n = Some((voice_idx + 1).to_string());
+                beam_starts.clear();
+
+                let measure = &mut measures[m_idx];
+
+                for event in &group.events {
                 let (post_events, current_id) = match event {
                     LyEvent::Note(note) => {
                         id_counter += 1;
@@ -609,7 +745,13 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
                         }
                         let id_str = format!("ly-note-{}", id_counter);
                         let pe = note.post_events.clone();
-                        if pe.contains(&PostEvent::Tie) {
+                        // Check for bare tie or directed tie
+                        let tie_dir = pe.iter().find_map(|p| match p {
+                            PostEvent::Tie => Some(None),
+                            PostEvent::DirectedTie(d) => Some(Some(*d)),
+                            _ => None,
+                        });
+                        if let Some(dir) = tie_dir {
                             match &mei_note.note_anl.tie {
                                 Some(t) if t.0 == "t" => {
                                     mei_note.note_anl.tie = Some(DataTie::from("m".to_string()));
@@ -619,6 +761,17 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
                                 }
                             }
                             tie_pending = true;
+                            if let Some(d) = dir {
+                                let dir_str = match d {
+                                    crate::model::note::Direction::Up => "above",
+                                    crate::model::note::Direction::Down => "below",
+                                    crate::model::note::Direction::Neutral => "neutral",
+                                };
+                                ext_store.insert_tie_direction(
+                                    id_str.clone(),
+                                    tusk_model::TieDirection { direction: dir_str.to_string() },
+                                );
+                            }
                         }
                         if let Some(ref gt) = current_grace {
                             apply_grace_to_note(&mut mei_note, gt, ext_store);
@@ -676,7 +829,12 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
                             .clone()
                             .unwrap_or_else(|| format!("ly-chord-{}", id_counter));
                         let pe = post_events.clone();
-                        if pe.contains(&PostEvent::Tie) {
+                        let chord_tie_dir = pe.iter().find_map(|p| match p {
+                            PostEvent::Tie => Some(None),
+                            PostEvent::DirectedTie(d) => Some(Some(*d)),
+                            _ => None,
+                        });
+                        if let Some(dir) = chord_tie_dir {
                             for child in &mut mei_chord.children {
                                 let tusk_model::elements::ChordChild::Note(n) = child else { continue; };
                                 match &n.note_anl.tie {
@@ -689,6 +847,17 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
                                 }
                             }
                             tie_pending = true;
+                            if let Some(d) = dir {
+                                let dir_str = match d {
+                                    crate::model::note::Direction::Up => "above",
+                                    crate::model::note::Direction::Down => "below",
+                                    crate::model::note::Direction::Neutral => "neutral",
+                                };
+                                ext_store.insert_tie_direction(
+                                    id_str.clone(),
+                                    tusk_model::TieDirection { direction: dir_str.to_string() },
+                                );
+                            }
                         }
                         if let Some(ref gt) = current_grace {
                             apply_grace_to_chord(&mut mei_chord, gt, ext_store);
@@ -977,18 +1146,27 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
                 // Process post-events
                 for pe in &post_events {
                     match pe {
-                        PostEvent::SlurStart => {
+                        PostEvent::SlurStart | PostEvent::DirectedSlurStart(_) => {
+                            let curvedir = match pe {
+                                PostEvent::DirectedSlurStart(d) => Some(ly_dir_to_curvedir(*d)),
+                                _ => None,
+                            };
                             pending_slurs.push(PendingSpanner {
                                 start_id: current_id.clone(),
                                 is_phrase: false,
                                 staff_n: staff_info.n,
+                                curvedir,
                             });
                         }
-                        PostEvent::SlurEnd => {
-                            if let Some(pos) = pending_slurs.iter().rposition(|s| !s.is_phrase) {
+                        PostEvent::SlurEnd | PostEvent::DirectedSlurEnd(_) => {
+                            let end_cd = match pe {
+                                PostEvent::DirectedSlurEnd(d) => Some(ly_dir_to_curvedir(*d)),
+                                _ => None,
+                            };
+                            if let Some(pos) = pending_slurs.iter().rposition(|s| !s.is_phrase && s.curvedir == end_cd) {
                                 let pending = pending_slurs.remove(pos);
                                 slur_counter += 1;
-                                let slur = make_slur(
+                                let mut slur = make_slur(
                                     &pending.start_id,
                                     &current_id,
                                     pending.staff_n,
@@ -996,21 +1174,41 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
                                     false,
                                     ext_store,
                                 );
+                                if let Some(ref cd) = pending.curvedir {
+                                    slur.slur_vis.curvedir = Some(cd.clone());
+                                }
                                 measure.children.push(MeasureChild::Slur(Box::new(slur)));
+                            } else {
+                                // No matching start in this voice — defer for cross-voice resolution
+                                deferred_slur_ends.push(DeferredSlurEnd {
+                                    end_id: current_id.clone(),
+                                    measure_idx: m_idx,
+                                    is_phrase: false,
+                                    curvedir: end_cd,
+                                });
                             }
                         }
-                        PostEvent::PhrasingSlurStart => {
+                        PostEvent::PhrasingSlurStart | PostEvent::DirectedPhrasingSlurStart(_) => {
+                            let curvedir = match pe {
+                                PostEvent::DirectedPhrasingSlurStart(d) => Some(ly_dir_to_curvedir(*d)),
+                                _ => None,
+                            };
                             pending_slurs.push(PendingSpanner {
                                 start_id: current_id.clone(),
                                 is_phrase: true,
                                 staff_n: staff_info.n,
+                                curvedir,
                             });
                         }
-                        PostEvent::PhrasingSlurEnd => {
-                            if let Some(pos) = pending_slurs.iter().rposition(|s| s.is_phrase) {
+                        PostEvent::PhrasingSlurEnd | PostEvent::DirectedPhrasingSlurEnd(_) => {
+                            let end_cd = match pe {
+                                PostEvent::DirectedPhrasingSlurEnd(d) => Some(ly_dir_to_curvedir(*d)),
+                                _ => None,
+                            };
+                            if let Some(pos) = pending_slurs.iter().rposition(|s| s.is_phrase && s.curvedir == end_cd) {
                                 let pending = pending_slurs.remove(pos);
                                 slur_counter += 1;
-                                let slur = make_slur(
+                                let mut slur = make_slur(
                                     &pending.start_id,
                                     &current_id,
                                     pending.staff_n,
@@ -1018,7 +1216,17 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
                                     true,
                                     ext_store,
                                 );
+                                if let Some(ref cd) = pending.curvedir {
+                                    slur.slur_vis.curvedir = Some(cd.clone());
+                                }
                                 measure.children.push(MeasureChild::Slur(Box::new(slur)));
+                            } else {
+                                deferred_slur_ends.push(DeferredSlurEnd {
+                                    end_id: current_id.clone(),
+                                    measure_idx: m_idx,
+                                    is_phrase: true,
+                                    curvedir: end_cd,
+                                });
                             }
                         }
                         PostEvent::Dynamic(name) => {
@@ -1055,7 +1263,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
                                     .push(MeasureChild::Hairpin(Box::new(hairpin)));
                             }
                         }
-                        PostEvent::Tie => {}
+                        PostEvent::Tie | PostEvent::DirectedTie(_) => {}
                         PostEvent::Articulation {
                             direction, script, ..
                         } => {
@@ -1200,17 +1408,91 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
                 }
             }
 
-            // Attach lyrics to notes in this layer
-            for (verse_idx, lyric_info) in staff_info.lyrics.iter().enumerate() {
-                let verse_n = (verse_idx + 1) as u32;
-                lyrics::attach_lyrics_to_layer(&mut layer.children, &lyric_info.syllables, verse_n, ext_store);
-                lyrics::refine_wordpos(&mut layer.children, verse_n);
+                voice_layer_children.push(std::mem::take(&mut layer.children));
+
+                // Store barline type for this measure in ext_store
+                if let Some(bar_type) = &group.end_barline {
+                    let measure_n = (m_idx + 1).to_string();
+                    ext_store.ly_end_barlines.insert(measure_n, bar_type.clone());
+                }
+            } // end measure group loop
+
+            // Attach lyrics across all measures' layer children for this voice
+            if !staff_info.lyrics.is_empty() {
+                // Collect all children for sequential lyrics attachment
+                let counts: Vec<usize> = voice_layer_children.iter().map(|c| c.len()).collect();
+                let mut all_children: Vec<LayerChild> = voice_layer_children
+                    .drain(..)
+                    .flat_map(|c| c.into_iter())
+                    .collect();
+
+                for (verse_idx, lyric_info) in staff_info.lyrics.iter().enumerate() {
+                    let verse_n = (verse_idx + 1) as u32;
+                    lyrics::attach_lyrics_to_layer(
+                        &mut all_children,
+                        &lyric_info.syllables,
+                        verse_n,
+                        ext_store,
+                    );
+                    lyrics::refine_wordpos(&mut all_children, verse_n);
+                }
+
+                // Redistribute children back to per-measure groups
+                let mut drain_iter = all_children.into_iter();
+                for count in &counts {
+                    voice_layer_children.push(drain_iter.by_ref().take(*count).collect());
+                }
             }
 
-            staff.children.push(StaffChild::Layer(Box::new(layer)));
-        }
+            // Add layers to per-measure staves
+            for (m_idx, children) in voice_layer_children.into_iter().enumerate() {
+                let mut layer = Layer::default();
+                layer.n_integer.n = Some((voice_idx + 1).to_string());
+                layer.children = children;
+                staves_per_measure[staff_idx][m_idx]
+                    .children
+                    .push(StaffChild::Layer(Box::new(layer)));
+            }
 
-        measure.children.push(MeasureChild::Staff(Box::new(staff)));
+            // Transfer orphaned pending slurs to staff level for cross-voice resolution
+            orphaned_slur_starts.extend(pending_slurs);
+        } // end voice loop
+
+        // Resolve cross-voice slurs: match orphaned starts with deferred ends.
+        // This handles slurs that start inside a << >> block in one voice and
+        // end outside it in another voice (due to try_split_sequential_with_simultaneous).
+        for deferred in &deferred_slur_ends {
+            if let Some(pos) = orphaned_slur_starts.iter().rposition(|s| {
+                s.is_phrase == deferred.is_phrase && s.curvedir == deferred.curvedir
+            }) {
+                let pending = orphaned_slur_starts.remove(pos);
+                slur_counter += 1;
+                let mut slur = make_slur(
+                    &pending.start_id,
+                    &deferred.end_id,
+                    pending.staff_n,
+                    slur_counter,
+                    deferred.is_phrase,
+                    ext_store,
+                );
+                if let Some(ref cd) = pending.curvedir {
+                    slur.slur_vis.curvedir = Some(cd.clone());
+                }
+                measures[deferred.measure_idx]
+                    .children
+                    .push(MeasureChild::Slur(Box::new(slur)));
+            }
+        }
+    } // end staff loop
+
+    // Assemble: add staves to measures
+    for (staff_idx, staff_per_m) in staves_per_measure.into_iter().enumerate() {
+        let _ = staff_idx;
+        for (m_idx, staff) in staff_per_m.into_iter().enumerate() {
+            measures[m_idx]
+                .children
+                .push(MeasureChild::Staff(Box::new(staff)));
+        }
     }
 
     // Process dedicated ChordNames contexts → Harm control events
@@ -1218,17 +1500,14 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
         let mut cn_events = Vec::new();
         let mut cn_ctx = PitchContext::new();
         collect_events(cn_info.music, &mut cn_events, &mut cn_ctx);
-        // Use @tstamp for timing since chord names have no notes to attach to
-        let mut beat = 1.0f64; // beat 1 of the measure
+        let mut beat = 1.0f64;
         for ev in &cn_events {
             if let LyEvent::ChordName(ce) = ev {
                 harm_counter += 1;
                 let mut harm = make_harm(ce, "", 1, harm_counter, ext_store);
-                // Override: use @tstamp instead of @startid
                 harm.harm_log.startid = None;
                 harm.harm_log.tstamp = Some(tusk_model::generated::data::DataBeat(beat));
-                measure.children.push(MeasureChild::Harm(Box::new(harm)));
-                // Advance beat position based on chord duration
+                measures[0].children.push(MeasureChild::Harm(Box::new(harm)));
                 if let Some(dur) = &ce.duration {
                     beat += duration_to_beats(dur);
                 }
@@ -1245,14 +1524,18 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
             if let LyEvent::FigureEvent(fe) = ev {
                 fb_counter += 1;
                 let fb = make_fb(fe, 1, fb_counter, ext_store);
-                measure.children.push(MeasureChild::Fb(Box::new(fb)));
+                measures[0]
+                    .children
+                    .push(MeasureChild::Fb(Box::new(fb)));
             }
         }
     }
 
-    section
-        .children
-        .push(SectionChild::Measure(Box::new(measure)));
+    for measure in measures {
+        section
+            .children
+            .push(SectionChild::Measure(Box::new(measure)));
+    }
 
     Ok(section)
 }

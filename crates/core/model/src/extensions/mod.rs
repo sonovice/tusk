@@ -590,6 +590,18 @@ pub struct LyricExtender;
 pub struct PhrasingSlur;
 
 // ---------------------------------------------------------------------------
+// TieDirection
+// ---------------------------------------------------------------------------
+
+/// Tie curve direction for lossless roundtrip (`^~`, `_~`, `-~` in LilyPond).
+/// Stored on note xml:id in ExtensionStore.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TieDirection {
+    /// "above", "below", or "neutral"
+    pub direction: String,
+}
+
+// ---------------------------------------------------------------------------
 // TupletInfo
 // ---------------------------------------------------------------------------
 
@@ -920,6 +932,11 @@ pub struct ExtensionStore {
     pub scheme_music_infos: HashMap<String, SchemeMusicInfo>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub text_script_infos: HashMap<String, TextScriptInfo>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub tie_directions: HashMap<String, TieDirection>,
+    /// LilyPond measure end barline types (e.g. "|.", "||"), keyed by measure xml:id.
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub ly_end_barlines: HashMap<String, String>,
 }
 
 /// Generate get/get_mut/insert/remove accessor methods for ExtensionStore HashMap fields.
@@ -1010,6 +1027,7 @@ ext_store_accessors! {
     figured_bass_info / insert_figured_bass_info => figured_bass_infos: FiguredBassInfo,
     scheme_music_info / insert_scheme_music_info => scheme_music_infos: SchemeMusicInfo,
     text_script_info / insert_text_script_info => text_script_infos: TextScriptInfo,
+    tie_direction / insert_tie_direction => tie_directions: TieDirection,
 }
 
 impl ExtensionStore {
