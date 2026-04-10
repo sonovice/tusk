@@ -2486,6 +2486,9 @@ fn convert_staff_content(
         if let StaffChild::Layer(layer) = c { Some(layer) } else { None }
     }).collect();
     let layer_count = layers.len();
+    // Track reference duration from first non-empty layer for filling empty layers
+    let mut reference_duration: Option<f64> = None;
+
     for (layer_idx, layer) in layers.iter().enumerate() {
         // Derive MusicXML voice number from MEI layer @n and staff number.
         // For single-staff parts: voice = layer @n (typically 1).
@@ -2623,6 +2626,24 @@ fn convert_staff_content(
             mxml_measure
                 .content
                 .push(MeasureContent::Attributes(Box::new(attrs)));
+        }
+
+        // Update reference duration from this layer
+        let layer_duration = calculate_staff_duration(mxml_measure, content_start);
+        if layer_duration > 0.0 {
+            if reference_duration.is_none() {
+                reference_duration = Some(layer_duration);
+            }
+        } else if layer_count > 1 {
+            // Layer has no sounding content (only attributes or truly empty).
+            // Insert Forward to preserve voice presence in MusicXML. Without
+            // this, empty voices disappear on reimport causing instability.
+            if let Some(ref_dur) = reference_duration {
+                let mut fwd = crate::model::note::Forward::new(ref_dur);
+                fwd.voice = Some(voice_str.clone());
+                fwd.staff = Some(staff_n as u32);
+                mxml_measure.content.push(MeasureContent::Forward(Box::new(fwd)));
+            }
         }
 
         // Assign voice and staff to all notes and forwards added by this layer

@@ -719,14 +719,14 @@ fn collect_distinct_voices(measure: &crate::model::elements::Measure) -> Vec<Str
     let mut voices = Vec::new();
     let mut seen = std::collections::HashSet::new();
     for content in &measure.content {
-        if let MeasureContent::Note(note) = content {
-            if note.is_chord() {
-                continue;
-            }
-            if let Some(ref voice) = note.voice {
-                if seen.insert(voice.clone()) {
-                    voices.push(voice.clone());
-                }
+        let voice = match content {
+            MeasureContent::Note(note) if !note.is_chord() => note.voice.as_ref(),
+            MeasureContent::Forward(forward) => forward.voice.as_ref(),
+            _ => None,
+        };
+        if let Some(v) = voice {
+            if seen.insert(v.clone()) {
+                voices.push(v.clone());
             }
         }
     }
