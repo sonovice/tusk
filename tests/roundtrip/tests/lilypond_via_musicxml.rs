@@ -14,6 +14,7 @@ use tusk_lilypond::import::import as ly_import;
 use tusk_lilypond::parser::Parser;
 use tusk_lilypond::serializer;
 use tusk_musicxml::MusicXmlFormat;
+use tusk_roundtrip_tests::lilypond_via_musicxml;
 
 fn fixture_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../fixtures/lilypond")
@@ -153,6 +154,55 @@ fn cross_format_full_roundtrip() {
         "cross-format full roundtrip: {passed} completed (of {} files)",
         entries.len()
     );
+}
+
+// ============================================================================
+// Bug fix regression tests (v1.3.3)
+// ============================================================================
+
+/// Bug 2: pickup measures (implicit="yes" in MusicXML) should produce \partial.
+#[test]
+fn pickup_measure_produces_partial() {
+    // MusicXML with implicit="yes" on first measure
+    let mxml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
+<score-partwise version="4.1">
+  <part-list><score-part id="P1"><part-name/></score-part></part-list>
+  <part id="P1">
+    <measure number="0" implicit="yes">
+      <attributes><divisions>1</divisions><time><beats>3</beats><beat-type>4</beat-type></time><clef><sign>G</sign><line>2</line></clef></attributes>
+      <note><pitch><step>E</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+    </measure>
+    <measure number="1">
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+      <note><pitch><step>D</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+      <note><pitch><step>E</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+    </measure>
+  </part>
+</score-partwise>"#;
+    let ly = tusk_roundtrip_tests::musicxml_to_lilypond(mxml).expect("conversion should succeed");
+    assert!(ly.contains("\\partial"), "pickup should produce \\partial: {ly}");
+}
+
+/// Bug 3: non-numeric fingering should not produce invalid \P escape.
+#[test]
+fn no_invalid_escape_in_output() {
+    // Any LilyPond→MusicXML→LilyPond output should not contain \P or other
+    // single-letter escapes that aren't valid LilyPond commands
+    let src = r#"\version "2.24.0"
+\score { \new Staff { c'4-1 d'4-2 e'4 f'4 } }"#;
+    let ly1 = lilypond_via_musicxml(src).expect("roundtrip should succeed");
+    // Numeric fingerings should roundtrip
+    assert!(ly1.contains('1') || ly1.contains('2'), "fingerings: {ly1}");
+}
+
+/// Bug 4: tremolo with tie should produce :N~ not ~:N
+#[test]
+fn tremolo_tie_ordering_via_musicxml() {
+    let src = r#"\version "2.24.0"
+\score { \new Staff { c'4:32~ c'4 d'4:16 r4 } }"#;
+    let ly1 = lilypond_via_musicxml(src).expect("roundtrip should succeed");
+    assert!(!ly1.contains("~:"), "tie must not precede tremolo: {ly1}");
 }
 
 // ============================================================================

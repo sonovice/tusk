@@ -103,7 +103,8 @@ pub fn convert_score_with_context(
     mei.children.push(MeiChild::Music(Box::new(music)));
 
     // Take the extension store from the context
-    let ext_store = ctx.take_ext_store();
+    let mut ext_store = ctx.take_ext_store();
+    ext_store.source_format = Some(tusk_model::extensions::SourceFormat::MusicXML);
 
     Ok((mei, ext_store))
 }

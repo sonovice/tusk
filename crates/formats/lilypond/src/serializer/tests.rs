@@ -1390,3 +1390,29 @@ fn serialize_text_mark() {
     let output = serialize(&file);
     assert!(output.contains("\\textMark \"Fine\""), "got: {output}");
 }
+
+// ---------------------------------------------------------------------------
+// Bug fix regression: tremolo before tie (v1.3.3, Bug 4)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn serialize_tremolo_before_tie() {
+    use crate::model::note::{NoteEvent, PostEvent};
+    use crate::model::pitch::Pitch;
+    use crate::model::duration::Duration;
+
+    let note = Music::Note(NoteEvent {
+        pitch: Pitch { step: 'c', alter: 0.0, octave: 1, force_accidental: false, cautionary: false, octave_check: None },
+        duration: Some(Duration { base: 4, dots: 0, multipliers: vec![] }),
+        pitched_rest: false,
+        post_events: vec![PostEvent::Tie, PostEvent::Tremolo(32)],
+    });
+    let file = crate::model::LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::Sequential(vec![note]))],
+    };
+    let output = serialize(&file);
+    // Tremolo (:32) must come before tie (~)
+    assert!(output.contains(":32~"), "expected :32~ but got: {output}");
+    assert!(!output.contains("~:"), "tie must not precede tremolo: {output}");
+}

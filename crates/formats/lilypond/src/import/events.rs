@@ -423,6 +423,30 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
             let serialized = crate::serializer::serialize_property_op(music);
             events.push(LyEvent::PropertyOp(serialized));
         }
+        Music::MusicFunction { name, args }
+            if matches!(name.as_str(), "partCombine" | "partCombineUp" | "partCombineDown"
+                | "partcombine" | "partcombineUp" | "partcombineDown") =>
+        {
+            // Expand \partCombine into Simultaneous so both voice streams
+            // flow into separate MEI layers instead of being stored opaquely.
+            let music_args: Vec<&Music> = args.iter().filter_map(|a| {
+                if let crate::model::FunctionArg::Music(m) = a { Some(m) } else { None }
+            }).collect();
+            if music_args.len() == 2 {
+                let sim = Music::Simultaneous(music_args.into_iter().map(|m| {
+                    if matches!(m, Music::Sequential(_)) { m.clone() } else { Music::Sequential(vec![m.clone()]) }
+                }).collect());
+                collect_events(&sim, events, ctx);
+            } else {
+                // Fallback: store as opaque function call
+                let fc = tusk_model::FunctionCall {
+                    name: name.clone(),
+                    args: args.iter().map(function_arg_to_ext_value).collect(),
+                    is_partial: false,
+                };
+                events.push(LyEvent::MusicFunction(fc));
+            }
+        }
         Music::MusicFunction { name, args } => {
             let fc = tusk_model::FunctionCall {
                 name: name.clone(),

@@ -174,6 +174,9 @@ fn convert_single_file(input: &str, output: &str, args: &ConvertArgs) -> Result<
     let is_mxl_input = input_fmt.eq_ignore_ascii_case("mxl") || is_zip(&input_bytes);
     let is_mxl_output = output_fmt.eq_ignore_ascii_case("mxl");
 
+    // Transcode UTF-16 to UTF-8 if needed (MusicXML files may use UTF-16 encoding)
+    let input_bytes = ensure_utf8(input_bytes)?;
+
     let (mei, ext_store, in_label) = if is_mxl_input {
         let (mei, ext) =
             tusk_musicxml::import_mxl(&input_bytes).context("failed to import .mxl")?;
@@ -269,6 +272,36 @@ fn read_input(path: &str) -> Result<Vec<u8>> {
     } else {
         fs::read(path).with_context(|| format!("failed to read: {path}"))
     }
+}
+
+/// Detect UTF-16 BOM and transcode to UTF-8 if needed.
+/// Returns the (possibly transcoded) bytes unchanged if already UTF-8.
+fn ensure_utf8(bytes: Vec<u8>) -> Result<Vec<u8>> {
+    if bytes.len() >= 2 {
+        // UTF-16 BE BOM: 0xFE 0xFF
+        if bytes[0] == 0xFE && bytes[1] == 0xFF {
+            let u16s: Vec<u16> = bytes[2..]
+                .chunks_exact(2)
+                .map(|c| u16::from_be_bytes([c[0], c[1]]))
+                .collect();
+            let s = String::from_utf16(&u16s).context("invalid UTF-16 BE")?;
+            return Ok(s.into_bytes());
+        }
+        // UTF-16 LE BOM: 0xFF 0xFE
+        if bytes[0] == 0xFF && bytes[1] == 0xFE {
+            let u16s: Vec<u16> = bytes[2..]
+                .chunks_exact(2)
+                .map(|c| u16::from_le_bytes([c[0], c[1]]))
+                .collect();
+            let s = String::from_utf16(&u16s).context("invalid UTF-16 LE")?;
+            return Ok(s.into_bytes());
+        }
+    }
+    // UTF-8 BOM: strip it if present
+    if bytes.len() >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF {
+        return Ok(bytes[3..].to_vec());
+    }
+    Ok(bytes)
 }
 
 fn write_output(path: &str, data: &[u8]) -> Result<()> {

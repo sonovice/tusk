@@ -202,7 +202,20 @@ impl Serializer<'_> {
     }
 
     pub(super) fn write_post_events(&mut self, events: &[PostEvent]) {
+        // Write tremolo events first — they must appear immediately after the
+        // duration (e.g. `c4:32~` not `c4~:32`, which crashes LilyPond).
         for ev in events {
+            if let PostEvent::Tremolo(n) = ev {
+                self.out.push(':');
+                if *n > 0 {
+                    self.out.push_str(&n.to_string());
+                }
+            }
+        }
+        for ev in events {
+            if matches!(ev, PostEvent::Tremolo(_)) {
+                continue;
+            }
             match ev {
                 PostEvent::Tie => self.out.push('~'),
                 PostEvent::DirectedTie(dir) => {
@@ -276,11 +289,8 @@ impl Serializer<'_> {
                         }
                     }
                 }
-                PostEvent::Tremolo(n) => {
-                    self.out.push(':');
-                    if *n > 0 {
-                        self.out.push_str(&n.to_string());
-                    }
+                PostEvent::Tremolo(_) => {
+                    // Handled above (tremolo must precede ties)
                 }
                 PostEvent::LyricHyphen => self.out.push_str(" --"),
                 PostEvent::LyricExtender => self.out.push_str(" __"),

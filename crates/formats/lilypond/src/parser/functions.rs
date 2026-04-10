@@ -34,7 +34,8 @@ fn music_arg_count(name: &str) -> Option<u8> {
         "tag" => 1,
         // — 2 music args —
         "appendToTag" | "pushToTag"
-        | "partCombine" | "partCombineDown" | "partCombineUp" => 2,
+        | "partCombine" | "partCombineDown" | "partCombineUp"
+        | "partcombine" | "partcombineDown" | "partcombineUp" => 2,
         // — 0 music args (known identifiers / void functions) —
         "cadenzaOn" | "cadenzaOff" | "break" | "noBreak" | "pageBreak"
         | "noPageBreak" | "pageTurn" | "noPageTurn"

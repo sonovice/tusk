@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.3.3] — 2026-04-10
+
+### CLI
+
+- **UTF-16 support**: MusicXML files encoded as UTF-16 BE or UTF-16 LE
+  (with BOM) are now automatically transcoded to UTF-8 before parsing.
+  UTF-8 BOM is also stripped.
+
+### LilyPond export (MEI → LilyPond)
+
+- **Pickup measures**: measures with `metcon="false"` (MusicXML `implicit="yes"`)
+  now emit `\partial dur` before the measure content, preventing LilyPond
+  barcheck failures on anacrusis measures.
+- **Technical notation markup**: MusicXML technical elements like `<pluck>`,
+  `<tap>`, `<handbell>`, and non-numeric `<fingering>` values (e.g. "P" for
+  thumb) are now exported as `^\markup { "P" }` instead of the invalid `\P`.
+  `<fing>` MEI elements are also handled.
+- **Tremolo/tie ordering**: tremolo shorthand (`:32`) is now serialized before
+  ties (`~`), producing `c4:32~` instead of `c4~:32` which caused a LilyPond
+  Guile crash (`ly:item-get-column` error).
+
+### Internal
+
+- **`source_format` on ExtensionStore**: new field tracks which format the
+  content was imported from, enabling format-aware export decisions.
+
 ## [1.3.2] — 2026-03-04
 
 ### LilyPond parser

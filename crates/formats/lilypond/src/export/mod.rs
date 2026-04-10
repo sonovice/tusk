@@ -323,6 +323,11 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                         }
                     }
 
+                    // Check if this is a pickup measure (metcon="false" or
+                    // first measure with content shorter than time signature)
+                    let is_pickup = measure.measure_log.metcon.as_ref()
+                        == Some(&tusk_model::data::DataBoolean::False);
+
                     // Build spacer for MusicXML content to enforce measure duration
                     let spacer = if inject_voice_cmds {
                         Some(make_measure_spacer(&current_time_num, current_time_den))
@@ -349,6 +354,11 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                                 if measure_items.is_empty() && mei_has_mrest {
                                     measure_items.push(make_measure_rest(&current_time_num, current_time_den));
                                 }
+                                // Detect pickup: metcon="false" (from MusicXML implicit="yes")
+                                let needs_partial = is_pickup;
+                                if needs_partial {
+                                    inject_partial(&mut measure_items);
+                                }
                                 let nc = signatures::total_note_count(&measure_items);
                                 staff_note_offsets.push(nc);
                                 measure_items.insert(0, measure_comment.clone());
@@ -358,6 +368,9 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                                 // Insert R only if MEI had mRest (not for genuinely empty layers)
                                 if measure_items.is_empty() && mei_has_mrest {
                                     measure_items.push(make_measure_rest(&current_time_num, current_time_den));
+                                }
+                                if is_pickup {
+                                    inject_partial(&mut measure_items);
                                 }
                                 let nc = signatures::total_note_count(&measure_items);
                                 staff_note_offsets.push(nc);
@@ -389,6 +402,9 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                             // from tuplet timing rounding errors.
                             if inject_voice_cmds {
                                 insert_timing_reset_before_time_change(&mut measure_items);
+                            }
+                            if is_pickup && inject_voice_cmds {
+                                inject_partial(&mut measure_items);
                             }
                             let stream = &mut staff_music[staff_idx][0];
                             if inject_voice_cmds {
@@ -1390,6 +1406,121 @@ fn promote_lone_rest_to_mmrest(mut items: Vec<Music>) -> Vec<Music> {
     items
 }
 
+/// Inject `\partial dur` into measure items for pickup measures.
+///
+/// Inserts after the last signature event (clef/key/time) so that the partial
+/// appears at the right position in the LilyPond output.
+fn inject_partial(items: &mut Vec<Music>) {
+    let q = sum_quarters(items);
+    if q <= 0.0 {
+        return;
+    }
+    if let Some(dur) = quarters_to_duration(q) {
+        // Find position after last signature event
+        let mut pos = 0;
+        for (i, m) in items.iter().enumerate() {
+            match m {
+                Music::Clef(_) | Music::KeySignature(_) | Music::TimeSignature(_)
+                | Music::LineComment(_) | Music::Set { .. } | Music::Override { .. }
+                | Music::Once { .. } | Music::MusicFunction { .. } => {
+                    pos = i + 1;
+                }
+                _ => break,
+            }
+        }
+        items.insert(
+            pos,
+            Music::MusicFunction {
+                name: "partial".to_string(),
+                args: vec![crate::model::FunctionArg::Duration(dur)],
+            },
+        );
+    }
+}
+
+/// Sum the quarter-note durations of all sounding Music items.
+fn sum_quarters(items: &[Music]) -> f64 {
+    let mut total = 0.0;
+    for m in items {
+        match m {
+            Music::Note(n) => {
+                if let Some(dur) = &n.duration {
+                    total += dur.quarters();
+                }
+            }
+            Music::Chord(c) => {
+                if let Some(dur) = &c.duration {
+                    total += dur.quarters();
+                }
+            }
+            Music::Rest(r) => {
+                if let Some(dur) = &r.duration {
+                    total += dur.quarters();
+                }
+            }
+            Music::Skip(s) => {
+                if let Some(dur) = &s.duration {
+                    total += dur.quarters();
+                }
+            }
+            Music::MultiMeasureRest(r) => {
+                if let Some(dur) = &r.duration {
+                    total += dur.quarters();
+                }
+            }
+            Music::Tuplet { body, numerator, denominator, .. } => {
+                let inner = match body.as_ref() {
+                    Music::Sequential(items) => sum_quarters(items),
+                    other => sum_quarters(&[other.clone()]),
+                };
+                // Tuplet scales by denominator/numerator
+                total += inner * *denominator as f64 / *numerator as f64;
+            }
+            Music::Sequential(items) | Music::Simultaneous(items) => {
+                // For simultaneous, just take first voice's duration
+                if let Some(first) = items.first() {
+                    total += sum_quarters(&[first.clone()]);
+                }
+            }
+            Music::Grace { .. } | Music::Acciaccatura { .. } | Music::Appoggiatura { .. } => {
+                // Grace notes don't count
+            }
+            _ => {}
+        }
+    }
+    total
+}
+
+/// Convert a quarter-note duration to a LilyPond Duration.
+/// Returns None if the duration can't be represented as a simple duration.
+fn quarters_to_duration(q: f64) -> Option<Duration> {
+    // Try base values (with dots) from whole to 64th
+    for base in [1u32, 2, 4, 8, 16, 32, 64] {
+        let base_q = 4.0 / base as f64;
+        for dots in 0..=3u8 {
+            let dot_mult = 2.0 - 2.0f64.powi(-(dots as i32));
+            let dur_q = base_q * dot_mult;
+            if (dur_q - q).abs() < 0.001 {
+                return Some(Duration { base, dots, multipliers: vec![] });
+            }
+        }
+    }
+    // Fallback: use multiplier on quarter note
+    // Express as q = 4/base * num/den
+    // Using quarter note base: q = 1 * num/den → num/den = q
+    // Multiply q by 1000, use as numerator/1000, then simplify
+    let num = (q * 1000.0).round() as u32;
+    if num > 0 {
+        Some(Duration {
+            base: 4,
+            dots: 0,
+            multipliers: vec![(num, 1000)],
+        })
+    } else {
+        None
+    }
+}
+
 /// Scan a layer's items for a `\time` change and return the new numerators/denominator.
 fn extract_time_from_items(items: &[Music]) -> Option<(Vec<u32>, u32)> {
     for item in items {
@@ -2186,23 +2317,165 @@ fn collect_ornament_post_events(
             MeasureChild::Ornam(ornam) => {
                 if let Some(ref startid) = ornam.ornam_log.startid {
                     let id = startid.0.trim_start_matches('#').to_string();
-                    let fallback_name = ornam
+                    // Check if this ornam represents a technical notation that
+                    // needs special handling (pluck, fret, string, etc.)
+                    if let Some(ornam_id) = ornam.common.xml_id.as_deref()
+                        && let Some(tech) = ext_store.technical_detail(ornam_id)
+                    {
+                        if let Some(pe) = technical_detail_to_post_event(tech, ornam) {
+                            map.entry(id).or_default().push(pe);
+                        }
+                    } else {
+                        let fallback_name = ornam
+                            .children
+                            .first()
+                            .map(|c| {
+                                let tusk_model::elements::OrnamChild::Text(t) = c;
+                                t.clone()
+                            })
+                            .unwrap_or_else(|| "ornam".to_string());
+                        let (name, direction) =
+                            parse_ornament_from_ext(ornam.common.xml_id.as_deref(), &fallback_name, ext_store);
+                        map.entry(id)
+                            .or_default()
+                            .push(PostEvent::NamedArticulation { direction, name });
+                    }
+                }
+            }
+            MeasureChild::Fing(fing) => {
+                if let Some(ref startid) = fing.fing_log.startid {
+                    let id = startid.0.trim_start_matches('#').to_string();
+                    let text = fing
                         .children
-                        .first()
-                        .map(|c| {
-                            let tusk_model::elements::OrnamChild::Text(t) = c;
-                            t.clone()
+                        .iter()
+                        .filter_map(|c| {
+                            let tusk_model::elements::FingChild::Text(t) = c;
+                            Some(t.as_str())
                         })
-                        .unwrap_or_else(|| "ornam".to_string());
-                    let (name, direction) =
-                        parse_ornament_from_ext(ornam.common.xml_id.as_deref(), &fallback_name, ext_store);
-                    map.entry(id)
-                        .or_default()
-                        .push(PostEvent::NamedArticulation { direction, name });
+                        .collect::<String>();
+                    if let Ok(digit) = text.parse::<u8>() {
+                        let direction = fing_direction(fing);
+                        map.entry(id)
+                            .or_default()
+                            .push(PostEvent::Fingering { direction, digit });
+                    } else if !text.is_empty() {
+                        // Non-numeric fingering (e.g. "P" for thumb) → markup
+                        let direction = fing_direction(fing);
+                        map.entry(id)
+                            .or_default()
+                            .push(PostEvent::TextScript {
+                                direction,
+                                text: crate::model::markup::Markup::String(text),
+                            });
+                    }
                 }
             }
             _ => {}
         }
+    }
+}
+
+/// Convert a TechnicalDetailData to an appropriate LilyPond PostEvent.
+///
+/// Technical notations like pluck, fret, string, etc. need special handling
+/// because their text values (e.g. "P") are not valid LilyPond commands.
+fn technical_detail_to_post_event(
+    tech: &tusk_model::musicxml_ext::TechnicalDetailData,
+    ornam: &tusk_model::elements::Ornam,
+) -> Option<PostEvent> {
+    use tusk_model::musicxml_ext::TechnicalDetailData;
+    let direction = staffrel_to_direction(ornam.ornam_vis.place.as_ref());
+    match tech {
+        TechnicalDetailData::Pluck { value } if !value.is_empty() => {
+            Some(PostEvent::TextScript {
+                direction,
+                text: crate::model::markup::Markup::String(value.clone()),
+            })
+        }
+        TechnicalDetailData::Fret { value } => {
+            Some(PostEvent::TextScript {
+                direction,
+                text: crate::model::markup::Markup::String(value.to_string()),
+            })
+        }
+        TechnicalDetailData::StringNum { value } => {
+            Some(PostEvent::StringNumber { direction, number: *value as u8 })
+        }
+        TechnicalDetailData::HammerOn { text, .. } if !text.is_empty() => {
+            Some(PostEvent::TextScript {
+                direction,
+                text: crate::model::markup::Markup::String(text.clone()),
+            })
+        }
+        TechnicalDetailData::PullOff { text, .. } if !text.is_empty() => {
+            Some(PostEvent::TextScript {
+                direction,
+                text: crate::model::markup::Markup::String(text.clone()),
+            })
+        }
+        TechnicalDetailData::Tap { value, .. } if !value.is_empty() => {
+            Some(PostEvent::TextScript {
+                direction,
+                text: crate::model::markup::Markup::String(value.clone()),
+            })
+        }
+        TechnicalDetailData::Handbell { value } if !value.is_empty() => {
+            Some(PostEvent::TextScript {
+                direction,
+                text: crate::model::markup::Markup::String(value.clone()),
+            })
+        }
+        // Standard technical ornaments that have valid LilyPond names
+        _ => {
+            let fallback_name = ornam
+                .children
+                .first()
+                .map(|c| {
+                    let tusk_model::elements::OrnamChild::Text(t) = c;
+                    t.clone()
+                })
+                .unwrap_or_else(|| "ornam".to_string());
+            // Check if the name is a known LilyPond command
+            if is_known_ly_ornament(&fallback_name) {
+                Some(PostEvent::NamedArticulation { direction, name: fallback_name })
+            } else {
+                // Emit as markup for unknown names
+                Some(PostEvent::TextScript {
+                    direction,
+                    text: crate::model::markup::Markup::String(fallback_name),
+                })
+            }
+        }
+    }
+}
+
+/// Check if a name is a known LilyPond ornament/technical command.
+fn is_known_ly_ornament(name: &str) -> bool {
+    matches!(
+        name,
+        "trill" | "mordent" | "prall" | "turn" | "reverseturn"
+            | "fermata" | "shortfermata" | "longfermata" | "verylongfermata"
+            | "upbow" | "downbow" | "flageolet" | "open" | "stopped"
+            | "thumb" | "lheel" | "rheel" | "ltoe" | "rtoe"
+            | "snappizzicato" | "espressivo" | "segno" | "coda" | "varcoda"
+            | "prallprall" | "prallmordent" | "upprall" | "downprall"
+            | "upmordent" | "downmordent" | "pralldown" | "prallup"
+            | "lineprall" | "signumcongruentiae"
+    )
+}
+
+/// Extract LilyPond Direction from a Fing element's placement.
+fn fing_direction(fing: &tusk_model::elements::Fing) -> Direction {
+    staffrel_to_direction(fing.fing_vis.place.as_ref())
+}
+
+/// Convert a DataStaffrel to a LilyPond Direction.
+fn staffrel_to_direction(place: Option<&tusk_model::data::DataStaffrel>) -> Direction {
+    use tusk_model::data::{DataStaffrel, DataStaffrelBasic};
+    match place {
+        Some(DataStaffrel::MeiDataStaffrelBasic(DataStaffrelBasic::Above)) => Direction::Up,
+        Some(DataStaffrel::MeiDataStaffrelBasic(DataStaffrelBasic::Below)) => Direction::Down,
+        _ => Direction::Neutral,
     }
 }
 

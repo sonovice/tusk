@@ -1509,3 +1509,24 @@ fn oct_default_applied_to_note_without_oct() {
         panic!("expected Note");
     }
 }
+
+// ---------------------------------------------------------------------------
+// Bug fix regression tests (v1.3.3)
+// ---------------------------------------------------------------------------
+
+/// Bug 4: tremolo after tie (~:) → should be (:~) to avoid LilyPond crash.
+#[test]
+fn tremolo_before_tie_ordering() {
+    let output = roundtrip("{ c4:32~ c4 }");
+    // Tremolo must come before tie: c4:32~ not c4~:32
+    assert!(output.contains(":32~"), "tremolo before tie: {output}");
+    assert!(!output.contains("~:"), "tie must not precede tremolo: {output}");
+}
+
+/// Bug 4: tremolo without tie should still work.
+#[test]
+fn tremolo_without_tie() {
+    let output = roundtrip("{ c4:32 d4:16 }");
+    assert!(output.contains(":32"), "tremolo 32: {output}");
+    assert!(output.contains(":16"), "tremolo 16: {output}");
+}

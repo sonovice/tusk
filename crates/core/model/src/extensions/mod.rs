@@ -861,6 +861,11 @@ pub struct ExtensionStore {
     #[serde(default, skip_serializing_if = "HashSet::is_empty")]
     pub jianpu_clefs: HashSet<String>,
 
+    // ----- Source format indicator -----
+    /// Which format the content was imported from.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_format: Option<SourceFormat>,
+
     // ----- MusicXML singleton -----
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub score_header: Option<crate::musicxml_ext::ScoreHeaderData>,
