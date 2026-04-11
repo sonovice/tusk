@@ -175,16 +175,13 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
 
     let mei_defaults = extract_mei_defaults(score);
 
-    // Always inject \voiceOne/\voiceTwo in multi-voice measures.
-    // Voice commands are needed for correct stem direction when voices
-    // have different rhythms. LilyPond import discards original voice
-    // commands, so they must be re-injected for both MusicXML and
-    // LilyPond origins.
-    let inject_voice_cmds = true;
-
-    // Spacer voices enforce measure duration — only needed for MusicXML
-    // origin where measures have a fixed duration from the time signature.
-    let add_spacer = !ext_store.part_details_map.is_empty();
+    // MusicXML-originated content needs voice commands, spacers, partials,
+    // timing resets and explicit barlines. Detected via source_format flag
+    // (reliably set during MusicXML import, unlike part_details_map).
+    let is_musicxml = ext_store.source_format
+        == Some(tusk_model::extensions::SourceFormat::MusicXML);
+    let inject_voice_cmds = is_musicxml;
+    let add_spacer = is_musicxml;
 
     // Accumulate music per staff: each staff gets a single flat Vec<Music>
     // containing all measures' content sequentially. Multi-voice measures
@@ -195,6 +192,7 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
     let mut staves_initialized = false;
     // Per-staff note offset for event sequence injection across measures
     let mut staff_note_offsets: Vec<u32> = Vec::new();
+    let mut staff_last_measure_was_pure_mrest: Vec<bool> = Vec::new();
 
     // Track current time signature for measure-duration spacers.
     // Extract initial time sig from first staff's event sequence.
@@ -310,17 +308,6 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                         }
                     }
 
-                    // Skip empty measures (all staves have empty layers) to
-                    // prevent unstable roundtrip: re-import would merge the
-                    // empty measure into the previous one, changing structure.
-                    if staves_initialized
-                        && all_staves
-                            .iter()
-                            .all(|(layers, _)| layers.iter().all(|l| l.is_empty()))
-                    {
-                        continue;
-                    }
-
                     measure_numbers.push(measure_n.clone());
 
                     // Detect time signature changes from first staff's first layer
@@ -347,7 +334,6 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
 
                     // Accumulate into staff_music
                     let num_staves = all_staves.len();
-                    let measure_comment = Music::LineComment(format!("m.{}", measure_numbers.len()));
                     for (staff_idx, (layers, raw_layers)) in all_staves.into_iter().enumerate() {
                         // Check if any MEI layer actually had mRest content
                         let mei_has_mrest = raw_layers.iter().any(|layer|
@@ -356,10 +342,14 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                         if !staves_initialized {
                             if let Some(seq) = event_sequences.get(staff_idx) {
                                 let mut first_layers = layers;
+                                let inject_into_items = first_layers.iter().all(|layer| layer.is_empty());
                                 if let Some(first_layer) = first_layers.first_mut() {
                                     inject_signature_events(first_layer, seq);
                                 }
                                 let mut measure_items = flatten_measure_layers(first_layers, inject_voice_cmds, spacer.clone());
+                                if inject_into_items {
+                                    inject_signature_events(&mut measure_items, seq);
+                                }
                                 // Insert R only if MEI had mRest (not for genuinely empty layers)
                                 if measure_items.is_empty() && mei_has_mrest {
                                     measure_items.push(make_measure_rest(&current_time_num, current_time_den));
@@ -371,7 +361,8 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                                 }
                                 let nc = signatures::total_note_count(&measure_items);
                                 staff_note_offsets.push(nc);
-                                measure_items.insert(0, measure_comment.clone());
+                                staff_last_measure_was_pure_mrest
+                                    .push(is_pure_mrest_measure(&measure_items));
                                 staff_music.push(vec![measure_items]);
                             } else {
                                 let mut measure_items = flatten_measure_layers(layers, inject_voice_cmds, spacer.clone());
@@ -384,7 +375,8 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                                 }
                                 let nc = signatures::total_note_count(&measure_items);
                                 staff_note_offsets.push(nc);
-                                measure_items.insert(0, measure_comment.clone());
+                                staff_last_measure_was_pure_mrest
+                                    .push(is_pure_mrest_measure(&measure_items));
                                 staff_music.push(vec![measure_items]);
                             }
                             // Only first layer — \addlyrics aligns with first voice in << >>
@@ -393,12 +385,19 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                             // A later measure introduces more staves than the
                             // first measure — initialize the new staff entry.
                             let mut measure_items = flatten_measure_layers(layers, inject_voice_cmds, spacer.clone());
-                            measure_items.insert(0, measure_comment.clone());
+                            if measure_items.is_empty() && mei_has_mrest {
+                                measure_items.push(make_measure_rest(&current_time_num, current_time_den));
+                            }
+                            staff_last_measure_was_pure_mrest
+                                .push(is_pure_mrest_measure(&measure_items));
                             staff_music.push(vec![measure_items]);
                             staff_layer_children.push(raw_layers.into_iter().take(1).collect());
                             staff_note_offsets.push(0);
                         } else {
                             let mut measure_items = flatten_measure_layers(layers, inject_voice_cmds, spacer.clone());
+                            if measure_items.is_empty() && mei_has_mrest {
+                                measure_items.push(make_measure_rest(&current_time_num, current_time_den));
+                            }
                             // Inject non-signature event sequence events for this measure
                             // (tempo, mark, textmark, markup — NOT clef/key/time which are
                             // unstable due to voice splitting note-count misalignment)
@@ -410,19 +409,28 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                             // Reset measure position before \time changes to
                             // prevent "mid-measure time signature" warnings
                             // from tuplet timing rounding errors.
-                            insert_timing_reset_before_time_change(&mut measure_items);
-                            if is_pickup {
+                            if is_musicxml {
+                                insert_timing_reset_before_time_change(&mut measure_items);
+                            }
+                            if is_pickup && is_musicxml {
                                 inject_partial(&mut measure_items);
                             }
+                            let pure_mrest_measure = is_pure_mrest_measure(&measure_items);
                             let stream = &mut staff_music[staff_idx][0];
-                            // Explicit barline resets timing counter —
-                            // prevents cascading barline misplacement
-                            // when source has irregular measure durations.
-                            stream.push(Music::BarLine {
-                                bar_type: "|".to_string(),
-                            });
-                            stream.push(measure_comment.clone());
+                            if !(staff_last_measure_was_pure_mrest[staff_idx] && pure_mrest_measure) {
+                                if is_musicxml {
+                                    // Explicit barline resets timing counter —
+                                    // prevents cascading barline misplacement
+                                    // when source has irregular measure durations.
+                                    stream.push(Music::BarLine {
+                                        bar_type: "|".to_string(),
+                                    });
+                                } else {
+                                    stream.push(Music::BarCheck);
+                                }
+                            }
                             stream.extend(measure_items);
+                            staff_last_measure_was_pure_mrest[staff_idx] = pure_mrest_measure;
                             // Only first layer — \addlyrics aligns with first voice
                             staff_layer_children[staff_idx].extend(raw_layers.into_iter().take(1));
                         }
@@ -1237,7 +1245,10 @@ fn build_flat_music(staff_music: Vec<Vec<Vec<Music>>>) -> Music {
 
 /// Build music from a set of layers (voices).
 fn build_layers_music(layers: Vec<Vec<Music>>) -> Music {
-    let non_empty: Vec<Vec<Music>> = layers.into_iter().filter(|l| !l.is_empty()).collect();
+    let non_empty: Vec<Vec<Music>> = layers
+        .into_iter()
+        .filter(|l| !l.is_empty() && !is_structure_only_layer(l))
+        .collect();
 
     match non_empty.len() {
         0 => Music::Sequential(Vec::new()),
@@ -1247,6 +1258,15 @@ fn build_layers_music(layers: Vec<Vec<Music>>) -> Music {
             Music::Simultaneous(voices)
         }
     }
+}
+
+fn is_structure_only_layer(items: &[Music]) -> bool {
+    items.iter().all(|m| {
+        matches!(
+            m,
+            Music::BarCheck | Music::BarLine { .. } | Music::LineComment(_)
+        )
+    })
 }
 
 /// Flatten a single measure's layers into a list of Music items.
@@ -1265,6 +1285,13 @@ fn flatten_measure_layers(
     spacer: Option<Music>,
 ) -> Vec<Music> {
     let non_empty: Vec<Vec<Music>> = layers.into_iter().filter(|l| !l.is_empty()).collect();
+    let non_empty = drop_trailing_skip_only_companion_layers(non_empty);
+    if let Some(collapsed) = collapse_skip_only_layers(&non_empty, spacer.clone()) {
+        return collapsed;
+    }
+    if let Some(collapsed) = collapse_skip_only_companion_layers(&non_empty, spacer.clone()) {
+        return flatten_measure_layers(vec![collapsed], inject_voice_cmds, None);
+    }
     match non_empty.len() {
         0 => {
             if let Some(s) = spacer {
@@ -1275,18 +1302,27 @@ fn flatten_measure_layers(
         }
         1 if spacer.is_none() => non_empty.into_iter().next().unwrap(),
         1 => {
-            let content = non_empty.into_iter().next().unwrap();
+            let mut content = non_empty.into_iter().next().unwrap();
+            strip_trailing_skips(&mut content);
+            if content.iter().any(|m| matches!(m, Music::Skip(_))) {
+                return content;
+            }
             // If the layer has no sounding notes (only rests + attribute changes),
             // skip the polyphonic wrapper. Promote a lone rest to R (multi-measure
             // rest) so LilyPond centers it in the bar instead of left-aligning.
             if is_rest_only_layer(&content) {
-                promote_lone_rest_to_mmrest(content)
-            } else {
-                let mut voices = vec![Music::Sequential(content)];
-                if let Some(s) = spacer {
-                    voices.push(Music::Sequential(vec![s]));
+                let mut content = promote_lone_rest_to_mmrest(content);
+                if !is_pure_mrest_measure(&content) {
+                    if let Some(s) = spacer {
+                        content.push(s);
+                    }
                 }
-                vec![Music::Simultaneous(voices)]
+                content
+            } else {
+                if let Some(s) = spacer {
+                    content.push(s);
+                }
+                content
             }
         }
         _ if inject_voice_cmds => {
@@ -1326,6 +1362,107 @@ fn flatten_measure_layers(
             vec![Music::Simultaneous(voices)]
         }
     }
+}
+
+fn drop_trailing_skip_only_companion_layers(mut layers: Vec<Vec<Music>>) -> Vec<Vec<Music>> {
+    if layers.len() <= 1 {
+        return layers;
+    }
+
+    let contentful_count = layers
+        .iter()
+        .filter(|layer| !is_skip_only_layer(layer))
+        .count();
+    if contentful_count < 2 {
+        return layers;
+    }
+
+    while layers.last().is_some_and(|layer| is_skip_only_layer(layer)) {
+        layers.pop();
+    }
+    layers
+}
+
+fn collapse_skip_only_layers(layers: &[Vec<Music>], spacer: Option<Music>) -> Option<Vec<Music>> {
+    if layers.is_empty() || !layers.iter().all(|layer| is_skip_only_layer(layer)) {
+        return None;
+    }
+
+    let mut collapsed = Vec::new();
+    for item in layers.iter().flat_map(|layer| layer.iter()) {
+        if matches!(item, Music::Skip(_)) {
+            continue;
+        }
+        if !collapsed.contains(item) {
+            collapsed.push(item.clone());
+        }
+    }
+
+    if let Some(spacer) = spacer {
+        collapsed.push(spacer);
+    } else if let Some(skip) = layers
+        .iter()
+        .flat_map(|layer| layer.iter())
+        .find(|item| matches!(item, Music::Skip(_)))
+        .cloned()
+    {
+        collapsed.push(skip);
+    }
+
+    Some(collapsed)
+}
+
+fn collapse_skip_only_companion_layers(layers: &[Vec<Music>], spacer: Option<Music>) -> Option<Vec<Music>> {
+    if layers.len() <= 1 {
+        return None;
+    }
+
+    let mut content_idx = None;
+    for (idx, layer) in layers.iter().enumerate() {
+        if !is_skip_only_layer(layer) {
+            if content_idx.is_some() {
+                return None;
+            }
+            content_idx = Some(idx);
+        }
+    }
+
+    let content_idx = content_idx?;
+    let mut prefix = Vec::new();
+    let mut suffix = Vec::new();
+    let mut collapsed = layers[content_idx].clone();
+
+    for (idx, layer) in layers.iter().enumerate() {
+        if idx == content_idx {
+            continue;
+        }
+        for item in layer {
+            if is_voice_state_function(item) || matches!(item, Music::Skip(_)) {
+                continue;
+            }
+            let target = if is_leading_companion_item(item) {
+                &mut prefix
+            } else {
+                &mut suffix
+            };
+            if !target.contains(item) && !collapsed.contains(item) {
+                target.push(item.clone());
+            }
+        }
+    }
+
+    if !prefix.is_empty() {
+        prefix.extend(collapsed);
+        collapsed = prefix;
+    }
+    collapsed.extend(suffix);
+
+    if let Some(spacer) = spacer {
+        strip_trailing_skips(&mut collapsed);
+        collapsed.push(spacer);
+    }
+
+    Some(collapsed)
 }
 
 /// Create a multi-measure rest for a given time signature.
@@ -1390,6 +1527,69 @@ fn is_rest_only_layer(items: &[Music]) -> bool {
                 | Music::LineComment(_)
         )
     })
+}
+
+fn is_skip_only_layer(items: &[Music]) -> bool {
+    items.iter().all(|m| matches!(m, Music::Skip(_)) || is_skip_only_marker(m))
+}
+
+fn is_skip_only_marker(music: &Music) -> bool {
+    matches!(
+        music,
+        Music::Clef(_)
+            | Music::KeySignature(_)
+            | Music::TimeSignature(_)
+            | Music::BarLine { .. }
+            | Music::BarCheck
+            | Music::Mark(_)
+            | Music::TextMark(_)
+            | Music::Tempo(_)
+            | Music::Override { .. }
+            | Music::Revert { .. }
+            | Music::Set { .. }
+            | Music::Unset { .. }
+            | Music::Once { .. }
+            | Music::LineComment(_)
+    ) || is_voice_state_function(music)
+}
+
+fn is_voice_state_function(music: &Music) -> bool {
+    matches!(
+        music,
+        Music::MusicFunction { name, args }
+            if args.is_empty()
+                && matches!(name.as_str(), "voiceOne" | "voiceTwo" | "voiceThree" | "voiceFour" | "oneVoice")
+    )
+}
+
+fn is_leading_companion_item(music: &Music) -> bool {
+    matches!(
+        music,
+        Music::Clef(_)
+            | Music::KeySignature(_)
+            | Music::TimeSignature(_)
+            | Music::Mark(_)
+            | Music::TextMark(_)
+            | Music::Tempo(_)
+            | Music::Override { .. }
+            | Music::Revert { .. }
+            | Music::Set { .. }
+            | Music::Unset { .. }
+            | Music::Once { .. }
+            | Music::LineComment(_)
+    )
+}
+
+fn is_pure_mrest_measure(items: &[Music]) -> bool {
+    !items.is_empty() && items.iter().all(|m| matches!(m, Music::MultiMeasureRest(_)))
+}
+
+fn strip_trailing_skips(items: &mut Vec<Music>) -> bool {
+    let original_len = items.len();
+    while items.last().is_some_and(|m| matches!(m, Music::Skip(_))) {
+        items.pop();
+    }
+    items.len() != original_len
 }
 
 /// If the layer has exactly one `Music::Rest`, promote it to `Music::MultiMeasureRest`
@@ -1480,7 +1680,10 @@ fn sum_quarters(items: &[Music]) -> f64 {
                 // Tuplet scales by denominator/numerator
                 total += inner * *denominator as f64 / *numerator as f64;
             }
-            Music::Sequential(items) | Music::Simultaneous(items) => {
+            Music::Sequential(items) => {
+                total += sum_quarters(items);
+            }
+            Music::Simultaneous(items) => {
                 // For simultaneous, just take first voice's duration
                 if let Some(first) = items.first() {
                     total += sum_quarters(&[first.clone()]);
@@ -2671,4 +2874,3 @@ fn append_post_events(music: &mut Music, events: &[PostEvent]) {
 // ---------------------------------------------------------------------------
 // Chord-repetition safety pass
 // ---------------------------------------------------------------------------
-

@@ -21,6 +21,8 @@ pub(super) fn build_event_sequence(
     let mut first_key = true;
     let mut first_time = true;
     let mut note_index = 0u32;
+    let mut measure_start_note_index = 0u32;
+    let mut seen_note_in_measure = false;
     let mut positioned = Vec::new();
 
     for event in events {
@@ -76,20 +78,31 @@ pub(super) fn build_event_sequence(
             }
             LyEvent::AutoBeamOn => {
                 positioned.push(PositionedEvent {
-                    position: note_index,
+                    position: if seen_note_in_measure {
+                        note_index
+                    } else {
+                        measure_start_note_index
+                    },
                     event: ControlEvent::AutoBeamOn,
                 });
             }
             LyEvent::AutoBeamOff => {
                 positioned.push(PositionedEvent {
-                    position: note_index,
+                    position: if seen_note_in_measure {
+                        note_index
+                    } else {
+                        measure_start_note_index
+                    },
                     event: ControlEvent::AutoBeamOff,
                 });
             }
             // BarCheck and BarLine are handled by the measure splitter,
             // and the export generates bar checks between measures.
             // Don't store them in the event sequence.
-            LyEvent::BarCheck | LyEvent::BarLine(_) => {}
+            LyEvent::BarCheck | LyEvent::BarLine(_) => {
+                measure_start_note_index = note_index;
+                seen_note_in_measure = false;
+            }
 
             LyEvent::Markup(serialized) => {
                 positioned.push(PositionedEvent {
@@ -139,6 +152,7 @@ pub(super) fn build_event_sequence(
             | LyEvent::DrumEvent(_)
             | LyEvent::DrumChordEvent(_) => {
                 note_index += 1;
+                seen_note_in_measure = true;
             }
             LyEvent::Skip(_)
             | LyEvent::TupletStart { .. }
@@ -348,4 +362,3 @@ fn major_fifths_to_pitch(fifths: i32) -> (char, f32) {
         _ => ('c', 0.0),
     }
 }
-

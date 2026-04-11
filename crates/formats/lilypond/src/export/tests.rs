@@ -11,6 +11,20 @@ fn roundtrip(src: &str) -> String {
     serializer::serialize(&exported)
 }
 
+fn roundtrip_musicxml_mode(src: &str) -> String {
+    let file = Parser::new(src).unwrap().parse().unwrap();
+    let (mei, mut ext_store) = import::import(&file).unwrap();
+    ext_store.source_format = Some(tusk_model::extensions::SourceFormat::MusicXML);
+    let exported = export(&mei, &ext_store).unwrap();
+    serializer::serialize(&exported)
+}
+
+fn stabilize_musicxml_mode(src: &str) -> (String, String) {
+    let a1 = roundtrip_musicxml_mode(src);
+    let a2 = roundtrip_musicxml_mode(&a1);
+    (a1, a2)
+}
+
 #[test]
 fn roundtrip_single_note() {
     let output = roundtrip("{ c'4 }");
@@ -95,6 +109,450 @@ fn roundtrip_three_voices() {
     assert!(output.contains("c'4"), "output: {output}");
     assert!(output.contains("e'4"), "output: {output}");
     assert!(output.contains("g'4"), "output: {output}");
+}
+
+#[test]
+fn flatten_measure_layers_collapses_skip_only_polyphony() {
+    let layers = vec![
+        vec![
+            Music::Clef(crate::model::Clef {
+                name: "treble".to_string(),
+            }),
+            Music::Skip(crate::model::note::SkipEvent {
+                duration: Some(crate::model::Duration {
+                    base: 4,
+                    dots: 0,
+                    multipliers: vec![],
+                }),
+                post_events: vec![],
+            }),
+        ],
+        vec![Music::Skip(crate::model::note::SkipEvent {
+            duration: Some(crate::model::Duration {
+                base: 4,
+                dots: 0,
+                multipliers: vec![],
+            }),
+            post_events: vec![],
+        })],
+    ];
+    let spacer = Some(Music::Skip(crate::model::note::SkipEvent {
+        duration: Some(crate::model::Duration {
+            base: 4,
+            dots: 0,
+            multipliers: vec![(4, 1)],
+        }),
+        post_events: vec![],
+    }));
+
+    let output = flatten_measure_layers(layers, true, spacer);
+
+    assert_eq!(output.len(), 2, "output: {output:?}");
+    assert!(matches!(output[0], Music::Clef(_)), "output: {output:?}");
+    assert!(matches!(output[1], Music::Skip(_)), "output: {output:?}");
+}
+
+#[test]
+fn flatten_measure_layers_preserves_single_skip_only_measure_as_spacer() {
+    let layers = vec![vec![Music::Skip(crate::model::note::SkipEvent {
+        duration: Some(crate::model::Duration {
+            base: 4,
+            dots: 0,
+            multipliers: vec![],
+        }),
+        post_events: vec![],
+    })]];
+    let spacer = Some(Music::Skip(crate::model::note::SkipEvent {
+        duration: Some(crate::model::Duration {
+            base: 4,
+            dots: 0,
+            multipliers: vec![(4, 1)],
+        }),
+        post_events: vec![],
+    }));
+
+    let output = flatten_measure_layers(layers, true, spacer);
+
+    assert_eq!(output.len(), 1, "output: {output:?}");
+    assert!(matches!(output[0], Music::Skip(_)), "output: {output:?}");
+}
+
+#[test]
+fn flatten_measure_layers_keeps_spacer_for_rest_only_measure() {
+    let layers = vec![vec![
+        Music::Rest(crate::model::note::RestEvent {
+            duration: Some(crate::model::Duration {
+                base: 4,
+                dots: 0,
+                multipliers: vec![],
+            }),
+            post_events: vec![],
+        }),
+        Music::Rest(crate::model::note::RestEvent {
+            duration: Some(crate::model::Duration {
+                base: 8,
+                dots: 0,
+                multipliers: vec![],
+            }),
+            post_events: vec![],
+        }),
+    ]];
+    let spacer = Some(Music::Skip(crate::model::note::SkipEvent {
+        duration: Some(crate::model::Duration {
+            base: 4,
+            dots: 0,
+            multipliers: vec![(3, 1)],
+        }),
+        post_events: vec![],
+    }));
+
+    let output = flatten_measure_layers(layers, true, spacer);
+
+    assert_eq!(output.len(), 3, "output: {output:?}");
+    assert!(matches!(output[0], Music::Rest(_)), "output: {output:?}");
+    assert!(matches!(output[1], Music::Rest(_)), "output: {output:?}");
+    assert!(matches!(output[2], Music::Skip(_)), "output: {output:?}");
+}
+
+#[test]
+fn flatten_measure_layers_collapses_skip_only_voice_companion() {
+    let layers = vec![
+        vec![Music::Note(crate::model::note::NoteEvent {
+            pitch: crate::model::Pitch {
+                step: 'c',
+                alter: 0.0,
+                octave: 1,
+                cautionary: false,
+                force_accidental: false,
+                octave_check: None,
+            },
+            duration: Some(crate::model::Duration {
+                base: 4,
+                dots: 0,
+                multipliers: vec![],
+            }),
+            pitched_rest: false,
+            post_events: vec![],
+        })],
+        vec![
+            Music::MusicFunction {
+                name: "voiceTwo".to_string(),
+                args: vec![],
+            },
+            Music::Skip(crate::model::note::SkipEvent {
+                duration: Some(crate::model::Duration {
+                    base: 4,
+                    dots: 0,
+                    multipliers: vec![],
+                }),
+                post_events: vec![],
+            }),
+        ],
+    ];
+    let spacer = Some(Music::Skip(crate::model::note::SkipEvent {
+        duration: Some(crate::model::Duration {
+            base: 4,
+            dots: 0,
+            multipliers: vec![(4, 1)],
+        }),
+        post_events: vec![],
+    }));
+
+    let output = flatten_measure_layers(layers, true, spacer);
+
+    assert_eq!(output.len(), 2, "output: {output:?}");
+    assert!(matches!(output[0], Music::Note(_)), "output: {output:?}");
+    assert!(matches!(output[1], Music::Skip(_)), "output: {output:?}");
+}
+
+#[test]
+fn flatten_measure_layers_drops_duplicate_skip_only_voice_companions() {
+    let layers = vec![
+        vec![Music::Note(crate::model::note::NoteEvent {
+            pitch: crate::model::Pitch {
+                step: 'c',
+                alter: 0.0,
+                octave: 1,
+                cautionary: false,
+                force_accidental: false,
+                octave_check: None,
+            },
+            duration: Some(crate::model::Duration {
+                base: 4,
+                dots: 0,
+                multipliers: vec![],
+            }),
+            pitched_rest: false,
+            post_events: vec![],
+        })],
+        vec![
+            Music::MusicFunction {
+                name: "voiceTwo".to_string(),
+                args: vec![],
+            },
+            Music::Skip(crate::model::note::SkipEvent {
+                duration: Some(crate::model::Duration {
+                    base: 4,
+                    dots: 0,
+                    multipliers: vec![],
+                }),
+                post_events: vec![],
+            }),
+        ],
+        vec![
+            Music::MusicFunction {
+                name: "voiceThree".to_string(),
+                args: vec![],
+            },
+            Music::Skip(crate::model::note::SkipEvent {
+                duration: Some(crate::model::Duration {
+                    base: 4,
+                    dots: 0,
+                    multipliers: vec![],
+                }),
+                post_events: vec![],
+            }),
+        ],
+    ];
+    let spacer = Some(Music::Skip(crate::model::note::SkipEvent {
+        duration: Some(crate::model::Duration {
+            base: 4,
+            dots: 0,
+            multipliers: vec![(4, 1)],
+        }),
+        post_events: vec![],
+    }));
+
+    let output = flatten_measure_layers(layers, true, spacer);
+
+    assert_eq!(output.len(), 2, "output: {output:?}");
+    assert!(matches!(output[0], Music::Note(_)), "output: {output:?}");
+    assert!(matches!(output[1], Music::Skip(_)), "output: {output:?}");
+}
+
+#[test]
+fn flatten_measure_layers_preserves_skip_only_companion_in_real_polyphony() {
+    let layers = vec![
+        vec![Music::Note(crate::model::note::NoteEvent {
+            pitch: crate::model::Pitch {
+                step: 'c',
+                alter: 0.0,
+                octave: 1,
+                cautionary: false,
+                force_accidental: false,
+                octave_check: None,
+            },
+            duration: Some(crate::model::Duration {
+                base: 4,
+                dots: 0,
+                multipliers: vec![],
+            }),
+            pitched_rest: false,
+            post_events: vec![],
+        })],
+        vec![
+            Music::MusicFunction {
+                name: "voiceTwo".to_string(),
+                args: vec![],
+            },
+            Music::Skip(crate::model::note::SkipEvent {
+                duration: Some(crate::model::Duration {
+                    base: 4,
+                    dots: 0,
+                    multipliers: vec![],
+                }),
+                post_events: vec![],
+            }),
+        ],
+        vec![Music::Chord(crate::model::note::ChordEvent {
+            pitches: vec![crate::model::Pitch {
+                step: 'e',
+                alter: 0.0,
+                octave: 1,
+                cautionary: false,
+                force_accidental: false,
+                octave_check: None,
+            }],
+            duration: Some(crate::model::Duration {
+                base: 4,
+                dots: 0,
+                multipliers: vec![],
+            }),
+            post_events: vec![],
+        })],
+    ];
+    let spacer = Some(Music::Skip(crate::model::note::SkipEvent {
+        duration: Some(crate::model::Duration {
+            base: 4,
+            dots: 0,
+            multipliers: vec![(4, 1)],
+        }),
+        post_events: vec![],
+    }));
+
+    let output = flatten_measure_layers(layers, true, spacer);
+
+    assert_eq!(output.len(), 2, "output: {output:?}");
+    let Music::Simultaneous(voices) = &output[0] else {
+        panic!("output: {output:?}");
+    };
+    assert_eq!(voices.len(), 4, "output: {output:?}");
+    assert!(matches!(output[1], Music::MusicFunction { ref name, .. } if name == "oneVoice"));
+}
+
+#[test]
+fn flatten_measure_layers_drops_trailing_skip_only_companion_after_real_polyphony() {
+    let layers = vec![
+        vec![Music::Note(crate::model::note::NoteEvent {
+            pitch: crate::model::Pitch {
+                step: 'c',
+                alter: 0.0,
+                octave: 1,
+                cautionary: false,
+                force_accidental: false,
+                octave_check: None,
+            },
+            duration: Some(crate::model::Duration {
+                base: 4,
+                dots: 0,
+                multipliers: vec![],
+            }),
+            pitched_rest: false,
+            post_events: vec![],
+        })],
+        vec![Music::Rest(crate::model::note::RestEvent {
+            duration: Some(crate::model::Duration {
+                base: 4,
+                dots: 0,
+                multipliers: vec![],
+            }),
+            post_events: vec![],
+        })],
+        vec![
+            Music::MusicFunction {
+                name: "voiceThree".to_string(),
+                args: vec![],
+            },
+            Music::Skip(crate::model::note::SkipEvent {
+                duration: Some(crate::model::Duration {
+                    base: 4,
+                    dots: 0,
+                    multipliers: vec![],
+                }),
+                post_events: vec![],
+            }),
+        ],
+    ];
+    let spacer = Some(Music::Skip(crate::model::note::SkipEvent {
+        duration: Some(crate::model::Duration {
+            base: 4,
+            dots: 0,
+            multipliers: vec![(4, 1)],
+        }),
+        post_events: vec![],
+    }));
+
+    let output = flatten_measure_layers(layers, true, spacer);
+
+    let Music::Simultaneous(voices) = &output[0] else {
+        panic!("output: {output:?}");
+    };
+    assert_eq!(voices.len(), 3, "output: {output:?}");
+    assert!(matches!(output[1], Music::MusicFunction { ref name, .. } if name == "oneVoice"));
+}
+
+#[test]
+fn inject_signature_events_keeps_skip_typesetting_before_time() {
+    let path_ends_with = |path: &crate::model::PropertyPath, segment: &str| {
+        matches!(
+            path.segments.last(),
+            Some(crate::model::PathSegment::Named(name)) if name == segment
+        )
+    };
+    let mut items = vec![
+        Music::Set {
+            path: crate::model::PropertyPath::new(vec![
+                "Score".to_string(),
+                "skipTypesetting".to_string(),
+            ]),
+            value: crate::model::PropertyValue::SchemeExpr(crate::model::SchemeExpr::Bool(true)),
+        },
+        Music::Set {
+            path: crate::model::PropertyPath::new(vec![
+                "Score".to_string(),
+                "skipBars".to_string(),
+            ]),
+            value: crate::model::PropertyValue::SchemeExpr(crate::model::SchemeExpr::Bool(true)),
+        },
+        Music::Note(crate::model::note::NoteEvent {
+            pitch: crate::model::Pitch {
+                step: 'c',
+                alter: 0.0,
+                octave: 1,
+                cautionary: false,
+                force_accidental: false,
+                octave_check: None,
+            },
+            duration: Some(crate::model::Duration {
+                base: 4,
+                dots: 0,
+                multipliers: vec![],
+            }),
+            pitched_rest: false,
+            post_events: vec![],
+        }),
+    ];
+
+    inject_signature_events(
+        &mut items,
+        &[signatures::SignatureEvent {
+            position: 0,
+            music: Music::TimeSignature(crate::model::signature::TimeSignature {
+                numerators: vec![3],
+                denominator: 4,
+            }),
+        }],
+    );
+
+    assert!(matches!(items[0], Music::Set { ref path, .. } if path_ends_with(path, "skipTypesetting")));
+    assert!(matches!(items[1], Music::TimeSignature(_)), "items: {items:?}");
+    assert!(matches!(items[2], Music::Set { ref path, .. } if path_ends_with(path, "skipBars")));
+}
+
+#[test]
+fn roundtrip_does_not_reintroduce_trailing_empty_third_voice() {
+    let src = r#"{ << { \voiceOne <e' g>4 s } \new Voice { \voiceTwo b,4 r8 } \new Voice { \voiceThree a8 r r } { s4*4 } >> \oneVoice \bar "|" e,4. s4*4 \bar "|" <a dis>4. s4*4 \bar "|" <g e>4. s4*4 \bar "|" << { \voiceOne b,4 r8 } \new Voice { \voiceTwo a8 r fis4 } { s4*4 } >> \oneVoice \bar "|" e,4 r8 s4*4 }"#;
+
+    let (a1, a2) = stabilize_musicxml_mode(src);
+
+    assert_eq!(a1, a2, "pass1:\n{a1}\npass2:\n{a2}");
+}
+
+#[test]
+fn roundtrip_keeps_single_voice_spacer_measures_flat() {
+    let src = r#"{ s4*4 \bar "|" e'4 e'4 e'4 e'4 s4*4 \bar "|" <e' g>2 s4*4 \bar "|" << { dis,4 } { s4*4 } >> \bar "|" << { e,,4 a,,4 ais,,4 } { s4*4 } >> \bar "|" s4*4 \bar "|" << { dis,4 } { s4*4 } >> }"#;
+
+    let (a1, a2) = stabilize_musicxml_mode(src);
+
+    assert_eq!(a1, a2, "pass1:\n{a1}\npass2:\n{a2}");
+}
+
+#[test]
+fn roundtrip_stabilizes_three_voice_then_flat_then_two_voice_span() {
+    let src = r#"{ << { \voiceOne b16 e'16. g'32 } \new Voice { \voiceTwo r8 s } \new Voice { \voiceThree s } { s4*4 } >> \oneVoice \bar "|" << { \voiceOne <dis' fis>8 r4 } \new Voice { \voiceTwo e,4. } \new Voice { \voiceThree r8 <b g>4 <b g>4 } { s4*4 } >> \oneVoice \bar "|" << { \voiceOne <dis' fis>4 b8 } \new Voice { \voiceTwo e,4. } \new Voice { \voiceThree r8 <g e>4 <g e>4 } { s4*4 } >> \oneVoice \bar "|" << { \voiceOne <e' g>4 d'8 } \new Voice { \voiceTwo s } \new Voice { \voiceThree b,8 <a fis>8[ <a fis>4] } { s4*4 } >> \oneVoice \bar "|" << { \voiceOne b'4 a'16. g'32 } \new Voice { \voiceTwo e,4. } \new Voice { \voiceThree r8 <g e>4 r } { s4*4 } >> \oneVoice \bar "|" << { \voiceOne g'16. fis'32 fis'8[ fis'16( c''4)] } \new Voice { \voiceTwo e,4. } \new Voice { \voiceThree r8 <b g>4 r8 } { s4*4 } >> \oneVoice \bar "|" << { \voiceOne c''4 b'16[ a'4] } \new Voice { \voiceTwo dis8 r8 r } \new Voice { \voiceThree r8 <c' a>4 r8 } { s4*4 } >> \oneVoice \bar "|" << { \voiceOne b'16.( g'32) d'8[ d'4] } \new Voice { \voiceTwo b,4 ais,8 } \new Voice { \voiceThree r16. e32 a8[ g4] } { s4*4 } >> \oneVoice \bar "|" << { \voiceOne b'4 a'16.[ g'32] } \new Voice { \voiceTwo b,4 r8 } \new Voice { \voiceThree s } { s4*4 } >> \oneVoice \bar "|" << { \voiceOne fis'8( e'16)[ fis'32 g'4] a'4( b'4) c''4 a'4 } \new Voice { \voiceTwo b,4 r8 } \new Voice { \voiceThree s } { s4*4 } >> \oneVoice \bar "|" << { \voiceOne g'4 b'16.([ a'32)] } \new Voice { \voiceTwo <a dis>4. } \new Voice { \voiceThree s } { s4*4 } >> \oneVoice \bar "|" << { \voiceOne <g' b>4 b16 e'16. g'32 <dis' fis>4 b8 } \new Voice { \voiceTwo <g e>4. } \new Voice { \voiceThree s } { s4*4 } >> \oneVoice \bar "|" << { \voiceOne <e' g>4 s } \new Voice { \voiceTwo b,4 r8 } \new Voice { \voiceThree a8 r r } { s4*4 } >> \oneVoice \bar "|" e,4. s4*4 \bar "|" <a dis>4. s4*4 \bar "|" <g e>4. s4*4 \bar "|" << { \voiceOne b,4 r8 } \new Voice { \voiceTwo a8 r fis4 } { s4*4 } >> \oneVoice \bar "|" e,4 r8 s4*4 \bar "|" << { \voiceOne g,4. } \new Voice { \voiceTwo r8 <b g>4 <b g>4 } { s4*4 } >> }"#;
+
+    let (a1, a2) = stabilize_musicxml_mode(src);
+
+    assert_eq!(a1, a2, "pass1:\n{a1}\npass2:\n{a2}");
+}
+
+#[test]
+fn roundtrip_stabilizes_measure_rest_companion_voice() {
+    let src = r#"{ \clef "treble" s4*4 \bar "|" << { \voiceOne e'8 fis'4 g'4 } \new Voice { \voiceTwo R4. } { s4*4 } >> \oneVoice \bar "|" << { \voiceOne fis'4. } \new Voice { \voiceTwo r8 <fis ais>4 <gis b>4 } { s4*4 } >> \oneVoice \bar "|" }"#;
+
+    let (a1, a2) = stabilize_musicxml_mode(src);
+
+    assert_eq!(a1, a2, "pass1:\n{a1}\npass2:\n{a2}");
 }
 
 #[test]

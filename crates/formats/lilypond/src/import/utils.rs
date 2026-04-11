@@ -197,10 +197,10 @@ fn try_split_sequential_with_simultaneous(music: &Music) -> Option<Vec<Vec<&Musi
         _ => return None,
     };
 
-    // Segment items at BarCheck boundaries
+    // Segment items at explicit measure boundaries emitted by the exporter.
     let mut segments: Vec<Vec<&Music>> = vec![Vec::new()];
     for item in items {
-        if matches!(item, Music::BarCheck) {
+        if matches!(item, Music::BarCheck | Music::BarLine { .. }) {
             segments.push(Vec::new());
         } else {
             segments.last_mut().unwrap().push(item);
@@ -230,10 +230,14 @@ fn try_split_sequential_with_simultaneous(music: &Music) -> Option<Vec<Vec<&Musi
             let non_sim_ok = seg
                 .iter()
                 .all(|item| matches!(item, Music::Simultaneous(_)) || is_non_note_item(item));
-            if non_sim_ok && sim_items.len() > 1 && sim_items.iter().all(|si| is_voice_like(si)) {
+            let effective_len = effective_sim_voice_len(sim_items);
+            if non_sim_ok
+                && effective_len > 1
+                && sim_items.iter().take(effective_len).all(|si| is_voice_like(si))
+            {
                 has_any_sim = true;
-                if sim_items.len() > max_voice_count {
-                    max_voice_count = sim_items.len();
+                if effective_len > max_voice_count {
+                    max_voice_count = effective_len;
                 }
             }
         }
@@ -243,26 +247,21 @@ fn try_split_sequential_with_simultaneous(music: &Music) -> Option<Vec<Vec<&Musi
     }
     let voice_count = max_voice_count;
 
-    // Validate each segment: a Simultaneous segment may only contain
-    // Simultaneous blocks plus optional non-note items (no notes/chords mixed in).
-    // A non-Simultaneous segment must contain no Simultaneous items.
-    // Sim blocks may have fewer voices than voice_count (empty voices dropped
-    // by the export); those will produce fewer split items for that measure.
+    // Validate each segment. Sim blocks may have fewer voices than voice_count
+    // (empty voices dropped by the export); those will produce fewer split
+    // items for that measure. Mixed segments are allowed: exported pass-1
+    // output can legitimately contain `<< ... >>` followed by more voice-0
+    // material in the same measure, and we route that trailing content back
+    // to voice 0 below.
     for seg in &segments {
         let has_sim = seg.iter().any(|item| matches!(item, Music::Simultaneous(_)));
         if has_sim {
-            // Check that non-Sim items are only non-note items
-            let has_content = seg.iter().any(|item| {
-                !matches!(item, Music::Simultaneous(_)) && !is_non_note_item(item)
-            });
-            if has_content {
-                return None; // Notes/chords mixed with <<>> in same segment
-            }
             // Validate all Sim children are voice-like
             for item in seg {
                 if let Music::Simultaneous(sim_items) = item {
-                    if sim_items.len() > voice_count
-                        || !sim_items.iter().all(|si| is_voice_like(si))
+                    let effective_len = effective_sim_voice_len(sim_items);
+                    if effective_len > voice_count
+                        || !sim_items.iter().take(effective_len).all(|si| is_voice_like(si))
                     {
                         return None;
                     }
@@ -272,21 +271,34 @@ fn try_split_sequential_with_simultaneous(music: &Music) -> Option<Vec<Vec<&Musi
     }
 
     // Build voices: Simultaneous children → respective voices,
-    // BarChecks → all voices (so measure boundaries align),
+    // explicit measure boundaries → all voices (so measure splitting stays
+    // aligned even when only voice 0 carries the exported \bar commands),
     // other items → first voice only
     let mut voices: Vec<Vec<&Music>> = (0..voice_count).map(|_| Vec::new()).collect();
     for item in items {
         if let Music::Simultaneous(sim_items) = item {
-            for (i, sim_item) in sim_items.iter().enumerate() {
+            for (i, sim_item) in sim_items
+                .iter()
+                .take(effective_sim_voice_len(sim_items))
+                .enumerate()
+            {
                 voices[i].push(sim_item);
             }
-        } else if matches!(item, Music::BarCheck) {
+        } else if is_export_spacer_voice_item(item) {
+            // Standalone exported spacers (e.g. `c4 s4*4`) belong to the
+            // primary stream only. Broadcasting them to every split voice
+            // manufactures dormant empty layers on re-export.
+            voices[0].push(item);
+        } else if matches!(item, Music::BarCheck | Music::BarLine { .. }) {
             for voice in &mut voices {
                 voice.push(item);
             }
         } else {
             voices[0].push(item);
         }
+    }
+    while voices.len() > 1 && is_trailing_export_spacer_voice(&voices) {
+        voices.pop();
     }
     Some(voices)
 }
@@ -300,6 +312,7 @@ fn is_non_note_item(music: &Music) -> bool {
         music,
         Music::BarLine { .. }
             | Music::LineComment(_)
+            | Music::Identifier(_)
             | Music::Set { .. }
             | Music::Unset { .. }
             | Music::Override { .. }
@@ -324,6 +337,81 @@ fn is_voice_like(music: &Music) -> bool {
             | Music::Transpose { .. }
             | Music::ContextedMusic { .. }
     )
+}
+
+fn is_trailing_export_spacer_voice(voices: &[Vec<&Music>]) -> bool {
+    let Some(last) = voices.last() else {
+        return false;
+    };
+    voice_contains_export_spacer(last) && last.iter().all(|item| is_skip_only_item(item))
+}
+
+fn effective_sim_voice_len(sim_items: &[Music]) -> usize {
+    if sim_items.len() > 1
+        && sim_items
+            .last()
+            .is_some_and(is_export_spacer_voice_item)
+    {
+        sim_items.len() - 1
+    } else {
+        sim_items.len()
+    }
+}
+
+fn is_export_spacer_voice_item(music: &Music) -> bool {
+    is_skip_only_item(music) && music_contains_export_spacer(music)
+}
+
+fn is_skip_only_item(music: &Music) -> bool {
+    match music {
+        Music::Skip(_) => true,
+        Music::Sequential(items) | Music::Simultaneous(items) => {
+            items.iter().all(is_skip_only_item)
+        }
+        Music::Relative { body, .. }
+        | Music::Fixed { body, .. }
+        | Music::Transpose { body, .. }
+        | Music::ContextedMusic { music: body, .. } => is_skip_only_item(body),
+        Music::BarCheck
+        | Music::BarLine { .. }
+        | Music::LineComment(_)
+        | Music::Identifier(_)
+        | Music::Set { .. }
+        | Music::Unset { .. }
+        | Music::Override { .. }
+        | Music::Revert { .. }
+        | Music::MusicFunction { .. } => true,
+        _ => false,
+    }
+}
+
+fn voice_contains_export_spacer(voice: &[&Music]) -> bool {
+    voice.iter().any(|item| music_contains_export_spacer(item))
+}
+
+fn music_contains_export_spacer(music: &Music) -> bool {
+    match music {
+        Music::Skip(skip) => is_export_measure_spacer(skip),
+        Music::Sequential(items) | Music::Simultaneous(items) => {
+            items.iter().any(music_contains_export_spacer)
+        }
+        Music::Relative { body, .. }
+        | Music::Fixed { body, .. }
+        | Music::Transpose { body, .. }
+        | Music::ContextedMusic { music: body, .. }
+        | Music::Once { music: body } => music_contains_export_spacer(body),
+        _ => false,
+    }
+}
+
+fn is_export_measure_spacer(skip: &crate::model::note::SkipEvent) -> bool {
+    skip.post_events.is_empty()
+        && skip.duration.as_ref().is_some_and(|dur| {
+            dur.dots == 0
+                && dur.multipliers.len() == 1
+                && dur.multipliers[0].1 == 1
+                && dur.multipliers[0].0 >= 2
+        })
 }
 
 /// Check if a voice's music items are "bare" (no pitch context wrappers).

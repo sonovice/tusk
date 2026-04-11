@@ -1,7 +1,7 @@
 //! Measure splitting for LilyPond import.
 //!
 //! Splits a flat LyEvent stream into measure groups based on time signatures,
-//! bar checks, and accumulated note durations.
+//! explicit measure markers, and accumulated note durations.
 
 use super::events::LyEvent;
 use crate::model::signature::TimeSignature;
@@ -16,10 +16,10 @@ pub(super) struct MeasureGroup {
 /// Split a stream of LyEvents into measure groups.
 ///
 /// Hybrid strategy: always tracks accumulated note durations against the
-/// current time signature AND treats BarCheck / BarLine as forced measure
-/// boundaries.  This handles files that have bar checks, files that don't,
-/// and files that mix both (e.g. `\bar "||"` at section ends but no bar
-/// checks within sections).
+/// current time signature AND treats `BarCheck` / `BarLine` as forced measure
+/// boundaries when they are encountered. Duration-based splitting remains
+/// active unless explicit `BarCheck`s show that the source is already
+/// authoritative about every measure boundary.
 pub(super) fn split_events_into_measures(events: Vec<LyEvent>) -> Vec<MeasureGroup> {
     split_events_impl(events, false)
 }
@@ -32,10 +32,12 @@ pub(super) fn split_events_into_measures_resolved(events: Vec<LyEvent>) -> Vec<M
 }
 
 fn split_events_impl(events: Vec<LyEvent>, resolve_durations: bool) -> Vec<MeasureGroup> {
-    // Pre-scan: detect if BarChecks/BarLines separate multi-measure content.
-    // If so, trust them as the authoritative measure boundaries and disable
+    // Pre-scan: detect if BarChecks separate multi-measure content. If so,
+    // trust them as the authoritative measure boundaries and disable
     // duration-based splitting (which can create spurious splits when note
-    // durations don't exactly fill the time signature).
+    // durations don't exactly fill the time signature). Plain BarLines
+    // still force local splits, but they do not imply that every missing
+    // measure boundary should be suppressed.
     let bar_checks_authoritative = has_authoritative_bar_checks(&events);
 
     let mut measures: Vec<MeasureGroup> = Vec::new();
@@ -58,18 +60,24 @@ fn split_events_impl(events: Vec<LyEvent>, resolve_durations: bool) -> Vec<Measu
     // Alternative tracking: alternatives after the first don't add duration
     // because they're parallel paths (played instead of, not after, the first).
     let mut skip_alt_duration = false;
+    // A measure rest finalizes its measure immediately; the exported trailing
+    // `\bar "|"` should attach to that measure, not create a phantom empty one.
+    let mut just_closed_measure_rest = false;
 
     for event in events {
         match &event {
             LyEvent::TimeSig(ts) => {
+                just_closed_measure_rest = false;
                 measure_quarters = time_sig_quarters(ts);
                 current_events.push(event);
             }
             LyEvent::TupletStart { numerator, denominator, .. } => {
+                just_closed_measure_rest = false;
                 tuplet_stack.push((*numerator, *denominator));
                 current_events.push(event);
             }
             LyEvent::TupletEnd => {
+                just_closed_measure_rest = false;
                 tuplet_stack.pop();
                 // Suffix event: if measure just closed, keep with previous measure
                 if accumulated < 0.001 && !measures.is_empty() && current_events.is_empty() {
@@ -79,20 +87,24 @@ fn split_events_impl(events: Vec<LyEvent>, resolve_durations: bool) -> Vec<Measu
                 }
             }
             LyEvent::GraceStart(_) => {
+                just_closed_measure_rest = false;
                 in_grace = true;
                 current_events.push(event);
             }
             LyEvent::GraceEnd => {
+                just_closed_measure_rest = false;
                 in_grace = false;
                 current_events.push(event);
             }
             LyEvent::AlternativeStart { index } => {
+                just_closed_measure_rest = false;
                 // Alternatives after the first are parallel (same time slot),
                 // so their notes shouldn't accumulate duration.
                 skip_alt_duration = *index > 0;
                 current_events.push(event);
             }
             LyEvent::BarCheck => {
+                just_closed_measure_rest = false;
                 // Bar check = author-confirmed measure boundary.
                 // Force split regardless of accumulated duration.
                 if !current_events.is_empty() {
@@ -117,12 +129,22 @@ fn split_events_impl(events: Vec<LyEvent>, resolve_durations: bool) -> Vec<Measu
                         events: Vec::new(),
                         end_barline: current_barline.take(),
                     });
+                } else if resolve_durations {
+                    // Split polyphonic exporter output can have flat measures
+                    // carried only by voice 0 between later secondary-voice
+                    // entries. Preserve those empty resolved measures here so
+                    // dormant voices do not slide earlier on re-import.
+                    measures.push(MeasureGroup {
+                        events: Vec::new(),
+                        end_barline: current_barline.take(),
+                    });
                 }
                 accumulated = 0.0;
             }
             LyEvent::BarLine(bar_type) => {
                 current_barline = Some(bar_type.clone());
                 if !current_events.is_empty() {
+                    just_closed_measure_rest = false;
                     let has_notes = current_events.iter().any(has_duration);
                     if !has_notes && !measures.is_empty() {
                         measures.last_mut().unwrap().events.extend(std::mem::take(&mut current_events));
@@ -132,6 +154,19 @@ fn split_events_impl(events: Vec<LyEvent>, resolve_durations: bool) -> Vec<Measu
                             end_barline: current_barline.take(),
                         });
                     }
+                } else if just_closed_measure_rest {
+                    if !measures.is_empty() {
+                        measures.last_mut().unwrap().end_barline = current_barline.take();
+                    }
+                    just_closed_measure_rest = false;
+                } else if resolve_durations && bar_type == "|" {
+                    // Split polyphonic exporter output must preserve empty
+                    // measures in dormant voices, or later voice content
+                    // slides earlier on re-import.
+                    measures.push(MeasureGroup {
+                        events: Vec::new(),
+                        end_barline: current_barline.take(),
+                    });
                 } else if !measures.is_empty() {
                     // Trailing barline after a bar check — attach to previous measure
                     measures.last_mut().unwrap().end_barline = current_barline.take();
@@ -139,6 +174,7 @@ fn split_events_impl(events: Vec<LyEvent>, resolve_durations: bool) -> Vec<Measu
                 accumulated = 0.0;
             }
             LyEvent::Note(n) | LyEvent::PitchedRest(n) => {
+                just_closed_measure_rest = false;
                 if !in_grace && !skip_alt_duration {
                     if let Some(dur) = &n.duration {
                         accumulated += event_quarters(dur, &tuplet_stack);
@@ -153,6 +189,7 @@ fn split_events_impl(events: Vec<LyEvent>, resolve_durations: bool) -> Vec<Measu
                 }
             }
             LyEvent::Rest(r) => {
+                just_closed_measure_rest = false;
                 if !skip_alt_duration {
                     if let Some(dur) = &r.duration {
                         accumulated += event_quarters(dur, &tuplet_stack);
@@ -167,6 +204,16 @@ fn split_events_impl(events: Vec<LyEvent>, resolve_durations: bool) -> Vec<Measu
                 }
             }
             LyEvent::Skip(s) => {
+                if just_closed_measure_rest
+                    && current_events.is_empty()
+                    && is_export_measure_spacer(s)
+                {
+                    if let Some(last) = measures.last_mut() {
+                        last.events.push(event);
+                    }
+                    continue;
+                }
+                just_closed_measure_rest = false;
                 if !in_grace && !skip_alt_duration {
                     if let Some(dur) = &s.duration {
                         accumulated += event_quarters(dur, &tuplet_stack);
@@ -181,6 +228,7 @@ fn split_events_impl(events: Vec<LyEvent>, resolve_durations: bool) -> Vec<Measu
                 }
             }
             LyEvent::Chord { duration, .. } => {
+                just_closed_measure_rest = false;
                 if !in_grace && !skip_alt_duration {
                     if let Some(dur) = duration {
                         accumulated += event_quarters(dur, &tuplet_stack);
@@ -202,9 +250,11 @@ fn split_events_impl(events: Vec<LyEvent>, resolve_durations: bool) -> Vec<Measu
                         end_barline: current_barline.take(),
                     });
                     accumulated = 0.0;
+                    just_closed_measure_rest = true;
                 }
             }
             LyEvent::DrumEvent(dn) => {
+                just_closed_measure_rest = false;
                 if !in_grace && !skip_alt_duration {
                     if let Some(dur) = &dn.duration {
                         accumulated += event_quarters(dur, &tuplet_stack);
@@ -216,6 +266,7 @@ fn split_events_impl(events: Vec<LyEvent>, resolve_durations: bool) -> Vec<Measu
                 }
             }
             LyEvent::DrumChordEvent(dc) => {
+                just_closed_measure_rest = false;
                 if !in_grace && !skip_alt_duration {
                     if let Some(dur) = &dc.duration {
                         accumulated += event_quarters(dur, &tuplet_stack);
@@ -227,6 +278,7 @@ fn split_events_impl(events: Vec<LyEvent>, resolve_durations: bool) -> Vec<Measu
                 }
             }
             LyEvent::ChordName(ce) => {
+                just_closed_measure_rest = false;
                 if !skip_alt_duration {
                     if let Some(dur) = &ce.duration {
                         accumulated += event_quarters(dur, &tuplet_stack);
@@ -238,6 +290,7 @@ fn split_events_impl(events: Vec<LyEvent>, resolve_durations: bool) -> Vec<Measu
                 }
             }
             LyEvent::FigureEvent(fe) => {
+                just_closed_measure_rest = false;
                 if !skip_alt_duration {
                     if let Some(dur) = &fe.duration {
                         accumulated += event_quarters(dur, &tuplet_stack);
@@ -295,6 +348,16 @@ fn split_events_impl(events: Vec<LyEvent>, resolve_durations: bool) -> Vec<Measu
     measures
 }
 
+fn is_export_measure_spacer(skip: &crate::model::note::SkipEvent) -> bool {
+    skip.post_events.is_empty()
+        && skip.duration.as_ref().is_some_and(|dur| {
+            dur.dots == 0
+                && dur.multipliers.len() == 1
+                && dur.multipliers[0].1 == 1
+                && dur.multipliers[0].0 >= 2
+        })
+}
+
 /// Does this event produce note duration (notes, rests, chords)?
 fn has_duration(event: &LyEvent) -> bool {
     matches!(
@@ -345,14 +408,15 @@ fn event_quarters(dur: &crate::model::Duration, tuplet_stack: &[(u32, u32)]) -> 
     q
 }
 
-/// Detect if BarChecks separate multi-measure content.
+/// Detect if explicit exported measure boundaries separate multi-measure content.
 ///
-/// Returns true if at least one BarCheck has note-producing content both
-/// before and after it — meaning the author used BarChecks as intentional
-/// measure boundaries.  When true, duration-based splitting is disabled
-/// to avoid spurious splits from floating-point accumulation mismatches.
+/// Returns true if at least one `BarCheck` or plain `BarLine("|")` has
+/// note-producing content both before and after it — meaning the source
+/// already carries explicit per-measure boundaries. When true, duration-based
+/// splitting is disabled to avoid spurious splits from accumulation
+/// mismatches in exported or polyphonic material.
 ///
-/// Returns false for trailing BarChecks (notes before but nothing after),
+/// Returns false for trailing boundaries (notes before but nothing after),
 /// which appear in single-measure files and shouldn't disable duration splitting.
 fn has_authoritative_bar_checks(events: &[LyEvent]) -> bool {
     let mut seen_note = false;
@@ -361,6 +425,11 @@ fn has_authoritative_bar_checks(events: &[LyEvent]) -> bool {
     for event in events {
         match event {
             LyEvent::BarCheck => {
+                if seen_note {
+                    seen_bar_after_note = true;
+                }
+            }
+            LyEvent::BarLine(bar_type) if bar_type == "|" => {
                 if seen_note {
                     seen_bar_after_note = true;
                 }
@@ -492,5 +561,23 @@ mod tests {
         ];
         let measures = split_events_into_measures(events);
         assert_eq!(measures.len(), 2);
+    }
+
+    #[test]
+    fn resolved_bar_checks_preserve_empty_dormant_voice_measures() {
+        let events = vec![
+            make_note(4),
+            LyEvent::BarCheck,
+            LyEvent::BarCheck,
+            LyEvent::BarCheck,
+            make_note(4),
+            LyEvent::BarCheck,
+        ];
+        let measures = split_events_into_measures_resolved(events);
+        assert_eq!(measures.len(), 4);
+        assert_eq!(measures[0].events.len(), 1);
+        assert!(measures[1].events.is_empty());
+        assert!(measures[2].events.is_empty());
+        assert_eq!(measures[3].events.len(), 1);
     }
 }

@@ -18,6 +18,16 @@
   changes, and explicit barlines are now unconditional — no longer gated on
   part-detail metadata. Fixes regressions where pickup measures without
   `\partial` caused cascading barcheck failures and Guile crashes.
+- **MusicXML-origin export detection hardened**: LilyPond export now keys
+  spacer voices, voice commands, timing resets, and explicit barlines off
+  `ExtensionStore::source_format` instead of fragile part-detail presence.
+- **Skip-only companion voices normalized**: single-layer measures with spacer
+  companions now stay flat, pure skip-only layers collapse cleanly, and
+  trailing skip-only companion layers are dropped after real polyphony.
+  This stabilizes many `lilypond_via_musicxml` roundtrips.
+- **Leading control-event ordering stabilized**: initial `skipTypesetting` and
+  similar control items now stay ahead of injected clef/key/time signatures,
+  while `skipBars` remains after them.
 
 ## [1.3.3] — 2026-04-10
 
@@ -54,6 +64,19 @@
 
 ### LilyPond import (LilyPond → MEI)
 
+- **Polyphonic dormant-voice alignment**: resolved measure splitting now keeps
+  empty measures for non-primary voices when exported bar checks/barlines mark
+  flat stretches, preventing later voice content from sliding earlier on
+  re-import.
+- **Measure-rest barline handling**: a plain exported `\bar "|"` and trailing
+  spacer after a measure rest now attach to the just-closed measure instead of
+  creating a phantom empty one.
+- **Control-event positioning**: auto-beam and related prefix controls now use
+  the current measure start when they occur before any sounding event in the
+  measure, improving roundtrip stability.
+- **Exporter spacer voice extraction**: standalone exported spacer items are no
+  longer broadcast into every split voice, and trailing spacer-only voices are
+  trimmed after voice extraction.
 - **Voice extraction from `<< prefix \new Voice {} >>` blocks**: polyphonic
   staves using `\new Voice` inside `<< >>` with prefix items (clef, key, time)
   now correctly split into separate voices instead of treating the entire block

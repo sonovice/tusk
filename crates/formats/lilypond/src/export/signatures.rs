@@ -250,6 +250,27 @@ fn note_count(m: &Music) -> u32 {
             n
         }
         Music::Sequential(items) => items.iter().map(note_count).sum(),
+        Music::Simultaneous(items) => {
+            let voice_like_count = items
+                .iter()
+                .filter(|i| {
+                    matches!(
+                        i,
+                        Music::Sequential(_)
+                            | Music::Relative { .. }
+                            | Music::Fixed { .. }
+                            | Music::Transpose { .. }
+                            | Music::ContextedMusic { .. }
+                    )
+                })
+                .count();
+            let is_inline_polyphony = items.len() >= 2 && voice_like_count >= 2;
+            if is_inline_polyphony {
+                items.first().map(note_count).unwrap_or(0)
+            } else {
+                items.iter().map(note_count).sum()
+            }
+        }
         Music::Once { music } => note_count(music),
         _ => 0,
     }
@@ -278,21 +299,52 @@ pub(super) fn inject_signature_events(items: &mut Vec<Music>, events: &[Signatur
 
     // Rebuild layer with injected events, using note_count for positions
     let mut new_items = Vec::new();
+    let mut pending_zero = inserts.remove(&0).unwrap_or_default();
+    let mut inserted_zero = pending_zero.is_empty();
     let mut note_idx: u32 = 0;
     for item in items.drain(..) {
+        if !inserted_zero && note_idx == 0 && should_stay_before_initial_signatures(&item) {
+            new_items.push(item);
+            continue;
+        }
         let nc = note_count(&item);
         if nc > 0 {
+            if !inserted_zero {
+                new_items.append(&mut pending_zero);
+                inserted_zero = true;
+            }
             if let Some(to_insert) = inserts.remove(&note_idx) {
                 new_items.extend(to_insert);
             }
             note_idx += nc;
+        } else if !inserted_zero && note_idx == 0 {
+            new_items.append(&mut pending_zero);
+            inserted_zero = true;
         }
         new_items.push(item);
+    }
+    if !inserted_zero {
+        new_items.append(&mut pending_zero);
     }
     // Remaining events are for later measures (positions beyond this
     // measure's note range). They're already represented in those
     // measures' MEI layers, so discard them here.
     *items = new_items;
+}
+
+fn should_stay_before_initial_signatures(item: &Music) -> bool {
+    matches!(item, Music::LineComment(_))
+        || matches!(item, Music::Set { path, .. } if !property_path_ends_with(path, "skipBars"))
+}
+
+fn property_path_ends_with(path: &crate::model::PropertyPath, segment: &str) -> bool {
+    path.segments
+        .last()
+        .and_then(|part| match part {
+            crate::model::PathSegment::Named(name) => Some(name.as_str()),
+            crate::model::PathSegment::Scheme(_) => None,
+        })
+        .is_some_and(|name| name == segment)
 }
 
 /// Re-parse a serialized markup string back into a `Markup` AST node.

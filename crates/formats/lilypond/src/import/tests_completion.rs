@@ -314,6 +314,30 @@ fn multiple_voices_create_multiple_layers() {
     assert_eq!(layer_count, 2, "should have 2 layers for 2 voices");
 }
 
+#[test]
+fn exported_polyphony_with_barlines_stays_split_into_layers() {
+    let src = r#"\score {
+  {
+% m.1
+ << { \voiceOne c'4 d'4 } \new Voice { \voiceTwo s2 } { s2 } >> \oneVoice \bar "|"
+% m.2
+ << { \voiceOne e'4 f'4 } \new Voice { \voiceTwo g4 a4 } { s2 } >> \oneVoice \bar "|"
+  }
+}"#;
+    let (mei, _ext_store) = parse_and_import(src);
+    let staff = first_staff(&mei).expect("should have staff");
+    let layer_count = staff
+        .children
+        .iter()
+        .filter(|c| matches!(c, StaffChild::Layer(_)))
+        .count();
+
+    assert!(
+        layer_count >= 2,
+        "generated polyphony should keep at least 2 layers after import"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // MEI extended/label patterns verification
 // ---------------------------------------------------------------------------
