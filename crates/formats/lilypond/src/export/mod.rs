@@ -175,10 +175,16 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
 
     let mei_defaults = extract_mei_defaults(score);
 
-    // Inject \voiceOne/\voiceTwo in multi-voice measures only for
-    // MusicXML-originated content (always has part_details in ext_store).
-    // LilyPond-originated content preserves original voice structure.
-    let inject_voice_cmds = !ext_store.part_details_map.is_empty();
+    // Always inject \voiceOne/\voiceTwo in multi-voice measures.
+    // Voice commands are needed for correct stem direction when voices
+    // have different rhythms. LilyPond import discards original voice
+    // commands, so they must be re-injected for both MusicXML and
+    // LilyPond origins.
+    let inject_voice_cmds = true;
+
+    // Spacer voices enforce measure duration — only needed for MusicXML
+    // origin where measures have a fixed duration from the time signature.
+    let add_spacer = !ext_store.part_details_map.is_empty();
 
     // Accumulate music per staff: each staff gets a single flat Vec<Music>
     // containing all measures' content sequentially. Multi-voice measures
@@ -333,7 +339,7 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                         == Some(&tusk_model::data::DataBoolean::False);
 
                     // Build spacer for MusicXML content to enforce measure duration
-                    let spacer = if inject_voice_cmds {
+                    let spacer = if add_spacer {
                         Some(make_measure_spacer(&current_time_num, current_time_den))
                     } else {
                         None
@@ -404,14 +410,14 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                             // Reset measure position before \time changes to
                             // prevent "mid-measure time signature" warnings
                             // from tuplet timing rounding errors.
-                            if inject_voice_cmds {
+                            if add_spacer {
                                 insert_timing_reset_before_time_change(&mut measure_items);
                             }
-                            if is_pickup && inject_voice_cmds {
+                            if is_pickup && add_spacer {
                                 inject_partial(&mut measure_items);
                             }
                             let stream = &mut staff_music[staff_idx][0];
-                            if inject_voice_cmds {
+                            if add_spacer {
                                 // Explicit barline resets timing counter —
                                 // prevents cascading barline misplacement
                                 // when source has irregular measure durations.
@@ -1894,6 +1900,7 @@ fn convert_layer_child(child: &LayerChild, ext_store: &ExtensionStore, defaults:
         LayerChild::MRest(mrest) => Some(convert_mei_mrest(mrest, ext_store)),
         LayerChild::Chord(chord) => Some(convert_mei_chord(chord, ext_store, defaults, suppress_chord_rep)),
         LayerChild::BTrem(btrem) => Some(convert_mei_btrem(btrem, ext_store, defaults)),
+        LayerChild::FTrem(ftrem) => Some(convert_mei_ftrem(ftrem, ext_store, defaults)),
         LayerChild::Space(space) => Some(convert_mei_space(space)),
         LayerChild::MeterSig(msig) => convert_mei_meter_sig(msig),
         LayerChild::Clef(clef) => convert_mei_inline_clef(clef),
@@ -1942,6 +1949,8 @@ fn convert_beam_child(child: &tusk_model::elements::BeamChild, ext_store: &Exten
         BeamChild::Note(note) => Some(convert_mei_note(note, ext_store, defaults)),
         BeamChild::Rest(rest) => Some(convert_mei_rest(rest, ext_store, defaults)),
         BeamChild::Chord(chord) => Some(convert_mei_chord(chord, ext_store, defaults, suppress_chord_rep)),
+        BeamChild::BTrem(btrem) => Some(convert_mei_btrem(btrem, ext_store, defaults)),
+        BeamChild::FTrem(ftrem) => Some(convert_mei_ftrem(ftrem, ext_store, defaults)),
         BeamChild::Beam(_) => {
             // Nested beams handled by flatten_beam_children at the call site.
             None
@@ -1958,6 +1967,7 @@ fn layer_child_xml_id(child: &LayerChild) -> Option<&str> {
         LayerChild::MRest(mrest) => mrest.common.xml_id.as_deref(),
         LayerChild::Chord(chord) => chord.common.xml_id.as_deref(),
         LayerChild::BTrem(btrem) => btrem_inner_xml_id(btrem),
+        LayerChild::FTrem(ftrem) => ftrem_first_xml_id(ftrem),
         LayerChild::Space(space) => space.common.xml_id.as_deref(),
         _ => None,
     }
@@ -1978,6 +1988,8 @@ fn beam_child_xml_id(child: &tusk_model::elements::BeamChild) -> Option<&str> {
         BeamChild::Note(note) => note.common.xml_id.as_deref(),
         BeamChild::Rest(rest) => rest.common.xml_id.as_deref(),
         BeamChild::Chord(chord) => chord.common.xml_id.as_deref(),
+        BeamChild::BTrem(btrem) => btrem_inner_xml_id(btrem),
+        BeamChild::FTrem(ftrem) => ftrem_first_xml_id(ftrem),
         BeamChild::Beam(beam) => beam.common.xml_id.as_deref(),
         _ => None,
     }
@@ -2341,9 +2353,13 @@ fn collect_ornament_post_events(
                             .unwrap_or_else(|| "ornam".to_string());
                         let (name, direction) =
                             parse_ornament_from_ext(ornam.common.xml_id.as_deref(), &fallback_name, ext_store);
-                        map.entry(id)
-                            .or_default()
-                            .push(PostEvent::NamedArticulation { direction, name });
+                        // Skip ornaments that don't map to valid LilyPond commands
+                        // (e.g. accidental marks within ornaments that fall back to "ornam")
+                        if is_known_ly_ornament(&name) {
+                            map.entry(id)
+                                .or_default()
+                                .push(PostEvent::NamedArticulation { direction, name });
+                        }
                     }
                 }
             }
@@ -2548,6 +2564,88 @@ fn convert_mei_btrem(btrem: &tusk_model::elements::BTrem, ext_store: &ExtensionS
     // Append tremolo post-event
     append_post_events(&mut music, &[PostEvent::Tremolo(value)]);
     music
+}
+
+/// Convert an MEI FTrem (fingered tremolo) to a LilyPond `\repeat tremolo` expression.
+///
+/// FTrem contains two child notes/chords that alternate rapidly. The @unitdur
+/// attribute gives the subdivision duration (e.g. 16 = 16th notes).
+fn convert_mei_ftrem(ftrem: &tusk_model::elements::FTrem, ext_store: &ExtensionStore, defaults: &conversion::MeiDefaults) -> Music {
+    use tusk_model::elements::FTremChild;
+
+    // Get unitdur as LilyPond base duration value
+    let unitdur_base = ftrem
+        .f_trem_ges
+        .unitdur
+        .as_ref()
+        .map(|u| conversion::mei_dur_to_base(u))
+        .unwrap_or(16); // default to 16th notes
+
+    // Convert child notes/chords, overriding their durations to unitdur
+    let mut body_items: Vec<Music> = Vec::new();
+    for child in &ftrem.children {
+        match child {
+            FTremChild::Note(n) => {
+                let mut music = convert_mei_note(n, ext_store, defaults);
+                override_duration(&mut music, unitdur_base);
+                body_items.push(music);
+            }
+            FTremChild::Chord(c) => {
+                let mut music = convert_mei_chord(c, ext_store, defaults, false);
+                override_duration(&mut music, unitdur_base);
+                body_items.push(music);
+            }
+            FTremChild::Clef(_) => {} // skip inline clefs
+        }
+    }
+
+    // Calculate repeat count from the first child's written duration.
+    // count = written_dur_in_unitdur_units = unitdur_base / note_base
+    // e.g. half note (2) with 16th unitdur (16): count = 16/2 = 8
+    let count = ftrem
+        .children
+        .iter()
+        .find_map(|c| match c {
+            FTremChild::Note(n) => n.note_log.dur.as_ref(),
+            FTremChild::Chord(c) => c.chord_log.dur.as_ref(),
+            FTremChild::Clef(_) => None,
+        })
+        .and_then(|dur| match dur {
+            tusk_model::generated::data::DataDuration::MeiDataDurationCmn(cmn) => {
+                Some(conversion::mei_dur_to_base(cmn))
+            }
+            _ => None,
+        })
+        .map(|note_base| unitdur_base / note_base)
+        .unwrap_or(4)
+        // Multiply by number of note children for total alternation count
+        * body_items.len() as u32;
+
+    Music::Repeat {
+        repeat_type: crate::model::RepeatType::Tremolo,
+        count,
+        body: Box::new(Music::Sequential(body_items)),
+        alternatives: None,
+    }
+}
+
+/// Override the duration of a Music expression (Note or Chord).
+fn override_duration(music: &mut Music, base: u32) {
+    let dur = Some(Duration { base, dots: 0, multipliers: Vec::new() });
+    match music {
+        Music::Note(n) => n.duration = dur,
+        Music::Chord(c) => c.duration = dur,
+        _ => {}
+    }
+}
+
+/// Get xml:id of the first note/chord inside an FTrem.
+fn ftrem_first_xml_id(ftrem: &tusk_model::elements::FTrem) -> Option<&str> {
+    ftrem.children.first().and_then(|child| match child {
+        tusk_model::elements::FTremChild::Note(n) => n.common.xml_id.as_deref(),
+        tusk_model::elements::FTremChild::Chord(c) => c.common.xml_id.as_deref(),
+        tusk_model::elements::FTremChild::Clef(_) => None,
+    })
 }
 
 /// Map a LilyPond articulation name to its ScriptAbbreviation, if one exists.

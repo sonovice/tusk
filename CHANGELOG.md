@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.3.4] — 2026-04-11
+
+### LilyPond export (MEI → LilyPond)
+
+- **Invalid `\ornam` removed**: ornament accidental marks from MusicXML no
+  longer emit the non-existent `\ornam` command. Only known LilyPond ornament
+  names are output; unrecognised ornament detail types are silently skipped.
+- **Two-note tremolo (`fTrem`) support**: MusicXML fingered tremolos
+  (`<tremolo type="start/stop">`) now export as `\repeat tremolo N { … }`
+  instead of dumping individual notes, which caused Guile crashes.
+- **Voice directives always injected**: multi-layer measures now always get
+  `\voiceOne`/`\voiceTwo` directives regardless of whether the MusicXML
+  source had part-detail metadata. Fixes Guile crashes from rhythm conflicts
+  in polyphonic `<< >>` blocks without stem-direction commands.
+
 ## [1.3.3] — 2026-04-10
 
 ### MusicXML import (MusicXML → MEI)

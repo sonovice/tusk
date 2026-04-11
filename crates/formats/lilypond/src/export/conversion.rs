@@ -18,7 +18,7 @@ pub(super) struct MeiDefaults {
 }
 
 /// Convert MEI DataDurationCmn to LilyPond duration base.
-fn mei_dur_to_base(dur: &DataDurationCmn) -> u32 {
+pub(super) fn mei_dur_to_base(dur: &DataDurationCmn) -> u32 {
     match dur {
         DataDurationCmn::N1 => 1,
         DataDurationCmn::N2 => 2,
