@@ -410,23 +410,17 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                             // Reset measure position before \time changes to
                             // prevent "mid-measure time signature" warnings
                             // from tuplet timing rounding errors.
-                            if add_spacer {
-                                insert_timing_reset_before_time_change(&mut measure_items);
-                            }
-                            if is_pickup && add_spacer {
+                            insert_timing_reset_before_time_change(&mut measure_items);
+                            if is_pickup {
                                 inject_partial(&mut measure_items);
                             }
                             let stream = &mut staff_music[staff_idx][0];
-                            if add_spacer {
-                                // Explicit barline resets timing counter —
-                                // prevents cascading barline misplacement
-                                // when source has irregular measure durations.
-                                stream.push(Music::BarLine {
-                                    bar_type: "|".to_string(),
-                                });
-                            } else {
-                                stream.push(Music::BarCheck);
-                            }
+                            // Explicit barline resets timing counter —
+                            // prevents cascading barline misplacement
+                            // when source has irregular measure durations.
+                            stream.push(Music::BarLine {
+                                bar_type: "|".to_string(),
+                            });
                             stream.push(measure_comment.clone());
                             stream.extend(measure_items);
                             // Only first layer — \addlyrics aligns with first voice

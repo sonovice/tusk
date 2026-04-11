@@ -14,6 +14,10 @@
   `\voiceOne`/`\voiceTwo` directives regardless of whether the MusicXML
   source had part-detail metadata. Fixes Guile crashes from rhythm conflicts
   in polyphonic `<< >>` blocks without stem-direction commands.
+- **Pickup/timing always emitted**: `\partial`, timing resets before `\time`
+  changes, and explicit barlines are now unconditional — no longer gated on
+  part-detail metadata. Fixes regressions where pickup measures without
+  `\partial` caused cascading barcheck failures and Guile crashes.
 
 ## [1.3.3] — 2026-04-10
 
