@@ -2,6 +2,12 @@
 
 ## [1.3.3] — 2026-04-10
 
+### MusicXML import (MusicXML → MEI)
+
+- **Empty measure stabilization**: single-staff parts with empty layers in
+  multi-staff scores now get an `<mRest>` fill during import, preventing
+  empty bar-check pairs from collapsing during LilyPond re-import.
+
 ### CLI
 
 - **UTF-16 support**: MusicXML files encoded as UTF-16 BE or UTF-16 LE

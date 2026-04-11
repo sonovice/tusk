@@ -137,6 +137,10 @@ pub fn convert_measure(
     // Multi-staff parts (e.g., piano with <staves>2</staves>) produce one MEI
     // <staff> per MusicXML staff, distributing notes by voice→staff mapping.
     // Cross-staff notes (a voice spanning staves) get MEI @staff attributes.
+    // Track which mei_measure.children indices are single-staff parts
+    // (for empty-layer fill below).
+    let mut single_staff_indices: Vec<usize> = Vec::new();
+
     for part in &score.parts {
         ctx.set_part(&part.id);
         let num_staves = ctx.staves_for_part(&part.id);
@@ -147,6 +151,7 @@ pub fn convert_measure(
                 let global_staff = ctx.global_staff_for_part(&part.id, 1).unwrap_or(1);
                 ctx.set_staff(global_staff);
                 let staff = convert_staff(musicxml_measure, global_staff, ctx)?;
+                single_staff_indices.push(mei_measure.children.len());
                 mei_measure
                     .children
                     .push(MeasureChild::Staff(Box::new(staff)));
@@ -176,6 +181,43 @@ pub fn convert_measure(
                     mei_measure
                         .children
                         .push(MeasureChild::Staff(Box::new(staff)));
+                }
+            }
+        }
+    }
+
+    // Fill empty single-layer staves (from single-staff parts) with MRest
+    // so the measure survives LilyPond roundtrip. Only when ≥2 staves exist
+    // (otherwise LilyPond export skips fully-empty measures) and only when at
+    // least one staff has content (to get the matching dur.ppq).
+    let total_staves = mei_measure.children.iter()
+        .filter(|c| matches!(c, MeasureChild::Staff(_)))
+        .count();
+    if total_staves > 1 && !single_staff_indices.is_empty() {
+        let ref_dur_ppq = mei_measure.children.iter().find_map(|c| {
+            let MeasureChild::Staff(staff) = c else { return None };
+            staff.children.iter().find_map(|sc| {
+                let StaffChild::Layer(layer) = sc else { return None };
+                compute_layer_dur_ppq(&layer.children)
+            })
+        });
+        if let Some(ppq) = ref_dur_ppq {
+            for &idx in &single_staff_indices {
+                if let Some(MeasureChild::Staff(staff)) = mei_measure.children.get_mut(idx) {
+                    let layer_count = staff.children.iter()
+                        .filter(|sc| matches!(sc, StaffChild::Layer(_)))
+                        .count();
+                    if layer_count == 1 {
+                        for sc in &mut staff.children {
+                            if let StaffChild::Layer(layer) = sc {
+                                if layer.children.is_empty() {
+                                    let mut mrest = tusk_model::elements::MRest::default();
+                                    mrest.m_rest_ges.dur_ppq = Some(ppq.to_string());
+                                    layer.children.push(tusk_model::elements::LayerChild::MRest(Box::new(mrest)));
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -731,6 +773,27 @@ fn collect_distinct_voices(measure: &crate::model::elements::Measure) -> Vec<Str
         }
     }
     voices
+}
+
+/// Compute total `dur.ppq` from layer children (notes, rests, chords, spaces).
+/// Returns `None` if the layer has no duration-bearing content.
+fn compute_layer_dur_ppq(children: &[tusk_model::elements::LayerChild]) -> Option<f64> {
+    use tusk_model::elements::LayerChild;
+    let mut total = 0.0f64;
+    for child in children {
+        let ppq = match child {
+            LayerChild::Note(n) => n.note_ges.dur_ppq.as_ref(),
+            LayerChild::Rest(r) => r.rest_ges.dur_ppq.as_ref(),
+            LayerChild::MRest(r) => r.m_rest_ges.dur_ppq.as_ref(),
+            LayerChild::Space(s) => s.space_ges.dur_ppq.as_ref(),
+            LayerChild::Chord(c) => c.chord_ges.dur_ppq.as_ref(),
+            _ => None,
+        };
+        if let Some(v) = ppq.and_then(|s| s.parse::<f64>().ok()) {
+            total += v;
+        }
+    }
+    if total > 0.0 { Some(total) } else { None }
 }
 
 /// Convert MusicXML measure content to MEI staff.
