@@ -1507,6 +1507,8 @@ fn make_measure_rest(numerators: &[u32], denominator: u32) -> Music {
     })
 }
 
+/// Fix MultiMeasureRest events that have no duration.
+///
 /// Create a spacer skip for a given time signature to enforce measure duration.
 ///
 /// Produces e.g. `s4*4` for 4/4, `s4*5` for 5/4, `s4*2` for 2/4.
@@ -2152,7 +2154,12 @@ fn extract_context_change_for_beam_child(
 }
 
 /// Convert a single MEI LayerChild to a LilyPond Music expression.
-fn convert_layer_child(child: &LayerChild, ext_store: &ExtensionStore, defaults: &conversion::MeiDefaults, suppress_chord_rep: bool) -> Option<Music> {
+fn convert_layer_child(
+    child: &LayerChild,
+    ext_store: &ExtensionStore,
+    defaults: &conversion::MeiDefaults,
+    suppress_chord_rep: bool,
+) -> Option<Music> {
     match child {
         LayerChild::Note(note) => Some(convert_mei_note(note, ext_store, defaults)),
         LayerChild::Rest(rest) => Some(convert_mei_rest(rest, ext_store, defaults)),

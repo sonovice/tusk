@@ -213,6 +213,16 @@ pub fn convert_measure(
                                 if layer.children.is_empty() {
                                     let mut mrest = tusk_model::elements::MRest::default();
                                     mrest.m_rest_ges.dur_ppq = Some(ppq.to_string());
+                                    // Assign xml:id + ext_store duration info so the
+                                    // LilyPond export produces `R` with the correct
+                                    // time-signature duration instead of a bare `R`.
+                                    let eid = ctx.generate_id_with_suffix("fmrest");
+                                    mrest.common.xml_id = Some(eid.clone());
+                                    let divisions = ctx.divisions().max(1.0);
+                                    let quarters = ppq as f64 / divisions;
+                                    if let Some(dur) = crate::import::note::quarters_to_mrest_info(quarters) {
+                                        ctx.ext_store_mut().insert_mrest_info(eid, dur);
+                                    }
                                     layer.children.push(tusk_model::elements::LayerChild::MRest(Box::new(mrest)));
                                 }
                             }

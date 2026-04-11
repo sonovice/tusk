@@ -3332,3 +3332,60 @@ mod tests {
         assert_eq!(mei_chord.chord_log.grace, Some(DataGrace::Acc));
     }
 }
+
+/// Convert a duration in quarter notes to a `MultiMeasureRestInfo`.
+///
+/// Used by filler-mRest creation in `structure.rs` where there is no MusicXML
+/// `<type>` element to derive the duration from.
+pub fn quarters_to_mrest_info(quarters: f64) -> Option<tusk_model::MultiMeasureRestInfo> {
+    // Try simple denominators: 1=whole, 2=half, 4=quarter, 8=eighth
+    for &base in &[1u32, 2, 4, 8, 16] {
+        let base_quarters = 4.0 / base as f64;
+        // No dots
+        if (quarters - base_quarters).abs() < 0.001 {
+            return Some(tusk_model::MultiMeasureRestInfo {
+                base,
+                dots: 0,
+                multipliers: vec![],
+            });
+        }
+        // 1 dot
+        let dotted = base_quarters * 1.5;
+        if (quarters - dotted).abs() < 0.001 {
+            return Some(tusk_model::MultiMeasureRestInfo {
+                base,
+                dots: 1,
+                multipliers: vec![],
+            });
+        }
+    }
+    // Fallback: express as quarter * N/D with reduced fraction
+    // Multiply quarters by 2 repeatedly until integer (handles halves)
+    let mut num = quarters;
+    let mut den = 1u32;
+    // Try denominators 1, 2, 4, 8 to get an integer numerator
+    for _ in 0..4 {
+        let rounded = num.round();
+        if (num - rounded).abs() < 0.001 {
+            let n = rounded as u32;
+            return Some(tusk_model::MultiMeasureRestInfo {
+                base: 4,
+                dots: 0,
+                multipliers: if n == 1 && den == 1 {
+                    vec![]
+                } else {
+                    vec![(n, den)]
+                },
+            });
+        }
+        num *= 2.0;
+        den *= 2;
+    }
+    // Last resort
+    let n = num.round() as u32;
+    Some(tusk_model::MultiMeasureRestInfo {
+        base: 4,
+        dots: 0,
+        multipliers: vec![(n, den)],
+    })
+}

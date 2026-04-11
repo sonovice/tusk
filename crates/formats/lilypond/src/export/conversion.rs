@@ -365,7 +365,8 @@ fn parse_pitched_rest_label(
 
 /// Convert an MEI MRest to a LilyPond MultiMeasureRestEvent.
 pub(super) fn convert_mei_mrest(mrest: &tusk_model::elements::MRest, ext_store: &ExtensionStore) -> Music {
-    // Restore duration from ext_store
+    // Restore duration from ext_store (set by the import stage).
+    // mRests without stored duration keep `None` and serialize as bare `R`.
     let duration = mrest.common.xml_id.as_deref().and_then(|id| {
         let info = ext_store.mrest_info(id)?;
         Some(Duration {

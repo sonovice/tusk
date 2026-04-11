@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.3.5] — 2026-04-11
+
+### MusicXML import (MusicXML → MEI)
+
+- **Filler mRest duration stored**: empty single-layer staves that receive a
+  filler `<mRest>` now also get an `xml:id` and `mrest_info` entry in the
+  extension store with the correct time-signature duration.  Previously these
+  filler mRests had no stored duration, causing the LilyPond export to emit
+  bare `R` (whole note regardless of meter) which triggered barcheck failures
+  and Guile crashes in downstream engravers.
+
 ## [1.3.4] — 2026-04-11
 
 ### LilyPond export (MEI → LilyPond)
