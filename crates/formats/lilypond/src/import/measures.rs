@@ -138,7 +138,7 @@ fn split_events_impl(events: Vec<LyEvent>, resolve_durations: bool) -> Vec<Measu
                 }
                 accumulated = 0.0;
             }
-            LyEvent::Note(n) => {
+            LyEvent::Note(n) | LyEvent::PitchedRest(n) => {
                 if !in_grace && !skip_alt_duration {
                     if let Some(dur) = &n.duration {
                         accumulated += event_quarters(dur, &tuplet_stack);
@@ -300,6 +300,7 @@ fn has_duration(event: &LyEvent) -> bool {
     matches!(
         event,
         LyEvent::Note(_)
+            | LyEvent::PitchedRest(_)
             | LyEvent::Rest(_)
             | LyEvent::Skip(_)
             | LyEvent::Chord { .. }
