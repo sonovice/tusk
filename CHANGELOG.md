@@ -10,6 +10,35 @@
   silently failed, causing `\key` commands to be omitted from the LilyPond
   output.  Key signatures now render correctly for all MEI-origin scores.
 
+### MusicXML import (MusicXML → MEI)
+
+- **Written accidentals no longer double-encoded**: imported pitched notes now
+  avoid emitting both `@accid.ges` and an `<accid>` child for the same written
+  accidental. This removes a large class of Verovio warnings while keeping the
+  written accidental itself intact.
+- **Credits exported in Verovio-friendly `pgHead` form**: MusicXML credits now
+  map to `pgHead/rend` instead of `pgHead/anchoredText`, eliminating Verovio
+  warnings that previously caused all such header text to be ignored.
+- **Numeric font sizes normalized with `pt` units**: imported MusicXML
+  `music-font`, `word-font`, and `lyric-font` sizes are now serialized as MEI
+  values like `20pt` and `10.2pt`, which Verovio accepts consistently.
+
+### MusicXML export (MEI → MusicXML)
+
+- **Font-size roundtrip restored for `pt` values**: MEI font sizes stored as
+  numeric strings with a `pt` suffix now parse back into MusicXML defaults
+  correctly, restoring full `mei_via_musicxml` stability.
+- **Pitch alter recovered from written accidentals**: when an MEI note carries
+  a written `<accid>` child but no `@accid.ges`, MusicXML export now derives
+  `pitch.alter` from that written accidental so MusicXML roundtrips preserve
+  sounding chromatic alteration.
+
+### Tooling
+
+- **Batch Verovio analysis harness added**: `scripts/analyze_musicxml_verovio.py`
+  converts MusicXML fixtures to MEI, renders them with Verovio, and summarizes
+  warnings, errors, and crash cases into `target/verovio-musicxml-analysis/`.
+
 ## [1.3.5] — 2026-04-11
 
 ### MusicXML import (MusicXML → MEI)

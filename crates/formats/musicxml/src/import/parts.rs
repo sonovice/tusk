@@ -66,18 +66,16 @@ fn convert_credits_to_pg_head(
     credits: &[crate::model::elements::Credit],
 ) -> Option<tusk_model::elements::PgHead> {
     use crate::model::elements::CreditContent;
-    use tusk_model::elements::{AnchoredText, AnchoredTextChild, PgHead, PgHeadChild};
+    use tusk_model::elements::{PgHead, PgHeadChild, Rend, RendChild};
 
     let mut texts = Vec::new();
     for credit in credits {
         if let Some(CreditContent::Words(words)) = &credit.content {
             for w in &words.words {
                 if !w.value.is_empty() {
-                    let mut anchored = AnchoredText::default();
-                    anchored
-                        .children
-                        .push(AnchoredTextChild::Text(w.value.clone()));
-                    texts.push(PgHeadChild::AnchoredText(Box::new(anchored)));
+                    let mut rend = Rend::default();
+                    rend.children.push(RendChild::Text(w.value.clone()));
+                    texts.push(PgHeadChild::Rend(Box::new(rend)));
                 }
             }
         }
@@ -235,7 +233,7 @@ fn convert_font_size_to_mei(size: &crate::model::data::FontSize) -> tusk_model::
     use tusk_model::data::{DataFontsize, DataFontsizenumeric, DataFontsizeterm};
     match size {
         FontSize::Points(pts) => {
-            DataFontsize::MeiDataFontsizenumeric(DataFontsizenumeric(format!("{pts}")))
+            DataFontsize::MeiDataFontsizenumeric(DataFontsizenumeric(format!("{pts}pt")))
         }
         FontSize::Css(css) => DataFontsize::MeiDataFontsizeterm(match css {
             CssFontSize::XxSmall => DataFontsizeterm::XxSmall,

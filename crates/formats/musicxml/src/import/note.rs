@@ -65,7 +65,9 @@ pub fn convert_note(
             mei_note.note_log.pname = Some(convert_pitch_name(pitch.step));
             mei_note.note_log.oct = Some(DataOctave::from(pitch.octave as u64));
 
-            if let Some(alter) = pitch.alter {
+            if let Some(alter) = pitch.alter
+                && note.accidental.is_none()
+            {
                 mei_note.note_ges.accid_ges = Some(convert_alter_to_gestural_accid(alter));
             }
         }
@@ -2597,6 +2599,7 @@ mod tests {
                 ))
             );
         }
+        assert!(mei_note.note_ges.accid_ges.is_none());
     }
 
     #[test]
@@ -2624,6 +2627,7 @@ mod tests {
                 ))
             );
         }
+        assert!(mei_note.note_ges.accid_ges.is_none());
     }
 
     #[test]

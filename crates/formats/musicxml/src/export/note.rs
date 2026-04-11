@@ -219,7 +219,7 @@ fn convert_mei_pitch(
     };
 
     // Get chromatic alteration from gestural accidental
-    let alter = convert_mei_gestural_accid_to_alter(&mei_note.note_ges.accid_ges);
+    let alter = convert_mei_pitch_alter(mei_note);
 
     Ok(Pitch {
         step,
@@ -246,6 +246,21 @@ fn convert_mei_pname_to_step(pname: &str) -> ConversionResult<crate::model::data
             Ok(Step::C)
         }
     }
+}
+
+fn convert_mei_pitch_alter(mei_note: &tusk_model::elements::Note) -> Option<f64> {
+    convert_mei_gestural_accid_to_alter(&mei_note.note_ges.accid_ges).or_else(|| {
+        mei_note.children.iter().find_map(|child| {
+            let tusk_model::elements::NoteChild::Accid(accid) = child else {
+                return None;
+            };
+            accid
+                .accid_log
+                .accid
+                .as_ref()
+                .and_then(convert_mei_written_accid_to_alter)
+        })
+    })
 }
 
 /// Convert MEI gestural accidental (@accid.ges) to MusicXML alter value.
@@ -276,6 +291,47 @@ fn convert_mei_gestural_accid_to_alter(
         },
         DataAccidentalGestural::MeiDataAccidentalAeu(_)
         | DataAccidentalGestural::MeiDataAccidentalPersian(_) => 0.0,
+    })
+}
+
+fn convert_mei_written_accid_to_alter(
+    accid: &tusk_model::data::DataAccidentalWritten,
+) -> Option<f64> {
+    use tusk_model::data::{
+        DataAccidentalWritten, DataAccidentalWrittenBasic, DataAccidentalWrittenExtended,
+    };
+
+    Some(match accid {
+        DataAccidentalWritten::MeiDataAccidentalWrittenBasic(basic) => match basic {
+            DataAccidentalWrittenBasic::Tf => -3.0,
+            DataAccidentalWrittenBasic::Ff => -2.0,
+            DataAccidentalWrittenBasic::F => -1.0,
+            DataAccidentalWrittenBasic::N => 0.0,
+            DataAccidentalWrittenBasic::S => 1.0,
+            DataAccidentalWrittenBasic::Ss | DataAccidentalWrittenBasic::X => 2.0,
+            DataAccidentalWrittenBasic::Xs | DataAccidentalWrittenBasic::Sx
+            | DataAccidentalWrittenBasic::Ts => 3.0,
+            DataAccidentalWrittenBasic::Nf => -1.0,
+            DataAccidentalWrittenBasic::Ns => 1.0,
+        },
+        DataAccidentalWritten::MeiDataAccidentalWrittenExtended(ext) => match ext {
+            DataAccidentalWrittenExtended::Nu => 0.5,
+            DataAccidentalWrittenExtended::Nd => -0.5,
+            DataAccidentalWrittenExtended::Su => 1.5,
+            DataAccidentalWrittenExtended::Sd => 0.5,
+            DataAccidentalWrittenExtended::Fu => -0.5,
+            DataAccidentalWrittenExtended::Fd => -1.5,
+            DataAccidentalWrittenExtended::Xu => 2.5,
+            DataAccidentalWrittenExtended::Xd => 1.5,
+            DataAccidentalWrittenExtended::Ffu => -1.5,
+            DataAccidentalWrittenExtended::Ffd => -2.5,
+            DataAccidentalWrittenExtended::N1qf => -0.5,
+            DataAccidentalWrittenExtended::N3qf => -1.5,
+            DataAccidentalWrittenExtended::N1qs => 0.5,
+            DataAccidentalWrittenExtended::N3qs => 1.5,
+        },
+        DataAccidentalWritten::MeiDataAccidentalAeu(_)
+        | DataAccidentalWritten::MeiDataAccidentalPersian(_) => return None,
     })
 }
 
@@ -1749,7 +1805,7 @@ mod tests {
 
     #[test]
     fn test_convert_mei_note_with_accidental() {
-        use crate::model::note::AccidentalValue;
+        use crate::model::note::{AccidentalValue, FullNoteContent};
         use tusk_model::data::{
             DataAccidentalWritten, DataAccidentalWrittenBasic, DataDuration, DataDurationCmn,
             DataOctave, DataPitchname,
@@ -1781,6 +1837,11 @@ mod tests {
             mxml_note.accidental.as_ref().unwrap().value,
             AccidentalValue::Sharp
         );
+        if let FullNoteContent::Pitch(pitch) = &mxml_note.content {
+            assert_eq!(pitch.alter, Some(1.0));
+        } else {
+            panic!("Expected pitched note");
+        }
     }
 
     #[test]

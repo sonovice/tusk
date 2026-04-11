@@ -624,7 +624,7 @@ fn convert_mei_font_size(
     use crate::model::data::{CssFontSize, FontSize};
     use tusk_model::data::{DataFontsize, DataFontsizeterm};
     match size {
-        DataFontsize::MeiDataFontsizenumeric(n) => n.0.parse::<f64>().ok().map(FontSize::Points),
+        DataFontsize::MeiDataFontsizenumeric(n) => parse_mei_font_size_points(&n.0).map(FontSize::Points),
         DataFontsize::MeiDataFontsizeterm(term) => Some(FontSize::Css(match term {
             DataFontsizeterm::XxSmall => CssFontSize::XxSmall,
             DataFontsizeterm::XSmall => CssFontSize::XSmall,
@@ -639,6 +639,12 @@ fn convert_mei_font_size(
         })),
         DataFontsize::MeiDataPercent(_) => None, // No MusicXML equivalent
     }
+}
+
+fn parse_mei_font_size_points(value: &str) -> Option<f64> {
+    let trimmed = value.trim();
+    let numeric = trimmed.strip_suffix("pt").unwrap_or(trimmed).trim();
+    numeric.parse::<f64>().ok()
 }
 
 /// Convert MEI DataFontstyle to MusicXML FontStyle.
@@ -673,6 +679,7 @@ mod tests {
     use tusk_model::elements::{
         FileDesc, FileDescChild, PubStmt, Title, TitleChild, TitleStmt, TitleStmtChild,
     };
+    use tusk_model::data::{DataFontsize, DataFontsizenumeric};
 
     // ========================================================================
     // Basic Conversion Tests
@@ -777,5 +784,18 @@ mod tests {
         let ident = score.identification.as_ref().unwrap();
         assert!(ident.encoding.is_some());
         assert!(!ident.encoding.as_ref().unwrap().software.is_empty());
+    }
+
+    #[test]
+    fn test_convert_mei_font_size_accepts_pt_suffix() {
+        let size =
+            DataFontsize::MeiDataFontsizenumeric(DataFontsizenumeric("20.5pt".to_string()));
+        assert_eq!(convert_mei_font_size(&size), Some(crate::model::data::FontSize::Points(20.5)));
+    }
+
+    #[test]
+    fn test_convert_mei_font_size_accepts_plain_numeric() {
+        let size = DataFontsize::MeiDataFontsizenumeric(DataFontsizenumeric("10.2".to_string()));
+        assert_eq!(convert_mei_font_size(&size), Some(crate::model::data::FontSize::Points(10.2)));
     }
 }
