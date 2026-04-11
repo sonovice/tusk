@@ -13,7 +13,7 @@ use tusk_model::{
 use crate::model::{self, ContextKeyword, ContextModItem, Music, ToplevelExpression};
 use crate::serializer;
 
-use super::events::{PitchContext, collect_events, extract_pitch_from_music};
+use super::events::{PitchContext, collect_and_resolve_events, extract_pitch_from_music};
 use super::lyrics;
 use super::signatures::build_event_sequence;
 use super::utils::extract_voices;
@@ -573,7 +573,7 @@ pub(super) fn build_score_def_from_staves(
         let mut sig_ctx = PitchContext::new();
         for voice_music in &staff_info.voices {
             for m in voice_music {
-                collect_events(m, &mut events, &mut sig_ctx);
+                collect_and_resolve_events(m, &mut events, &mut sig_ctx);
             }
         }
 

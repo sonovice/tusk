@@ -21,6 +21,17 @@ pub(super) struct MeasureGroup {
 /// and files that mix both (e.g. `\bar "||"` at section ends but no bar
 /// checks within sections).
 pub(super) fn split_events_into_measures(events: Vec<LyEvent>) -> Vec<MeasureGroup> {
+    split_events_impl(events, false)
+}
+
+/// Like `split_events_into_measures`, but resolves implicit durations
+/// (LilyPond `c4 d e f` = c4 d4 e4 f4) for correct beat accumulation.
+/// Used for polyphonic voices where events may have `None` durations.
+pub(super) fn split_events_into_measures_resolved(events: Vec<LyEvent>) -> Vec<MeasureGroup> {
+    split_events_impl(events, true)
+}
+
+fn split_events_impl(events: Vec<LyEvent>, resolve_durations: bool) -> Vec<MeasureGroup> {
     // Pre-scan: detect if BarChecks/BarLines separate multi-measure content.
     // If so, trust them as the authoritative measure boundaries and disable
     // duration-based splitting (which can create spurious splits when note
@@ -34,6 +45,9 @@ pub(super) fn split_events_into_measures(events: Vec<LyEvent>) -> Vec<MeasureGro
     // Current time signature: default 4/4
     let mut measure_quarters = 4.0f64;
     let mut accumulated = 0.0f64;
+
+    // Implicit duration inheritance (only when resolve_durations is true).
+    let mut last_duration = crate::model::Duration { base: 4, dots: 0, multipliers: vec![] };
 
     // Tuplet ratio stack
     let mut tuplet_stack: Vec<(u32, u32)> = Vec::new();
@@ -128,6 +142,9 @@ pub(super) fn split_events_into_measures(events: Vec<LyEvent>) -> Vec<MeasureGro
                 if !in_grace && !skip_alt_duration {
                     if let Some(dur) = &n.duration {
                         accumulated += event_quarters(dur, &tuplet_stack);
+                        last_duration = dur.clone();
+                    } else if resolve_durations {
+                        accumulated += event_quarters(&last_duration, &tuplet_stack);
                     }
                 }
                 current_events.push(event);
@@ -139,6 +156,9 @@ pub(super) fn split_events_into_measures(events: Vec<LyEvent>) -> Vec<MeasureGro
                 if !skip_alt_duration {
                     if let Some(dur) = &r.duration {
                         accumulated += event_quarters(dur, &tuplet_stack);
+                        last_duration = dur.clone();
+                    } else if resolve_durations {
+                        accumulated += event_quarters(&last_duration, &tuplet_stack);
                     }
                 }
                 current_events.push(event);
@@ -150,6 +170,9 @@ pub(super) fn split_events_into_measures(events: Vec<LyEvent>) -> Vec<MeasureGro
                 if !in_grace && !skip_alt_duration {
                     if let Some(dur) = &s.duration {
                         accumulated += event_quarters(dur, &tuplet_stack);
+                        last_duration = dur.clone();
+                    } else if resolve_durations {
+                        accumulated += event_quarters(&last_duration, &tuplet_stack);
                     }
                 }
                 current_events.push(event);
@@ -161,6 +184,9 @@ pub(super) fn split_events_into_measures(events: Vec<LyEvent>) -> Vec<MeasureGro
                 if !in_grace && !skip_alt_duration {
                     if let Some(dur) = duration {
                         accumulated += event_quarters(dur, &tuplet_stack);
+                        last_duration = dur.clone();
+                    } else if resolve_durations {
+                        accumulated += event_quarters(&last_duration, &tuplet_stack);
                     }
                 }
                 current_events.push(event);

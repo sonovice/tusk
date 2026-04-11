@@ -4,6 +4,7 @@ mod beams;
 mod context_analysis;
 mod control_events;
 mod conversion;
+mod durations;
 mod events;
 pub(crate) mod lyrics;
 mod measures;
@@ -58,7 +59,8 @@ use tusk_model::{ToplevelMarkup, ToplevelMarkupKind};
 
 use context_analysis::{StaffLayout, analyze_staves, build_score_def_from_staves};
 use events::{
-    GraceType, LyEvent, PitchContext, apply_grace_to_chord, apply_grace_to_note, collect_events,
+    GraceType, LyEvent, PitchContext, apply_grace_to_chord, apply_grace_to_note,
+    collect_events, collect_and_resolve_events,
     extract_pitch_from_music,
 };
 pub use signatures::{fifths_to_key, mei_clef_to_name};
@@ -651,20 +653,25 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
                 &staff_info.voices, base_ctx,
             );
             for events in all_events {
-                let groups = measures::split_events_into_measures(events);
+                let groups = measures::split_events_into_measures_resolved(events);
                 if groups.len() > num_measures {
                     num_measures = groups.len();
                 }
                 staff_voice_groups.push(groups);
             }
         } else {
+            let is_multi_voice = staff_info.voices.len() > 1;
             for voice_music in &staff_info.voices {
                 let mut events = Vec::new();
                 let mut voice_ctx = PitchContext::new();
                 for m in voice_music {
                     collect_events(m, &mut events, &mut voice_ctx);
                 }
-                let groups = measures::split_events_into_measures(events);
+                let groups = if is_multi_voice {
+                    measures::split_events_into_measures_resolved(events)
+                } else {
+                    measures::split_events_into_measures(events)
+                };
                 if groups.len() > num_measures {
                     num_measures = groups.len();
                 }

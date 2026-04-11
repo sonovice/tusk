@@ -160,6 +160,67 @@ impl PitchContext {
     }
 }
 
+/// Collect events and resolve implicit durations.
+///
+/// Top-level entry point: collects events from the music tree, then resolves
+/// all `None` durations to explicit values using LilyPond's duration
+/// inheritance rules. Each voice in `<< >>` blocks gets independent tracking.
+pub(super) fn collect_and_resolve_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut PitchContext) {
+    let start = events.len();
+    collect_events(music, events, ctx);
+    resolve_event_durations(&mut events[start..]);
+}
+
+/// Resolve implicit durations in a slice of LyEvents.
+///
+/// LilyPond's `c4 d e f` = c4 d4 e4 f4. Events with `duration: None`
+/// inherit the previous event's duration (default: quarter note).
+pub(super) fn resolve_event_durations(events: &mut [LyEvent]) {
+    let default = crate::model::Duration { base: 4, dots: 0, multipliers: vec![] };
+    let mut last = default;
+    for ev in events.iter_mut() {
+        match ev {
+            LyEvent::Note(n) => {
+                if let Some(d) = &n.duration { last = d.clone(); }
+                else { n.duration = Some(last.clone()); }
+            }
+            LyEvent::Rest(r) => {
+                if let Some(d) = &r.duration { last = d.clone(); }
+                else { r.duration = Some(last.clone()); }
+            }
+            LyEvent::Skip(s) => {
+                if let Some(d) = &s.duration { last = d.clone(); }
+                else { s.duration = Some(last.clone()); }
+            }
+            LyEvent::Chord { duration, .. } => {
+                if let Some(d) = duration { last = d.clone(); }
+                else { *duration = Some(last.clone()); }
+            }
+            LyEvent::MeasureRest(r) => {
+                if let Some(d) = &r.duration { last = d.clone(); }
+                else { r.duration = Some(last.clone()); }
+            }
+            LyEvent::DrumEvent(d) => {
+                if let Some(dur) = &d.duration { last = dur.clone(); }
+                else { d.duration = Some(last.clone()); }
+            }
+            LyEvent::DrumChordEvent(d) => {
+                if let Some(dur) = &d.duration { last = dur.clone(); }
+                else { d.duration = Some(last.clone()); }
+            }
+            LyEvent::ChordName(c) => {
+                if let Some(dur) = &c.duration { last = dur.clone(); }
+                else { c.duration = Some(last.clone()); }
+            }
+            LyEvent::FigureEvent(f) => {
+                if let Some(dur) = &f.duration { last = dur.clone(); }
+                else { f.duration = Some(last.clone()); }
+            }
+            _ => {}
+        }
+    }
+}
+
 /// Recursively collect note/rest/skip events from LilyPond music,
 /// resolving relative pitches and transpositions to absolute.
 pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut PitchContext) {
@@ -214,6 +275,11 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
             // reference pitch. After << >>, reference comes from first voice.
             let saved = ctx.clone();
             let mut first_result = None;
+            // Resolve implicit durations within polyphonic voices so the
+            // measure splitter correctly counts beats for events with inherited
+            // duration (e.g. `s1 s s s s`). Only apply to Simultaneous blocks
+            // with 2+ Sequential/pitch-wrapped voice bodies — structural
+            // groupings like `<< \global { music } >>` are left unchanged.
             for item in items {
                 let mut voice_ctx = saved.clone();
                 collect_events(item, events, &mut voice_ctx);

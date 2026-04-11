@@ -160,6 +160,23 @@ fn try_split_simultaneous(music: &Music, allow_context: bool) -> Option<Vec<Vec<
             if all_voice_like {
                 return Some(items.iter().map(|item| vec![item]).collect());
             }
+
+            // Handle << prefix \new Voice {} \new Voice {} >> pattern:
+            // staff-level << >> with non-voice prefix items (clef, key, time)
+            // followed by 2+ \new Voice items.
+            if allow_context {
+                let voice_items: Vec<&Music> = items.iter().filter(|item| {
+                    matches!(
+                        item,
+                        Music::ContextedMusic { context_type, .. }
+                            if context_type == "Voice" || context_type == "CueVoice"
+                              || context_type == "NullVoice"
+                    )
+                }).collect();
+                if voice_items.len() >= 2 {
+                    return Some(voice_items.into_iter().map(|item| vec![item]).collect());
+                }
+            }
         }
     None
 }
