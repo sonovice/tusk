@@ -204,6 +204,7 @@ impl<'src> Parser<'src> {
         Ok(Music::ChordRepetition(ChordRepetitionEvent {
             duration,
             post_events,
+            fallback_pitches: Vec::new(),
         }))
     }
 

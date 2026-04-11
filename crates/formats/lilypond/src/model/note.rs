@@ -330,6 +330,9 @@ pub struct ChordRepetitionEvent {
     pub duration: Option<Duration>,
     /// Post-events (ties, slurs, etc.) attached after the duration.
     pub post_events: Vec<PostEvent>,
+    /// Fallback pitches from the MEI chord, used when `q` lacks a preceding
+    /// chord in its sequential context (e.g. after voice splitting).
+    pub fallback_pitches: Vec<super::Pitch>,
 }
 
 // ---------------------------------------------------------------------------

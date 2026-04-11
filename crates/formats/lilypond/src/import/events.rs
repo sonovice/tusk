@@ -171,6 +171,30 @@ pub(super) fn collect_and_resolve_events(music: &Music, events: &mut Vec<LyEvent
     resolve_event_durations(&mut events[start..]);
 }
 
+/// Check if a Music item produces notes (contains Note, Chord, Rest, etc.).
+fn is_note_producing(music: &Music) -> bool {
+    match music {
+        Music::Note(_) | Music::Chord(_) | Music::ChordRepetition(_)
+        | Music::Rest(_) | Music::Skip(_) | Music::MultiMeasureRest(_) => true,
+        Music::Sequential(items) => items.iter().any(is_note_producing),
+        Music::Relative { body, .. } | Music::Fixed { body, .. }
+        | Music::Transpose { body, .. } | Music::Grace { body }
+        | Music::Acciaccatura { body } | Music::Appoggiatura { body }
+        | Music::Tuplet { body, .. } | Music::Once { music: body } => is_note_producing(body),
+        Music::Repeat { body, .. } => is_note_producing(body),
+        _ => false,
+    }
+}
+
+/// Check if an LyEvent is a note/rest/chord/skip (has musical duration).
+pub(super) fn has_duration_event(event: &LyEvent) -> bool {
+    matches!(
+        event,
+        LyEvent::Note(_) | LyEvent::Rest(_) | LyEvent::Skip(_)
+            | LyEvent::Chord { .. } | LyEvent::MeasureRest(_)
+    )
+}
+
 /// Resolve implicit durations in a slice of LyEvents.
 ///
 /// LilyPond's `c4 d e f` = c4 d4 e4 f4. Events with `duration: None`
@@ -266,7 +290,18 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
         Music::Skip(skip) => events.push(LyEvent::Skip(skip.clone())),
         Music::MultiMeasureRest(mrest) => events.push(LyEvent::MeasureRest(mrest.clone())),
         Music::Sequential(items) => {
+            // Skip inline \new Voice items when the Sequential also has
+            // note-producing content. Inline voices (common in fugues)
+            // are secondary material that shouldn't double the event count.
+            let has_non_voice_notes = items.iter().any(|i| !matches!(i, Music::ContextedMusic { .. } | Music::Simultaneous(_)) && is_note_producing(i));
             for item in items {
+                if has_non_voice_notes {
+                    if let Music::ContextedMusic { context_type, .. } = item {
+                        if context_type == "Voice" || context_type == "CueVoice" || context_type == "NullVoice" {
+                            continue;
+                        }
+                    }
+                }
                 collect_events(item, events, ctx);
             }
         }
@@ -274,21 +309,39 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
             // In \relative mode, each voice in << >> resets to the entering
             // reference pitch. After << >>, reference comes from first voice.
             let saved = ctx.clone();
-            let mut first_result = None;
-            // Resolve implicit durations within polyphonic voices so the
-            // measure splitter correctly counts beats for events with inherited
-            // duration (e.g. `s1 s s s s`). Only apply to Simultaneous blocks
-            // with 2+ Sequential/pitch-wrapped voice bodies — structural
-            // groupings like `<< \global { music } >>` are left unchanged.
-            for item in items {
+
+            // Check if this is inline polyphony (2+ voice-like children).
+            // If so, only collect voice 0's events to keep correct measure
+            // durations. Secondary voices would be lost in MusicXML conversion
+            // anyway, and collecting them all doubles the note content per
+            // measure, causing wrong measure boundaries.
+            let voice_like_count = items.iter().filter(|i| matches!(i,
+                Music::Sequential(_)
+                | Music::Relative { .. }
+                | Music::Fixed { .. }
+                | Music::Transpose { .. }
+                | Music::ContextedMusic { .. }
+            )).count();
+            let is_inline_polyphony = items.len() >= 2 && voice_like_count >= 2;
+
+            if is_inline_polyphony {
+                // Only collect from voice 0
                 let mut voice_ctx = saved.clone();
-                collect_events(item, events, &mut voice_ctx);
-                if first_result.is_none() {
-                    first_result = Some(voice_ctx);
+                collect_events(&items[0], events, &mut voice_ctx);
+                *ctx = voice_ctx;
+            } else {
+                // Structural Simultaneous (e.g. << \global { music } >>): collect all
+                let mut first_result = None;
+                for item in items {
+                    let mut voice_ctx = saved.clone();
+                    collect_events(item, events, &mut voice_ctx);
+                    if first_result.is_none() {
+                        first_result = Some(voice_ctx);
+                    }
                 }
-            }
-            if let Some(result) = first_result {
-                *ctx = result;
+                if let Some(result) = first_result {
+                    *ctx = result;
+                }
             }
         }
         Music::Relative { pitch, body } => {

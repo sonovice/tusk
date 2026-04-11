@@ -162,7 +162,7 @@ fn extract_pitch_from_note(note: &tusk_model::elements::Note, defaults: &MeiDefa
 /// If the chord has a chord_repetition in ext_store, it originated from a `q`
 /// (chord repetition) and is emitted as `Music::ChordRepetition` for lossless
 /// roundtrip.
-pub(super) fn convert_mei_chord(chord: &tusk_model::elements::Chord, ext_store: &ExtensionStore, defaults: &MeiDefaults) -> Music {
+pub(super) fn convert_mei_chord(chord: &tusk_model::elements::Chord, ext_store: &ExtensionStore, defaults: &MeiDefaults, suppress_chord_rep: bool) -> Music {
     let duration = extract_chord_duration(chord, defaults);
 
     // Chord tie: if any child note has @tie="i" or "m", the chord has a tie
@@ -187,14 +187,6 @@ pub(super) fn convert_mei_chord(chord: &tusk_model::elements::Chord, ext_store: 
     // Restore tweak post-events from ext_store
     restore_tweak_post_events_from_ext(chord.common.xml_id.as_deref(), &mut post_events, ext_store);
 
-    // Check for chord repetition in ext_store
-    if chord.common.xml_id.as_deref().is_some_and(|id| ext_store.chord_repetition(id).is_some()) {
-        return Music::ChordRepetition(ChordRepetitionEvent {
-            duration,
-            post_events,
-        });
-    }
-
     let pitches: Vec<Pitch> = chord
         .children
         .iter()
@@ -203,6 +195,16 @@ pub(super) fn convert_mei_chord(chord: &tusk_model::elements::Chord, ext_store: 
             Some(extract_pitch_from_note(note, defaults))
         })
         .collect();
+
+    // Check for chord repetition in ext_store (suppress in multi-voice measures
+    // where q can't reference a chord from a different voice/measure)
+    if !suppress_chord_rep && chord.common.xml_id.as_deref().is_some_and(|id| ext_store.chord_repetition(id).is_some()) {
+        return Music::ChordRepetition(ChordRepetitionEvent {
+            duration,
+            post_events,
+            fallback_pitches: pitches,
+        });
+    }
 
     Music::Chord(ChordEvent {
         pitches,

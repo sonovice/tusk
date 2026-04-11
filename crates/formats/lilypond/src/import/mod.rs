@@ -4,7 +4,6 @@ mod beams;
 mod context_analysis;
 mod control_events;
 mod conversion;
-mod durations;
 mod events;
 pub(crate) mod lyrics;
 mod measures;
@@ -60,7 +59,7 @@ use tusk_model::{ToplevelMarkup, ToplevelMarkupKind};
 use context_analysis::{StaffLayout, analyze_staves, build_score_def_from_staves};
 use events::{
     GraceType, LyEvent, PitchContext, apply_grace_to_chord, apply_grace_to_note,
-    collect_events, collect_and_resolve_events,
+    collect_events,
     extract_pitch_from_music,
 };
 pub use signatures::{fifths_to_key, mei_clef_to_name};
@@ -661,12 +660,37 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
             }
         } else {
             let is_multi_voice = staff_info.voices.len() > 1;
+            // Collect events for all voices first
+            let mut all_voice_events: Vec<Vec<LyEvent>> = Vec::new();
             for voice_music in &staff_info.voices {
                 let mut events = Vec::new();
                 let mut voice_ctx = PitchContext::new();
                 for m in voice_music {
                     collect_events(m, &mut events, &mut voice_ctx);
                 }
+                all_voice_events.push(events);
+            }
+            // Propagate TimeSig from voice 0 to other voices that lack one.
+            // In polyphonic staves (e.g. \partcombine), only one voice may
+            // declare \time — other voices implicitly share it.
+            if is_multi_voice && all_voice_events.len() > 1 {
+                let prefix: Vec<LyEvent> = all_voice_events[0]
+                    .iter()
+                    .take_while(|e| !events::has_duration_event(e))
+                    .filter(|e| matches!(e, LyEvent::TimeSig(_)))
+                    .cloned()
+                    .collect();
+                if !prefix.is_empty() {
+                    for voice_events in all_voice_events.iter_mut().skip(1) {
+                        let has_time_sig = voice_events.iter().any(|e| matches!(e, LyEvent::TimeSig(_)));
+                        if !has_time_sig {
+                            // Prepend voice 0's time signature
+                            voice_events.splice(0..0, prefix.iter().cloned());
+                        }
+                    }
+                }
+            }
+            for events in all_voice_events {
                 let groups = if is_multi_voice {
                     measures::split_events_into_measures_resolved(events)
                 } else {

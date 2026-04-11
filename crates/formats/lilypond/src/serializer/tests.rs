@@ -980,6 +980,7 @@ fn serialize_chord_rep_no_duration() {
             ChordRepetitionEvent {
                 duration: None,
                 post_events: vec![],
+                fallback_pitches: vec![],
             },
         ))],
     };
@@ -999,6 +1000,7 @@ fn serialize_chord_rep_with_duration() {
                     multipliers: vec![],
                 }),
                 post_events: vec![],
+                fallback_pitches: vec![],
             },
         ))],
     };
@@ -1018,6 +1020,7 @@ fn serialize_chord_rep_with_post_events() {
                     multipliers: vec![],
                 }),
                 post_events: vec![PostEvent::Tie],
+                fallback_pitches: vec![],
             },
         ))],
     };

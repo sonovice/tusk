@@ -173,6 +173,7 @@ fn chord_rep_valid_passes() {
                     multipliers: vec![],
                 }),
                 post_events: vec![],
+                fallback_pitches: vec![],
             },
         ))],
     };
@@ -191,6 +192,7 @@ fn chord_rep_invalid_duration_fails() {
                     multipliers: vec![],
                 }),
                 post_events: vec![],
+                fallback_pitches: vec![],
             },
         ))],
     };
@@ -214,10 +216,12 @@ fn chord_rep_span_balance() {
                     multipliers: vec![],
                 }),
                 post_events: vec![PostEvent::SlurStart],
+                fallback_pitches: vec![],
             }),
             Music::ChordRepetition(ChordRepetitionEvent {
                 duration: None,
                 post_events: vec![PostEvent::SlurEnd],
+                fallback_pitches: vec![],
             }),
         ]))],
     };

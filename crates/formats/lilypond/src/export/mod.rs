@@ -110,12 +110,13 @@ pub fn export(mei: &Mei, ext_store: &ExtensionStore) -> Result<LilyPondFile, Exp
     let markup_items = extract_toplevel_markups(score, ext_store);
     let items = merge_items_with_markups(non_markup_items, markup_items);
 
-    Ok(LilyPondFile {
+    let file = LilyPondFile {
         version: Some(Version {
             version: "2.24.0".to_string(),
         }),
         items,
-    })
+    };
+    Ok(file)
 }
 
 /// Export a book-structured MEI (multiple mdivs with BookStructure labels).
@@ -155,12 +156,13 @@ fn export_book(mei: &Mei, entries: &[book::MdivEntry<'_>], ext_store: &Extension
     // Merge with top-level markups at their original positions
     let items = merge_items_with_markups(non_markup_items, markup_items);
 
-    Ok(LilyPondFile {
+    let file = LilyPondFile {
         version: Some(Version {
             version: "2.24.0".to_string(),
         }),
         items,
-    })
+    };
+    Ok(file)
 }
 
 /// Export a single MEI Score to a LilyPond ScoreBlock.
@@ -253,6 +255,8 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                     let mut all_staves: Vec<(Vec<Vec<Music>>, Vec<&[LayerChild]>)> = Vec::new();
                     for mc in &measure.children {
                         if let MeasureChild::Staff(staff) = mc {
+                            let layer_count = staff.children.iter().filter(|sc| matches!(sc, tusk_model::elements::StaffChild::Layer(_))).count();
+                            let suppress_chord_rep = layer_count > 1;
                             let mut layers: Vec<Vec<Music>> = Vec::new();
                             let mut raw_layers: Vec<&[LayerChild]> = Vec::new();
                             for sc in &staff.children {
@@ -264,7 +268,7 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                                 let mut gt_pos = 0;
                                 for lc in &layer.children {
                                     let start = items.len();
-                                    convert_layer_child_to_items(lc, &post_event_map, &mut items, ext_store, &mei_defaults);
+                                    convert_layer_child_to_items(lc, &post_event_map, &mut items, ext_store, &mei_defaults, suppress_chord_rep);
                                     let count = items.len() - start;
                                     collect_layer_child_ids(lc, &mut item_ids, count);
                                     // Align grace_types: insert None for extra items
@@ -1828,12 +1832,13 @@ fn convert_layer_child_to_items(
     items: &mut Vec<Music>,
     ext_store: &ExtensionStore,
     defaults: &conversion::MeiDefaults,
+    suppress_chord_rep: bool,
 ) {
     match child {
         LayerChild::Beam(beam) => {
             let count = beam.children.len();
             for (i, bc) in beam.children.iter().enumerate() {
-                if let Some(mut m) = convert_beam_child(bc, ext_store, defaults) {
+                if let Some(mut m) = convert_beam_child(bc, ext_store, defaults, suppress_chord_rep) {
                     // Apply slur post-events by xml:id (including chord child notes)
                     let events = collect_post_events_for_beam_child(bc, slur_map);
                     if !events.is_empty() {
@@ -1855,7 +1860,7 @@ fn convert_layer_child_to_items(
             if let Some(change) = extract_context_change(child, ext_store) {
                 items.push(change);
             }
-            if let Some(mut m) = convert_layer_child(child, ext_store, defaults) {
+            if let Some(mut m) = convert_layer_child(child, ext_store, defaults, suppress_chord_rep) {
                 let events = collect_post_events_for_layer_child(child, slur_map);
                 if !events.is_empty() {
                     append_post_events(&mut m, &events);
@@ -1882,12 +1887,12 @@ fn extract_context_change(child: &LayerChild, ext_store: &ExtensionStore) -> Opt
 }
 
 /// Convert a single MEI LayerChild to a LilyPond Music expression.
-fn convert_layer_child(child: &LayerChild, ext_store: &ExtensionStore, defaults: &conversion::MeiDefaults) -> Option<Music> {
+fn convert_layer_child(child: &LayerChild, ext_store: &ExtensionStore, defaults: &conversion::MeiDefaults, suppress_chord_rep: bool) -> Option<Music> {
     match child {
         LayerChild::Note(note) => Some(convert_mei_note(note, ext_store, defaults)),
         LayerChild::Rest(rest) => Some(convert_mei_rest(rest, ext_store, defaults)),
         LayerChild::MRest(mrest) => Some(convert_mei_mrest(mrest, ext_store)),
-        LayerChild::Chord(chord) => Some(convert_mei_chord(chord, ext_store, defaults)),
+        LayerChild::Chord(chord) => Some(convert_mei_chord(chord, ext_store, defaults, suppress_chord_rep)),
         LayerChild::BTrem(btrem) => Some(convert_mei_btrem(btrem, ext_store, defaults)),
         LayerChild::Space(space) => Some(convert_mei_space(space)),
         LayerChild::MeterSig(msig) => convert_mei_meter_sig(msig),
@@ -1931,12 +1936,12 @@ fn convert_mei_inline_clef(clef: &tusk_model::elements::Clef) -> Option<Music> {
 }
 
 /// Convert a BeamChild to a LilyPond Music expression.
-fn convert_beam_child(child: &tusk_model::elements::BeamChild, ext_store: &ExtensionStore, defaults: &conversion::MeiDefaults) -> Option<Music> {
+fn convert_beam_child(child: &tusk_model::elements::BeamChild, ext_store: &ExtensionStore, defaults: &conversion::MeiDefaults, suppress_chord_rep: bool) -> Option<Music> {
     use tusk_model::elements::BeamChild;
     match child {
         BeamChild::Note(note) => Some(convert_mei_note(note, ext_store, defaults)),
         BeamChild::Rest(rest) => Some(convert_mei_rest(rest, ext_store, defaults)),
-        BeamChild::Chord(chord) => Some(convert_mei_chord(chord, ext_store, defaults)),
+        BeamChild::Chord(chord) => Some(convert_mei_chord(chord, ext_store, defaults, suppress_chord_rep)),
         BeamChild::Beam(_) => {
             // Nested beams handled by flatten_beam_children at the call site.
             None
@@ -2531,7 +2536,7 @@ fn convert_mei_btrem(btrem: &tusk_model::elements::BTrem, ext_store: &ExtensionS
         .first()
         .map(|child| match child {
             tusk_model::elements::BTremChild::Note(n) => convert_mei_note(n, ext_store, defaults),
-            tusk_model::elements::BTremChild::Chord(c) => convert_mei_chord(c, ext_store, defaults),
+            tusk_model::elements::BTremChild::Chord(c) => convert_mei_chord(c, ext_store, defaults, false),
         })
         .unwrap_or_else(|| {
             Music::Rest(crate::model::RestEvent {
@@ -2570,3 +2575,8 @@ fn append_post_events(music: &mut Music, events: &[PostEvent]) {
         _ => {}
     }
 }
+
+// ---------------------------------------------------------------------------
+// Chord-repetition safety pass
+// ---------------------------------------------------------------------------
+

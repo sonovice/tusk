@@ -21,6 +21,55 @@
   ties (`~`), producing `c4:32~` instead of `c4~:32` which caused a LilyPond
   Guile crash (`ly:item-get-column` error).
 
+### LilyPond parser
+
+- **`\partcombine` variants**: `\partcombine`, `\partcombineDown`,
+  `\partcombineUp` (and lowercase forms) now recognized as 2-argument
+  music functions, enabling correct AST representation of combined voices.
+
+### LilyPond import (LilyPond → MEI)
+
+- **Voice extraction from `<< prefix \new Voice {} >>` blocks**: polyphonic
+  staves using `\new Voice` inside `<< >>` with prefix items (clef, key, time)
+  now correctly split into separate voices instead of treating the entire block
+  as a single voice.
+- **Implicit duration resolution in polyphonic voices**: bare notes/rests in
+  multi-voice staves (e.g. `s1 s s s`) now correctly inherit the previous
+  duration for measure splitting, fixing overfull measures in fugues and
+  polyphonic pieces.
+- **`\partcombine` expansion**: `\partcombine` arguments expanded into
+  simultaneous voices for MEI import.
+- **Inline polyphony handling**: `<< { } \\ { } >>` blocks nested inside
+  sequential streams now collect only voice 0's events, preventing doubled
+  note content that caused wrong measure boundaries.
+- **Inline `\new Voice` skipping**: secondary `\new Voice { ... }` items
+  within sequential blocks are skipped during event collection when the
+  block also has primary note content.
+- **Time signature propagation**: polyphonic staves where only voice 0
+  declares `\time` now propagate the time signature to other voices.
+- **Chord repetition in multi-voice measures**: `q` (chord repetition)
+  suppressed in multi-voice measure export, preventing unresolvable `q`
+  after voice splitting.
+
+### MusicXML export (MEI → MusicXML)
+
+- **Forward-fill for empty polyphonic layers**: multi-voice measures where a
+  voice has no content now emit a `<forward>` element to preserve voice
+  presence, preventing voice numbering drift on MusicXML re-import.
+
+### MusicXML import (MusicXML → MEI)
+
+- **Voice detection from `<forward>` elements**: `<forward>` with a `<voice>`
+  tag now contributes to distinct voice detection, ensuring forward-fill
+  voices survive re-import.
+
+### Cross-format roundtrip (LilyPond → MEI → MusicXML → MEI → LilyPond)
+
+- 9 previously failing `lilypond_via_musicxml` roundtrip tests now pass
+  (BWV870 Fuga, Couperin Prelude 2/3, MWP5V, MWPPT, Ballet, Pachelbel Canon,
+  Greensleeves, Joplin Search-Light Rag).
+- 1 previously failing `lilypond_via_mei` test fixed (Sor op35 no11).
+
 ### Internal
 
 - **`source_format` on ExtensionStore**: new field tracks which format the
