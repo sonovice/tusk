@@ -275,7 +275,7 @@ fn try_split_sequential_with_simultaneous(music: &Music) -> Option<Vec<Vec<&Musi
     // aligned even when only voice 0 carries the exported \bar commands),
     // other items → first voice only
     let mut voices: Vec<Vec<&Music>> = (0..voice_count).map(|_| Vec::new()).collect();
-    for item in items {
+    for (idx, item) in items.iter().enumerate() {
         if let Music::Simultaneous(sim_items) = item {
             for (i, sim_item) in sim_items
                 .iter()
@@ -283,6 +283,22 @@ fn try_split_sequential_with_simultaneous(music: &Music) -> Option<Vec<Vec<&Musi
                 .enumerate()
             {
                 voices[i].push(sim_item);
+            }
+        } else if matches!(item, Music::MultiMeasureRest(_))
+            && (matches!(
+                idx.checked_sub(1).and_then(|prev| items.get(prev)),
+                Some(Music::MultiMeasureRest(_))
+            ) || matches!(items.get(idx + 1), Some(Music::MultiMeasureRest(_))))
+            && items[idx + 1..]
+                .iter()
+                .any(|future| matches!(future, Music::Simultaneous(_)))
+        {
+            // A run like `R R R R |` encodes four distinct measures but may
+            // only carry one trailing bar check. Duplicate those explicit
+            // measure-rest events into dormant split voices so later
+            // polyphonic entries stay aligned measure-by-measure.
+            for voice in &mut voices {
+                voice.push(item);
             }
         } else if is_export_spacer_voice_item(item) {
             // Standalone exported spacers (e.g. `c4 s4*4`) belong to the
@@ -412,6 +428,83 @@ fn is_export_measure_spacer(skip: &crate::model::note::SkipEvent) -> bool {
                 && dur.multipliers[0].1 == 1
                 && dur.multipliers[0].0 >= 2
         })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::duration::Duration;
+    use crate::model::note::{MultiMeasureRestEvent, RestEvent};
+    use crate::model::pitch::Pitch;
+
+    fn quarter_rest() -> Music {
+        Music::Rest(RestEvent {
+            duration: Some(Duration {
+                base: 4,
+                dots: 0,
+                multipliers: vec![],
+            }),
+            post_events: vec![],
+        })
+    }
+
+    fn mrest() -> Music {
+        Music::MultiMeasureRest(MultiMeasureRestEvent {
+            duration: Some(Duration {
+                base: 1,
+                dots: 0,
+                multipliers: vec![],
+            }),
+            post_events: vec![],
+        })
+    }
+
+    fn quarter_note() -> Music {
+        Music::Note(crate::model::note::NoteEvent {
+            pitch: Pitch {
+                step: 'c',
+                alter: 0.0,
+                octave: 1,
+                force_accidental: false,
+                cautionary: false,
+                octave_check: None,
+            },
+            duration: Some(Duration {
+                base: 4,
+                dots: 0,
+                multipliers: vec![],
+            }),
+            pitched_rest: false,
+            post_events: vec![],
+        })
+    }
+
+    #[test]
+    fn split_sequential_preserves_multimeasure_rest_alignment_for_dormant_voices() {
+        let music = Music::Sequential(vec![
+            Music::Simultaneous(vec![
+                Music::Sequential(vec![quarter_note()]),
+                Music::Sequential(vec![quarter_rest()]),
+            ]),
+            mrest(),
+            mrest(),
+            mrest(),
+            mrest(),
+            Music::BarCheck,
+            Music::Simultaneous(vec![
+                Music::Sequential(vec![quarter_note()]),
+                Music::Sequential(vec![quarter_note()]),
+            ]),
+        ]);
+
+        let voices = extract_voices(&music);
+        assert_eq!(voices.len(), 2);
+        let secondary_mrests = voices[1]
+            .iter()
+            .filter(|item| matches!(item, Music::MultiMeasureRest(_)))
+            .count();
+        assert_eq!(secondary_mrests, 4);
+    }
 }
 
 /// Check if a voice's music items are "bare" (no pitch context wrappers).

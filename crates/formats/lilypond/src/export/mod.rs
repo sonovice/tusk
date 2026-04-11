@@ -42,7 +42,8 @@ mod tests_variables;
 use std::collections::HashMap;
 use thiserror::Error;
 use tusk_model::elements::{
-    LayerChild, MeasureChild, Mei, MeiChild, ScoreChild, ScoreDefChild, SectionChild, StaffGrpChild,
+    BeamChild, LayerChild, MeasureChild, Mei, MeiChild, ScoreChild, ScoreDefChild, SectionChild,
+    StaffGrpChild,
 };
 use tusk_model::extensions::ExtensionStore;
 use tusk_model::{ToplevelMarkup, ToplevelMarkupKind};
@@ -270,11 +271,26 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                                 let mut items = Vec::new();
                                 let mut item_ids = Vec::new();
                                 let mut gt_pos = 0;
+                                let mut active_context_change = staff_metas
+                                    .get(all_staves.len())
+                                    .and_then(|meta| {
+                                        meta.name
+                                            .as_ref()
+                                            .map(|name| ("Staff".to_string(), name.clone()))
+                                    });
                                 for lc in &layer.children {
                                     let start = items.len();
-                                    convert_layer_child_to_items(lc, &post_event_map, &mut items, ext_store, &mei_defaults, suppress_chord_rep);
+                                    convert_layer_child_to_items(
+                                        lc,
+                                        &post_event_map,
+                                        &mut items,
+                                        &mut item_ids,
+                                        ext_store,
+                                        &mei_defaults,
+                                        suppress_chord_rep,
+                                        &mut active_context_change,
+                                    );
                                     let count = items.len() - start;
-                                    collect_layer_child_ids(lc, &mut item_ids, count);
                                     // Align grace_types: insert None for extra items
                                     // (e.g. \change Staff) not accounted for by collect_grace_types
                                     let gt_count = match lc {
@@ -359,7 +375,7 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                                 if needs_partial {
                                     inject_partial(&mut measure_items);
                                 }
-                                let nc = signatures::total_note_count(&measure_items);
+                                let nc = event_sequence_position_count(&measure_items);
                                 staff_note_offsets.push(nc);
                                 staff_last_measure_was_pure_mrest
                                     .push(is_pure_mrest_measure(&measure_items));
@@ -373,7 +389,7 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                                 if is_pickup {
                                     inject_partial(&mut measure_items);
                                 }
-                                let nc = signatures::total_note_count(&measure_items);
+                                let nc = event_sequence_position_count(&measure_items);
                                 staff_note_offsets.push(nc);
                                 staff_last_measure_was_pure_mrest
                                     .push(is_pure_mrest_measure(&measure_items));
@@ -404,7 +420,7 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                             if let Some(seq) = event_sequences.get(staff_idx) {
                                 let offset = staff_note_offsets[staff_idx];
                                 signatures::inject_measure_signature_events(&mut measure_items, seq, offset);
-                                staff_note_offsets[staff_idx] += signatures::total_note_count(&measure_items);
+                                staff_note_offsets[staff_idx] += event_sequence_position_count(&measure_items);
                             }
                             // Reset measure position before \time changes to
                             // prevent "mid-measure time signature" warnings
@@ -1313,13 +1329,17 @@ fn flatten_measure_layers(
             if is_rest_only_layer(&content) {
                 let mut content = promote_lone_rest_to_mmrest(content);
                 if !is_pure_mrest_measure(&content) {
-                    if let Some(s) = spacer {
+                    if let Some(s) = spacer
+                        && should_append_spacer(&content, &s)
+                    {
                         content.push(s);
                     }
                 }
                 content
             } else {
-                if let Some(s) = spacer {
+                if let Some(s) = spacer
+                    && should_append_spacer(&content, &s)
+                {
                     content.push(s);
                 }
                 content
@@ -1457,7 +1477,9 @@ fn collapse_skip_only_companion_layers(layers: &[Vec<Music>], spacer: Option<Mus
     }
     collapsed.extend(suffix);
 
-    if let Some(spacer) = spacer {
+    if let Some(spacer) = spacer
+        && should_append_spacer(&collapsed, &spacer)
+    {
         strip_trailing_skips(&mut collapsed);
         collapsed.push(spacer);
     }
@@ -1533,6 +1555,19 @@ fn is_skip_only_layer(items: &[Music]) -> bool {
     items.iter().all(|m| matches!(m, Music::Skip(_)) || is_skip_only_marker(m))
 }
 
+fn event_sequence_position_count(items: &[Music]) -> u32 {
+    let note_count = signatures::total_note_count(items);
+    if note_count > 0 {
+        return note_count;
+    }
+
+    if items.iter().any(|m| matches!(m, Music::Skip(_))) {
+        1
+    } else {
+        0
+    }
+}
+
 fn is_skip_only_marker(music: &Music) -> bool {
     matches!(
         music,
@@ -1582,6 +1617,16 @@ fn is_leading_companion_item(music: &Music) -> bool {
 
 fn is_pure_mrest_measure(items: &[Music]) -> bool {
     !items.is_empty() && items.iter().all(|m| matches!(m, Music::MultiMeasureRest(_)))
+}
+
+fn should_append_spacer(items: &[Music], spacer: &Music) -> bool {
+    let Music::Skip(skip) = spacer else {
+        return true;
+    };
+    let Some(duration) = &skip.duration else {
+        return true;
+    };
+    sum_quarters(items) + 0.001 < duration.quarters()
 }
 
 fn strip_trailing_skips(items: &mut Vec<Music>) -> bool {
@@ -1833,32 +1878,6 @@ fn collect_tuplet_spans(measure_children: &[MeasureChild], ext_store: &Extension
     spans
 }
 
-/// Collect xml:ids from a LayerChild in the same order as convert_layer_child_to_items
-/// produces items.
-fn collect_layer_child_ids(child: &LayerChild, ids: &mut Vec<Option<String>>, count: usize) {
-    match child {
-        LayerChild::Beam(beam) => {
-            for bc in &beam.children {
-                // Only push ID if convert_beam_child would produce an item.
-                // Nested beams with >1 child return None, so skip them.
-                if beam_child_produces_item(bc) {
-                    ids.push(beam_child_xml_id(bc).map(String::from));
-                }
-            }
-        }
-        _ => {
-            // Push None for any extra items (e.g. context changes) injected
-            // before the note by convert_layer_child_to_items.
-            for _ in 1..count {
-                ids.push(None);
-            }
-            if count > 0 {
-                ids.push(layer_child_xml_id(child).map(String::from));
-            }
-        }
-    }
-}
-
 /// Apply tuplet wrapping to a list of Music items using tuplet span info.
 ///
 /// For each tuplet span, finds the start and end indices in the items list
@@ -2033,14 +2052,22 @@ fn convert_layer_child_to_items(
     child: &LayerChild,
     slur_map: &HashMap<String, Vec<PostEvent>>,
     items: &mut Vec<Music>,
+    item_ids: &mut Vec<Option<String>>,
     ext_store: &ExtensionStore,
     defaults: &conversion::MeiDefaults,
     suppress_chord_rep: bool,
+    active_context_change: &mut Option<(String, String)>,
 ) {
     match child {
         LayerChild::Beam(beam) => {
             let count = beam.children.len();
             for (i, bc) in beam.children.iter().enumerate() {
+                if let Some(change) =
+                    extract_context_change_for_beam_child(bc, ext_store, active_context_change)
+                {
+                    items.push(change);
+                    item_ids.push(None);
+                }
                 if let Some(mut m) = convert_beam_child(bc, ext_store, defaults, suppress_chord_rep) {
                     // Apply slur post-events by xml:id (including chord child notes)
                     let events = collect_post_events_for_beam_child(bc, slur_map);
@@ -2055,13 +2082,15 @@ fn convert_layer_child_to_items(
                         append_post_events(&mut m, &[PostEvent::BeamEnd]);
                     }
                     items.push(m);
+                    item_ids.push(beam_child_xml_id(bc).map(String::from));
                 }
             }
         }
         _ => {
             // Inject \change before notes with context-change ext
-            if let Some(change) = extract_context_change(child, ext_store) {
+            if let Some(change) = extract_context_change(child, ext_store, active_context_change) {
                 items.push(change);
+                item_ids.push(None);
             }
             if let Some(mut m) = convert_layer_child(child, ext_store, defaults, suppress_chord_rep) {
                 let events = collect_post_events_for_layer_child(child, slur_map);
@@ -2069,13 +2098,18 @@ fn convert_layer_child_to_items(
                     append_post_events(&mut m, &events);
                 }
                 items.push(m);
+                item_ids.push(layer_child_xml_id(child).map(String::from));
             }
         }
     }
 }
 
 /// Extract a `\change` context change from a LayerChild via ext_store.
-fn extract_context_change(child: &LayerChild, ext_store: &ExtensionStore) -> Option<Music> {
+fn extract_context_change(
+    child: &LayerChild,
+    ext_store: &ExtensionStore,
+    active_context_change: &mut Option<(String, String)>,
+) -> Option<Music> {
     let id = match child {
         LayerChild::Note(n) => n.common.xml_id.as_deref()?,
         LayerChild::Rest(r) => r.common.xml_id.as_deref()?,
@@ -2083,9 +2117,37 @@ fn extract_context_change(child: &LayerChild, ext_store: &ExtensionStore) -> Opt
         _ => return None,
     };
     let cc = ext_store.context_change(id)?;
+    let next = (cc.context_type.clone(), cc.name.clone());
+    if active_context_change.as_ref() == Some(&next) {
+        return None;
+    }
+    *active_context_change = Some(next.clone());
     Some(Music::ContextChange {
-        context_type: cc.context_type.clone(),
-        name: cc.name.clone(),
+        context_type: next.0,
+        name: next.1,
+    })
+}
+
+fn extract_context_change_for_beam_child(
+    child: &BeamChild,
+    ext_store: &ExtensionStore,
+    active_context_change: &mut Option<(String, String)>,
+) -> Option<Music> {
+    let id = match child {
+        BeamChild::Note(n) => n.common.xml_id.as_deref()?,
+        BeamChild::Rest(r) => r.common.xml_id.as_deref()?,
+        BeamChild::Chord(c) => c.common.xml_id.as_deref()?,
+        _ => return None,
+    };
+    let cc = ext_store.context_change(id)?;
+    let next = (cc.context_type.clone(), cc.name.clone());
+    if active_context_change.as_ref() == Some(&next) {
+        return None;
+    }
+    *active_context_change = Some(next.clone());
+    Some(Music::ContextChange {
+        context_type: next.0,
+        name: next.1,
     })
 }
 

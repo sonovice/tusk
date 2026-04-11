@@ -215,6 +215,40 @@ fn flatten_measure_layers_keeps_spacer_for_rest_only_measure() {
 }
 
 #[test]
+fn flatten_measure_layers_omits_spacer_for_full_single_layer_measure() {
+    let layers = vec![vec![Music::Note(crate::model::note::NoteEvent {
+        pitch: crate::model::Pitch {
+            step: 'c',
+            alter: 0.0,
+            octave: 1,
+            cautionary: false,
+            force_accidental: false,
+            octave_check: None,
+        },
+        duration: Some(crate::model::Duration {
+            base: 1,
+            dots: 0,
+            multipliers: vec![],
+        }),
+        pitched_rest: false,
+        post_events: vec![],
+    })]];
+    let spacer = Some(Music::Skip(crate::model::note::SkipEvent {
+        duration: Some(crate::model::Duration {
+            base: 4,
+            dots: 0,
+            multipliers: vec![(4, 1)],
+        }),
+        post_events: vec![],
+    }));
+
+    let output = flatten_measure_layers(layers, true, spacer);
+
+    assert_eq!(output.len(), 1, "output: {output:?}");
+    assert!(matches!(output[0], Music::Note(_)), "output: {output:?}");
+}
+
+#[test]
 fn flatten_measure_layers_collapses_skip_only_voice_companion() {
     let layers = vec![
         vec![Music::Note(crate::model::note::NoteEvent {

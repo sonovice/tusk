@@ -1190,7 +1190,7 @@ pub fn convert_mei_mrest(
     mei_mrest: &tusk_model::elements::MRest,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<crate::model::note::Note> {
-    use crate::model::note::{Note as MxmlNote, Rest as MxmlRest};
+    use crate::model::note::{Dot, Note as MxmlNote, NoteType, Rest as MxmlRest};
 
     // Calculate duration from MEI mRest attributes
     let duration = calculate_mei_mrest_duration(mei_mrest, ctx);
@@ -1207,7 +1207,15 @@ pub fn convert_mei_mrest(
         ctx.map_id(xml_id, xml_id.clone());
     }
 
-    // Measure rests typically don't have a note type in MusicXML
+    if let Some(ref xml_id) = mei_mrest.common.xml_id
+        && let Some(info) = ctx.ext_store().mrest_info(xml_id)
+        && let Some(note_type) = mrest_info_note_type(info)
+    {
+        mxml_note.note_type = Some(NoteType::new(note_type));
+        for _ in 0..info.dots {
+            mxml_note.dots.push(Dot::default());
+        }
+    }
 
     Ok(mxml_note)
 }
@@ -1217,6 +1225,13 @@ fn calculate_mei_mrest_duration(
     mei_mrest: &tusk_model::elements::MRest,
     ctx: &ConversionContext,
 ) -> f64 {
+    if let Some(ref xml_id) = mei_mrest.common.xml_id
+        && let Some(info) = ctx.ext_store().mrest_info(xml_id)
+        && let Some(quarters) = mrest_info_quarter_notes(info)
+    {
+        return quarters * ctx.divisions();
+    }
+
     // First check if we have gestural duration in ppq (most accurate); MEI @dur.ppq is Option<String>
     if let Some(ref dur_ppq) = mei_mrest.m_rest_ges.dur_ppq {
         if let Ok(n) = dur_ppq.parse::<f64>() {
@@ -1233,6 +1248,44 @@ fn calculate_mei_mrest_duration(
     } else {
         4.0
     }
+}
+
+fn mrest_info_note_type(
+    info: &tusk_model::MultiMeasureRestInfo,
+) -> Option<crate::model::note::NoteTypeValue> {
+    use crate::model::note::NoteTypeValue;
+
+    Some(match info.base {
+        1 => NoteTypeValue::Whole,
+        2 => NoteTypeValue::Half,
+        4 => NoteTypeValue::Quarter,
+        8 => NoteTypeValue::Eighth,
+        16 => NoteTypeValue::N16th,
+        32 => NoteTypeValue::N32nd,
+        64 => NoteTypeValue::N64th,
+        128 => NoteTypeValue::N128th,
+        256 => NoteTypeValue::N256th,
+        512 => NoteTypeValue::N512th,
+        1024 => NoteTypeValue::N1024th,
+        _ => return None,
+    })
+}
+
+fn mrest_info_quarter_notes(info: &tusk_model::MultiMeasureRestInfo) -> Option<f64> {
+    if info.base == 0 {
+        return None;
+    }
+
+    let mut quarters = 4.0 / info.base as f64;
+    quarters = apply_dots(quarters, info.dots.into());
+    for (num, den) in &info.multipliers {
+        if *den == 0 {
+            return None;
+        }
+        quarters *= *num as f64 / *den as f64;
+    }
+
+    Some(quarters)
 }
 
 // ============================================================================

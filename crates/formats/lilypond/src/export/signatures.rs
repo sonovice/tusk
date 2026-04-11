@@ -300,6 +300,7 @@ pub(super) fn inject_signature_events(items: &mut Vec<Music>, events: &[Signatur
     // Rebuild layer with injected events, using note_count for positions
     let mut new_items = Vec::new();
     let mut pending_zero = inserts.remove(&0).unwrap_or_default();
+    dedupe_existing_leading_zero_events(items, &mut pending_zero);
     let mut inserted_zero = pending_zero.is_empty();
     let mut note_idx: u32 = 0;
     for item in items.drain(..) {
@@ -330,6 +331,21 @@ pub(super) fn inject_signature_events(items: &mut Vec<Music>, events: &[Signatur
     // measure's note range). They're already represented in those
     // measures' MEI layers, so discard them here.
     *items = new_items;
+}
+
+fn dedupe_existing_leading_zero_events(items: &[Music], pending_zero: &mut Vec<Music>) {
+    if pending_zero.is_empty() {
+        return;
+    }
+
+    for item in items {
+        if note_count(item) > 0 {
+            break;
+        }
+        if let Some(pos) = pending_zero.iter().position(|candidate| candidate == item) {
+            pending_zero.remove(pos);
+        }
+    }
 }
 
 fn should_stay_before_initial_signatures(item: &Music) -> bool {

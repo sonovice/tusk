@@ -373,6 +373,11 @@ pub fn convert_measure_rest(
     };
     mei_mrest.common.xml_id = Some(mrest_id);
 
+    if let Some(info) = measure_rest_info_from_note(note, ctx) {
+        let id = mei_mrest.common.xml_id.clone().unwrap_or_default();
+        ctx.ext_store_mut().insert_mrest_info(id, info);
+    }
+
     if let Some(duration) = note.duration {
         mei_mrest.m_rest_ges.dur_ppq = Some((duration as u64).to_string());
     }
@@ -382,6 +387,86 @@ pub fn convert_measure_rest(
     }
 
     Ok(mei_mrest)
+}
+
+fn measure_rest_info_from_note(
+    note: &crate::model::note::Note,
+    ctx: &ConversionContext,
+) -> Option<tusk_model::MultiMeasureRestInfo> {
+    use crate::model::note::NoteTypeValue;
+
+    let note_type = note.note_type.as_ref()?;
+    let base = match note_type.value {
+        NoteTypeValue::Maxima => 0,
+        NoteTypeValue::Long => 0,
+        NoteTypeValue::Breve => 0,
+        NoteTypeValue::Whole => 1,
+        NoteTypeValue::Half => 2,
+        NoteTypeValue::Quarter => 4,
+        NoteTypeValue::Eighth => 8,
+        NoteTypeValue::N16th => 16,
+        NoteTypeValue::N32nd => 32,
+        NoteTypeValue::N64th => 64,
+        NoteTypeValue::N128th => 128,
+        NoteTypeValue::N256th => 256,
+        NoteTypeValue::N512th => 512,
+        NoteTypeValue::N1024th => 1024,
+    };
+    let dots = note.dots.len() as u8;
+
+    if base == 0 {
+        return None;
+    }
+
+    let multipliers = note
+        .duration
+        .and_then(|duration| infer_measure_rest_multiplier(duration, note_type.value, dots as u32, ctx))
+        .into_iter()
+        .collect();
+
+    Some(tusk_model::MultiMeasureRestInfo {
+        base,
+        dots,
+        multipliers,
+    })
+}
+
+fn infer_measure_rest_multiplier(
+    duration: f64,
+    note_type: crate::model::note::NoteTypeValue,
+    dots: u32,
+    ctx: &ConversionContext,
+) -> Option<(u32, u32)> {
+    let written_duration = ctx.duration_context().duration_for_type(note_type, dots);
+    if written_duration <= 0.0 {
+        return None;
+    }
+
+    let ratio = duration / written_duration;
+    if (ratio - 1.0).abs() < 1e-6 {
+        return None;
+    }
+
+    for den in 1..=32u32 {
+        let num = ratio * den as f64;
+        let rounded = num.round();
+        if (num - rounded).abs() < 1e-6 && rounded >= 1.0 {
+            let num = rounded as u32;
+            let gcd = gcd_u32(num, den);
+            return Some((num / gcd, den / gcd));
+        }
+    }
+
+    None
+}
+
+fn gcd_u32(mut a: u32, mut b: u32) -> u32 {
+    while b != 0 {
+        let r = a % b;
+        a = b;
+        b = r;
+    }
+    a
 }
 
 /// Check if a MusicXML rest is a whole-measure rest.
@@ -2996,6 +3081,30 @@ mod tests {
 
         let mei_mrest = convert_measure_rest(&note, &mut ctx).expect("conversion should succeed");
         assert_eq!(mei_mrest.m_rest_log.cue, Some(DataBoolean::True));
+    }
+
+    #[test]
+    fn convert_measure_rest_stores_lilypond_duration_info() {
+        use crate::model::data::YesNo;
+        use crate::model::note::{Note, NoteType, NoteTypeValue, Rest};
+
+        let mut rest = Rest::new();
+        rest.measure = Some(YesNo::Yes);
+        let mut note = Note::rest(rest, 48.0);
+        note.note_type = Some(NoteType::new(NoteTypeValue::Eighth));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        ctx.set_divisions(4.0);
+
+        let mei_mrest = convert_measure_rest(&note, &mut ctx).expect("conversion should succeed");
+        let info = ctx
+            .ext_store()
+            .mrest_info(mei_mrest.common.xml_id.as_ref().unwrap())
+            .expect("mrest info should be stored");
+
+        assert_eq!(info.base, 8);
+        assert_eq!(info.dots, 0);
+        assert_eq!(info.multipliers, vec![(24, 1)]);
     }
 
     // ============================================================================

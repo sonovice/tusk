@@ -28,6 +28,42 @@
 - **Leading control-event ordering stabilized**: initial `skipTypesetting` and
   similar control items now stay ahead of injected clef/key/time signatures,
   while `skipBars` remains after them.
+- **Full-measure spacer emission tightened**: MusicXML-origin single-layer
+  measures that already fill the bar no longer get an extra trailing spacer.
+  This fixes `musicxml_via_lilypond` instability where simple files gained an
+  extra empty `<forward>` measure on the second pass.
+
+### LilyPond import (LilyPond → MEI)
+
+- **Dormant repeated measure rests aligned only when needed**: runs of `R R …`
+  now duplicate into split voices only when a later simultaneous voice entry
+  requires that alignment, avoiding later voice drift without manufacturing
+  fake trailing polyphony.
+- **Cross-staff overrides reset per measure**: `\change Staff` state no longer
+  leaks across resolved measure boundaries on re-import, fixing cross-staff
+  regressions in glissando, slur, and voice-follower cases.
+
+### MusicXML export (MEI → MusicXML)
+
+- **Cross-staff item/id tracking fixed**: inserted LilyPond context changes now
+  keep item positions and xml:id tracking aligned during export, which
+  stabilizes cross-staff tuplets and related beam-wrapped content.
+- **Multi-measure rest metadata restored**: stored LilyPond duration metadata
+  for MEI `<mRest>` now roundtrips back into MusicXML note-type, dot, and
+  duration values instead of collapsing to underspecified measure rests.
+
+### MusicXML import (MusicXML → MEI)
+
+- **Measure-rest duration metadata retained**: imported MusicXML measure rests
+  now store LilyPond-oriented duration details in the extension store so the
+  MusicXML/LilyPond pipelines can reconstruct exact rest spelling.
+
+### Cross-format roundtrip stabilization
+
+- `cargo test --workspace` is green again.
+- LilyPond, MusicXML, and MEI cross-format suites now stabilize for the full
+  workspace, including the previously failing `musicxml_via_lilypond`,
+  `lilypond_via_mei`, `lilypond_via_musicxml`, and `mei_via_lilypond` cases.
 
 ## [1.3.3] — 2026-04-10
 

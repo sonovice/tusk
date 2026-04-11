@@ -32,6 +32,18 @@ pub(super) fn split_events_into_measures_resolved(events: Vec<LyEvent>) -> Vec<M
 }
 
 fn split_events_impl(events: Vec<LyEvent>, resolve_durations: bool) -> Vec<MeasureGroup> {
+    let future_has_duration: Vec<bool> = {
+        let mut future = vec![false; events.len()];
+        let mut seen = false;
+        for (idx, event) in events.iter().enumerate().rev() {
+            future[idx] = seen;
+            if has_duration(event) {
+                seen = true;
+            }
+        }
+        future
+    };
+
     // Pre-scan: detect if BarChecks separate multi-measure content. If so,
     // trust them as the authoritative measure boundaries and disable
     // duration-based splitting (which can create spurious splits when note
@@ -64,7 +76,7 @@ fn split_events_impl(events: Vec<LyEvent>, resolve_durations: bool) -> Vec<Measu
     // `\bar "|"` should attach to that measure, not create a phantom empty one.
     let mut just_closed_measure_rest = false;
 
-    for event in events {
+    for (event_idx, event) in events.into_iter().enumerate() {
         match &event {
             LyEvent::TimeSig(ts) => {
                 just_closed_measure_rest = false;
@@ -104,10 +116,10 @@ fn split_events_impl(events: Vec<LyEvent>, resolve_durations: bool) -> Vec<Measu
                 current_events.push(event);
             }
             LyEvent::BarCheck => {
-                just_closed_measure_rest = false;
                 // Bar check = author-confirmed measure boundary.
                 // Force split regardless of accumulated duration.
                 if !current_events.is_empty() {
+                    just_closed_measure_rest = false;
                     // If current events are only control events (no notes/rests),
                     // merge into previous measure instead of creating a tiny one
                     // (e.g. trailing \clef after a MeasureRest)
@@ -129,7 +141,9 @@ fn split_events_impl(events: Vec<LyEvent>, resolve_durations: bool) -> Vec<Measu
                         events: Vec::new(),
                         end_barline: current_barline.take(),
                     });
-                } else if resolve_durations {
+                } else if just_closed_measure_rest {
+                    just_closed_measure_rest = false;
+                } else if resolve_durations && future_has_duration[event_idx] {
                     // Split polyphonic exporter output can have flat measures
                     // carried only by voice 0 between later secondary-voice
                     // entries. Preserve those empty resolved measures here so
@@ -159,7 +173,7 @@ fn split_events_impl(events: Vec<LyEvent>, resolve_durations: bool) -> Vec<Measu
                         measures.last_mut().unwrap().end_barline = current_barline.take();
                     }
                     just_closed_measure_rest = false;
-                } else if resolve_durations && bar_type == "|" {
+                } else if resolve_durations && bar_type == "|" && future_has_duration[event_idx] {
                     // Split polyphonic exporter output must preserve empty
                     // measures in dormant voices, or later voice content
                     // slides earlier on re-import.
@@ -336,6 +350,14 @@ fn split_events_impl(events: Vec<LyEvent>, resolve_durations: bool) -> Vec<Measu
                 end_barline: current_barline,
             });
         }
+    }
+
+    while measures.len() > 1
+        && measures
+            .last()
+            .is_some_and(|group| group.events.is_empty() && group.end_barline.is_none())
+    {
+        measures.pop();
     }
 
     if measures.is_empty() {

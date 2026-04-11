@@ -23,6 +23,7 @@ pub(super) fn build_event_sequence(
     let mut note_index = 0u32;
     let mut measure_start_note_index = 0u32;
     let mut seen_note_in_measure = false;
+    let mut seen_position_anchor_in_measure = false;
     let mut positioned = Vec::new();
 
     for event in events {
@@ -100,13 +101,21 @@ pub(super) fn build_event_sequence(
             // and the export generates bar checks between measures.
             // Don't store them in the event sequence.
             LyEvent::BarCheck | LyEvent::BarLine(_) => {
+                if !seen_note_in_measure && seen_position_anchor_in_measure {
+                    note_index += 1;
+                }
                 measure_start_note_index = note_index;
                 seen_note_in_measure = false;
+                seen_position_anchor_in_measure = false;
             }
 
             LyEvent::Markup(serialized) => {
                 positioned.push(PositionedEvent {
-                    position: note_index,
+                    position: if seen_note_in_measure {
+                        note_index
+                    } else {
+                        measure_start_note_index
+                    },
                     event: ControlEvent::Markup {
                         serialized: serialized.clone(),
                     },
@@ -114,7 +123,11 @@ pub(super) fn build_event_sequence(
             }
             LyEvent::MarkupList(serialized) => {
                 positioned.push(PositionedEvent {
-                    position: note_index,
+                    position: if seen_note_in_measure {
+                        note_index
+                    } else {
+                        measure_start_note_index
+                    },
                     event: ControlEvent::MarkupList {
                         serialized: serialized.clone(),
                     },
@@ -122,7 +135,11 @@ pub(super) fn build_event_sequence(
             }
             LyEvent::Tempo(serialized) => {
                 positioned.push(PositionedEvent {
-                    position: note_index,
+                    position: if seen_note_in_measure {
+                        note_index
+                    } else {
+                        measure_start_note_index
+                    },
                     event: ControlEvent::Tempo {
                         serialized: serialized.clone(),
                     },
@@ -130,7 +147,11 @@ pub(super) fn build_event_sequence(
             }
             LyEvent::Mark(serialized) => {
                 positioned.push(PositionedEvent {
-                    position: note_index,
+                    position: if seen_note_in_measure {
+                        note_index
+                    } else {
+                        measure_start_note_index
+                    },
                     event: ControlEvent::Mark {
                         serialized: serialized.clone(),
                     },
@@ -138,7 +159,11 @@ pub(super) fn build_event_sequence(
             }
             LyEvent::TextMark(serialized) => {
                 positioned.push(PositionedEvent {
-                    position: note_index,
+                    position: if seen_note_in_measure {
+                        note_index
+                    } else {
+                        measure_start_note_index
+                    },
                     event: ControlEvent::TextMark {
                         serialized: serialized.clone(),
                     },
@@ -153,9 +178,12 @@ pub(super) fn build_event_sequence(
             | LyEvent::DrumChordEvent(_) => {
                 note_index += 1;
                 seen_note_in_measure = true;
+                seen_position_anchor_in_measure = true;
             }
-            LyEvent::Skip(_)
-            | LyEvent::TupletStart { .. }
+            LyEvent::Skip(_) => {
+                seen_position_anchor_in_measure = true;
+            }
+            LyEvent::TupletStart { .. }
             | LyEvent::TupletEnd
             | LyEvent::GraceStart(_)
             | LyEvent::GraceEnd

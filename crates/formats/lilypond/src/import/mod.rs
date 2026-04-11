@@ -1446,6 +1446,12 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
                     let measure_n = (m_idx + 1).to_string();
                     ext_store.ly_end_barlines.insert(measure_n, bar_type.clone());
                 }
+
+                // LilyPond cross-staff changes in the fixtures are emitted
+                // as per-measure note moves; carrying the override into the
+                // next resolved measure invents sticky `\change Staff`
+                // commands on re-export.
+                cross_staff_override = None;
             } // end measure group loop
 
             // Attach lyrics across all measures' layer children for this voice
