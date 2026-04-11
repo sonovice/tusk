@@ -148,15 +148,16 @@ fn reconstruct_initial_signatures(
         });
     }
 
-    // Key
-    if let Some(ref keysig) = staff_def.staff_def_log.keysig
-        && let Ok(fifths) = keysig.0.parse::<i32>()
-    {
-        let (pitch, mode) = crate::import::fifths_to_key(fifths);
-        events.push(SignatureEvent {
-            position: 0,
-            music: Music::KeySignature(KeySignature { pitch, mode }),
-        });
+    // Key — MEI keysig is e.g. "3f" (3 flats), "2s" (2 sharps), or "0" (C major)
+    if let Some(ref keysig) = staff_def.staff_def_log.keysig {
+        let fifths = parse_keysig_to_fifths(&keysig.0);
+        if let Some(fifths) = fifths {
+            let (pitch, mode) = crate::import::fifths_to_key(fifths);
+            events.push(SignatureEvent {
+                position: 0,
+                music: Music::KeySignature(KeySignature { pitch, mode }),
+            });
+        }
     }
 
     // Meter
@@ -449,6 +450,30 @@ fn parse_textmark_from_label(s: &str) -> Option<crate::model::signature::TextMar
         }
         if let crate::model::ToplevelExpression::Music(Music::TextMark(tm)) = item {
             return Some(tm.clone());
+        }
+    }
+    None
+}
+
+/// Parse an MEI keysig attribute to a circle-of-fifths integer.
+///
+/// MEI uses formats like "3f" (3 flats = -3), "2s" (2 sharps = +2), "0" (C major).
+/// Also accepts plain integers for backward compatibility.
+fn parse_keysig_to_fifths(keysig: &str) -> Option<i32> {
+    let s = keysig.trim();
+    // Plain integer: "0", "-3", "2"
+    if let Ok(n) = s.parse::<i32>() {
+        return Some(n);
+    }
+    // MEI format: "3f", "2s", etc.
+    if s.len() >= 2 {
+        let (num_part, suffix) = s.split_at(s.len() - 1);
+        if let Ok(n) = num_part.parse::<i32>() {
+            return match suffix {
+                "f" => Some(-n),
+                "s" => Some(n),
+                _ => None,
+            };
         }
     }
     None

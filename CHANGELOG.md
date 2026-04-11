@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.3.6] — 2026-04-11
+
+### LilyPond export (MEI → LilyPond)
+
+- **MEI keysig attribute parsed correctly**: the `@keysig` attribute on MEI
+  `<staffDef>` elements uses the format `Nf`/`Ns` (e.g. `3f` for 3 flats,
+  `2s` for 2 sharps).  Previously this was parsed as a plain integer which
+  silently failed, causing `\key` commands to be omitted from the LilyPond
+  output.  Key signatures now render correctly for all MEI-origin scores.
+
 ## [1.3.5] — 2026-04-11
 
 ### MusicXML import (MusicXML → MEI)
