@@ -262,6 +262,7 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                     collect_artic_post_events(&measure.children, &mut post_event_map, ext_store);
                     collect_ornament_post_events(&measure.children, &mut post_event_map, ext_store);
                     collect_text_script_post_events(&measure.children, &mut post_event_map, ext_store);
+                    collect_pedal_post_events(&measure.children, &mut post_event_map);
 
                     let property_ops = collect_property_ops(&measure.children, ext_store);
                     let mut function_ops = collect_function_ops(&measure.children, ext_store);
@@ -356,8 +357,10 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                     let is_pickup = measure.measure_log.metcon.as_ref()
                         == Some(&tusk_model::data::DataBoolean::False);
 
-                    // Build spacer for MusicXML content to enforce measure duration
-                    let spacer = if add_spacer {
+                    // Build spacer for MusicXML content to enforce measure duration.
+                    // Pickup measures skip the spacer — they're intentionally shorter
+                    // than the time signature and the spacer would inflate \partial.
+                    let spacer = if add_spacer && !is_pickup {
                         Some(make_measure_spacer(&current_time_num, current_time_den))
                     } else {
                         None
@@ -1999,9 +2002,9 @@ use figured_bass::{FiguredBassMeta, collect_figure_mode_fbs, extract_figured_bas
 
 mod operations;
 use operations::{
-    InsertionLog, collect_function_ops, collect_property_ops, collect_scheme_music_ops,
-    collect_semantic_function_ops, inject_function_ops, inject_property_ops,
-    inject_scheme_music_ops,
+    InsertionLog, collect_function_ops, collect_pedal_post_events, collect_property_ops,
+    collect_scheme_music_ops, collect_semantic_function_ops, inject_function_ops,
+    inject_property_ops, inject_scheme_music_ops,
 };
 
 /// Apply an insertion log to a parallel array, inserting `None` at the logged positions.

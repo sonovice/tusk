@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.3.8] — 2026-04-12
+
+### LilyPond export (MEI → LilyPond)
+
+- **Pedal tstamp→note resolution**: MusicXML pedal directions that only
+  carry `@tstamp` (no `@startid`) are now resolved to the nearest note at
+  that beat position, emitting correct `\sustainOn`/`\sustainOff` etc.
+  Previously these were silently dropped because the LilyPond export
+  required `@startid` which MusicXML direction imports never set.
+- **Pedal as post-event**: pedal commands are now emitted as post-events on
+  notes (`c4\sustainOn`) instead of pre-note functions (`\sustainOn c4`),
+  matching LilyPond semantics and eliminating "Unattached SustainEvent"
+  warnings.
+- **Pickup partial duration excludes spacer**: `\partial` duration in pickup
+  measures no longer includes the spacer voice, fixing `\partial 1` → correct
+  `\partial 4` (or appropriate duration) for anacrusis bars.
+- **Grace notes excluded from tstamp map**: grace notes no longer participate
+  in tstamp→note resolution, preventing pedal/ottava events from attaching
+  to grace notes instead of the main note at that beat.
+
 ## [1.3.7] — 2026-04-11
 
 ### MusicXML import (MusicXML → MEI)

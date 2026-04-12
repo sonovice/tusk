@@ -116,20 +116,75 @@ pub(super) fn collect_function_ops(measure_children: &[MeasureChild], ext_store:
 }
 
 /// Collect semantic LilyPond function ops from native MEI control events.
+///
+/// Uses a tstamp→note_id map as fallback when control events lack @startid
+/// (common for MusicXML-originated octave-shift directions).
 pub(super) fn collect_semantic_function_ops(measure_children: &[MeasureChild]) -> Vec<FunctionOpInfo> {
     let mut ops = Vec::new();
     for mc in measure_children {
-        match mc {
-            MeasureChild::Octave(octave) => ops.extend(octave_to_function_ops(octave)),
-            MeasureChild::Pedal(pedal) => {
-                if let Some(op) = pedal_to_function_op(pedal) {
-                    ops.push(op);
-                }
-            }
-            _ => {}
+        if let MeasureChild::Octave(octave) = mc {
+            ops.extend(octave_to_function_ops(octave));
         }
     }
     ops
+}
+
+/// Collect pedal control events into the post-event map.
+///
+/// Pedal commands (`\sustainOn`, `\sustainOff`, etc.) are post-events in LilyPond
+/// (attached after the note), not pre-note functions. Uses tstamp→note_id
+/// resolution as fallback when @startid is missing (MusicXML origin).
+pub(super) fn collect_pedal_post_events(
+    measure_children: &[MeasureChild],
+    map: &mut HashMap<String, Vec<crate::model::note::PostEvent>>,
+) {
+    let tstamp_map = build_tstamp_id_map(measure_children);
+    for mc in measure_children {
+        if let MeasureChild::Pedal(pedal) = mc {
+            if let Some((id, name)) = resolve_pedal_target(pedal, &tstamp_map) {
+                map.entry(id)
+                    .or_default()
+                    .push(crate::model::note::PostEvent::NamedArticulation {
+                        direction: crate::model::note::Direction::Neutral,
+                        name,
+                    });
+            }
+        }
+    }
+}
+
+/// Resolve pedal event to (note_id, lilypond_command_name).
+fn resolve_pedal_target(
+    pedal: &tusk_model::elements::Pedal,
+    tstamp_map: &TstampIdMap,
+) -> Option<(String, String)> {
+    let start_id = pedal
+        .pedal_log
+        .startid
+        .as_ref()
+        .map(|u| u.0.trim_start_matches('#').to_string())
+        .unwrap_or_default();
+    let start_id = if start_id.is_empty() {
+        resolve_tstamp(
+            pedal.pedal_log.tstamp.as_ref(),
+            pedal.pedal_log.staff.as_deref(),
+            tstamp_map,
+        )?
+    } else {
+        start_id
+    };
+
+    let name = match (pedal.pedal_log.func.as_deref(), pedal.pedal_log.dir.as_deref()) {
+        (Some("sostenuto"), Some("down")) => "sostenutoOn",
+        (Some("sostenuto"), Some("up")) => "sostenutoOff",
+        (Some("soft"), Some("down")) => "unaCorda",
+        (Some("soft"), Some("up")) => "treCorde",
+        (_, Some("down")) => "sustainOn",
+        (_, Some("up")) => "sustainOff",
+        _ => return None,
+    };
+
+    Some((start_id, name.to_string()))
 }
 
 fn octave_to_function_ops(octave: &tusk_model::elements::Octave) -> Vec<FunctionOpInfo> {
@@ -185,35 +240,6 @@ fn dis_to_ottava_number(octave: &tusk_model::elements::Octave) -> i32 {
     }
 }
 
-fn pedal_to_function_op(pedal: &tusk_model::elements::Pedal) -> Option<FunctionOpInfo> {
-    let start_id = pedal
-        .pedal_log
-        .startid
-        .as_ref()
-        .map(|u| u.0.trim_start_matches('#').to_string())
-        .unwrap_or_default();
-    if start_id.is_empty() {
-        return None;
-    }
-
-    let name = match (pedal.pedal_log.func.as_deref(), pedal.pedal_log.dir.as_deref()) {
-        (Some("sostenuto"), Some("down")) => "sostenutoOn",
-        (Some("sostenuto"), Some("up")) => "sostenutoOff",
-        (Some("soft"), Some("down")) => "unaCorda",
-        (Some("soft"), Some("up")) => "treCorde",
-        (_, Some("down")) => "sustainOn",
-        (_, Some("up")) => "sustainOff",
-        _ => return None,
-    };
-
-    Some(FunctionOpInfo {
-        start_id,
-        music: Music::MusicFunction {
-            name: name.to_string(),
-            args: vec![],
-        },
-    })
-}
 
 /// Convert a typed `FunctionCall` back into a LilyPond `Music` variant.
 fn function_call_to_music(fc: &tusk_model::FunctionCall) -> Music {
@@ -485,4 +511,184 @@ pub(super) fn inject_scheme_music_ops(
         .map(|op| (op.start_id.clone(), op.music.clone()))
         .collect();
     inject_ops_by_startid(items, item_ids, &pairs)
+}
+
+// ---------------------------------------------------------------------------
+// Tstamp → note ID resolution
+// ---------------------------------------------------------------------------
+
+/// Map from staff number string to sorted list of (tstamp, note_xml_id).
+type TstampIdMap = HashMap<String, Vec<(f64, String)>>;
+
+/// Build a tstamp→note_id map from a measure's staff/layer structure.
+///
+/// Walks through each staff's first layer, computing cumulative beat positions
+/// (1-indexed, in quarter-note units) for each note/chord. Returns a map keyed
+/// by MEI staff number.
+fn build_tstamp_id_map(measure_children: &[MeasureChild]) -> TstampIdMap {
+    use tusk_model::elements::{LayerChild, MeasureChild as MC, StaffChild};
+    let mut map = TstampIdMap::new();
+    for mc in measure_children {
+        let MC::Staff(staff) = mc else { continue };
+        let staff_n = staff.n_integer.n.clone().unwrap_or_default();
+        // Use first layer (primary voice) for tstamp resolution
+        let Some(StaffChild::Layer(layer)) = staff.children.first() else { continue };
+        let mut beat = 1.0_f64; // MEI tstamp is 1-based
+        let mut entries = Vec::new();
+        for lc in &layer.children {
+            if let Some((id, dur_quarters)) = layer_child_beat_info(lc) {
+                entries.push((beat, id));
+                beat += dur_quarters;
+            } else if let LayerChild::Beam(beam) = lc {
+                for bc in &beam.children {
+                    if let Some((id, dur_q)) = beam_child_beat_info(bc) {
+                        entries.push((beat, id));
+                        beat += dur_q;
+                    }
+                }
+            }
+        }
+        map.insert(staff_n, entries);
+    }
+    map
+}
+
+/// Extract (xml_id, duration_in_quarters) from a LayerChild.
+/// Grace notes are skipped — they don't consume beats.
+fn layer_child_beat_info(lc: &tusk_model::elements::LayerChild) -> Option<(String, f64)> {
+    use tusk_model::elements::LayerChild;
+    match lc {
+        LayerChild::Note(n) => {
+            if n.note_log.grace.is_some() {
+                return None; // grace notes don't advance beat position
+            }
+            let id = n.common.xml_id.as_ref()?.clone();
+            let q = dur_to_quarters(n.note_log.dur.as_ref()?, n.note_log.dots.as_ref());
+            Some((id, q))
+        }
+        LayerChild::Chord(c) => {
+            if c.chord_log.grace.is_some() {
+                return None;
+            }
+            let id = c.common.xml_id.as_ref()?.clone();
+            let q = dur_to_quarters(c.chord_log.dur.as_ref()?, c.chord_log.dots.as_ref());
+            Some((id, q))
+        }
+        LayerChild::Rest(r) => {
+            let id = r.common.xml_id.as_ref()?.clone();
+            let q = dur_to_quarters_rest(r.rest_log.dur.as_ref()?, r.rest_log.dots.as_ref());
+            Some((id, q))
+        }
+        LayerChild::Space(s) => {
+            let id = s.common.xml_id.as_ref()?.clone();
+            let q = dur_to_quarters(s.space_log.dur.as_ref()?, s.space_log.dots.as_ref());
+            Some((id, q))
+        }
+        _ => None,
+    }
+}
+
+/// Extract (xml_id, duration_in_quarters) from a BeamChild.
+fn beam_child_beat_info(bc: &tusk_model::elements::BeamChild) -> Option<(String, f64)> {
+    use tusk_model::elements::BeamChild;
+    match bc {
+        BeamChild::Note(n) => {
+            if n.note_log.grace.is_some() { return None; }
+            let id = n.common.xml_id.as_ref()?.clone();
+            let q = dur_to_quarters(n.note_log.dur.as_ref()?, n.note_log.dots.as_ref());
+            Some((id, q))
+        }
+        BeamChild::Chord(c) => {
+            if c.chord_log.grace.is_some() { return None; }
+            let id = c.common.xml_id.as_ref()?.clone();
+            let q = dur_to_quarters(c.chord_log.dur.as_ref()?, c.chord_log.dots.as_ref());
+            Some((id, q))
+        }
+        BeamChild::Rest(r) => {
+            let id = r.common.xml_id.as_ref()?.clone();
+            let q = dur_to_quarters_rest(r.rest_log.dur.as_ref()?, r.rest_log.dots.as_ref());
+            Some((id, q))
+        }
+        _ => None,
+    }
+}
+
+/// Convert MEI DataDuration + dots to quarter-note duration.
+fn dur_to_quarters(
+    dur: &tusk_model::generated::data::DataDuration,
+    dots: Option<&tusk_model::generated::data::DataAugmentdot>,
+) -> f64 {
+    use tusk_model::generated::data::{DataDuration, DataDurationCmn};
+    let base = match dur {
+        DataDuration::MeiDataDurationCmn(cmn) => match cmn {
+            DataDurationCmn::Long => 16.0,
+            DataDurationCmn::Breve => 8.0,
+            DataDurationCmn::N1 => 4.0,
+            DataDurationCmn::N2 => 2.0,
+            DataDurationCmn::N4 => 1.0,
+            DataDurationCmn::N8 => 0.5,
+            DataDurationCmn::N16 => 0.25,
+            DataDurationCmn::N32 => 0.125,
+            DataDurationCmn::N64 => 0.0625,
+            _ => 1.0,
+        },
+        _ => 1.0,
+    };
+    apply_dots(base, dots)
+}
+
+/// Convert MEI DataDurationrests + dots to quarter-note duration.
+fn dur_to_quarters_rest(
+    dur: &tusk_model::generated::data::DataDurationrests,
+    dots: Option<&tusk_model::generated::data::DataAugmentdot>,
+) -> f64 {
+    use tusk_model::generated::data::{DataDurationCmn, DataDurationrests};
+    let base = match dur {
+        DataDurationrests::MeiDataDurationCmn(cmn) => match cmn {
+            DataDurationCmn::Long => 16.0,
+            DataDurationCmn::Breve => 8.0,
+            DataDurationCmn::N1 => 4.0,
+            DataDurationCmn::N2 => 2.0,
+            DataDurationCmn::N4 => 1.0,
+            DataDurationCmn::N8 => 0.5,
+            DataDurationCmn::N16 => 0.25,
+            DataDurationCmn::N32 => 0.125,
+            DataDurationCmn::N64 => 0.0625,
+            _ => 1.0,
+        },
+        _ => 1.0,
+    };
+    apply_dots(base, dots)
+}
+
+fn apply_dots(base: f64, dots: Option<&tusk_model::generated::data::DataAugmentdot>) -> f64 {
+    let dot_count = dots.map(|d| d.0).unwrap_or(0);
+    let mut total = base;
+    let mut addition = base / 2.0;
+    for _ in 0..dot_count {
+        total += addition;
+        addition /= 2.0;
+    }
+    total
+}
+
+/// Resolve a tstamp + staff to a note xml:id using the tstamp map.
+///
+/// Finds the note whose beat position is closest to the given tstamp
+/// (within 0.01 tolerance).
+fn resolve_tstamp(
+    tstamp: Option<&tusk_model::data::DataBeat>,
+    staff: Option<&str>,
+    map: &TstampIdMap,
+) -> Option<String> {
+    let ts = tstamp?.0;
+    let staff_n = staff.unwrap_or("1");
+    let entries = map.get(staff_n)?;
+    entries
+        .iter()
+        .min_by(|a, b| {
+            (a.0 - ts).abs().partial_cmp(&(b.0 - ts).abs()).unwrap_or(std::cmp::Ordering::Equal)
+        })
+        .filter(|(beat, _)| (beat - ts).abs() < 0.01)
+        .map(|(_, id)| id.clone())
 }
