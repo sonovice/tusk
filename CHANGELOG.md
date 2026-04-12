@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.3.9] — 2026-04-12
+
+### LilyPond export (MEI → LilyPond)
+
+- **No more duplicate barlines around grace notes**: replaced explicit
+  `\bar "|"` with `|` barchecks — explicit barlines created duplicate
+  barline glyphs in PianoStaff when measures started with grace notes,
+  visually bracketing them in their own mini-bar.
+- **Pickup partial duration excludes spacer**: `\partial` duration in pickup
+  measures no longer includes the spacer voice, fixing `\partial 1` → correct
+  `\partial 4` (or appropriate duration) for anacrusis bars.
+- **Ottava tstamp→note resolution**: MusicXML `<octave-shift>` directions
+  now resolve `@tstamp`/`@tstamp2` to note IDs across measures, emitting
+  `\ottava 1`/`\ottava 0` pairs. Previously silently dropped.
+- **Tstamp resolution uses "note sounding at" strategy**: tstamp→note
+  resolution now finds the last note at or before the target beat instead
+  of requiring exact match, handling mid-beat direction offsets.
+- **Final and special barlines emitted**: MEI `@right` barline attributes
+  (`end`, `dbl`, `rptstart`, `rptend`, etc.) now produce correct LilyPond
+  `\bar` commands. Previously the final double barline was missing and
+  trailing spacer skips added extra visual space after the last note.
+
 ## [1.3.8] — 2026-04-12
 
 ### LilyPond export (MEI → LilyPond)
@@ -13,9 +35,6 @@
   notes (`c4\sustainOn`) instead of pre-note functions (`\sustainOn c4`),
   matching LilyPond semantics and eliminating "Unattached SustainEvent"
   warnings.
-- **Pickup partial duration excludes spacer**: `\partial` duration in pickup
-  measures no longer includes the spacer voice, fixing `\partial 1` → correct
-  `\partial 4` (or appropriate duration) for anacrusis bars.
 - **Grace notes excluded from tstamp map**: grace notes no longer participate
   in tstamp→note resolution, preventing pedal/ottava events from attaching
   to grace notes instead of the main note at that beat.

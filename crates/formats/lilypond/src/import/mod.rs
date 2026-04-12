@@ -665,6 +665,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
     let mut harm_counter = 0u32;
     let mut fb_counter = 0u32;
     let mut func_counter = 0u32;
+    let mut pedal_counter = 0u32;
     let mut scm_counter = 0u32;
     let mut text_script_counter = 0u32;
 
@@ -1256,13 +1257,13 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
 
                 // Flush pending pedal changes onto the current anchor.
                 for pedal in pending_pedals.drain(..) {
-                    func_counter += 1;
+                    pedal_counter += 1;
                     let pedal = make_pedal(
                         &current_id,
                         pedal.staff_n,
                         pedal.func,
                         pedal.dir,
-                        func_counter,
+                        pedal_counter,
                     );
                     measure.children.push(MeasureChild::Pedal(Box::new(pedal)));
                 }
@@ -1413,6 +1414,22 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
                         PostEvent::NamedArticulation {
                             direction, name, ..
                         } => {
+                            // Check if this is a pedal command written as post-event
+                            // (e.g. -\sustainOn instead of \sustainOn).
+                            // Unlike pre-note \sustainOn (which goes to pending_pedals
+                            // and flushes on the NEXT note), post-event pedals belong
+                            // to the CURRENT note — flush immediately.
+                            let pedal_fc = tusk_model::FunctionCall {
+                                name: name.clone(),
+                                args: vec![],
+                                is_partial: false,
+                            };
+                            if let Some(pp) = pedal_change(&pedal_fc, staff_info.n) {
+                                // Collect for post-note flush (same as pre-note pedals
+                                // but will be flushed immediately after this PostEvent loop)
+                                pending_pedals.push(pp);
+                                continue;
+                            }
                             if let Some(mc) = make_ornament_control_event(
                                 name,
                                 *direction,
@@ -1522,6 +1539,20 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
                             // Lyric post-events handled in Phase 20.2
                         }
                     }
+                }
+
+                // Flush pedal post-events collected from NamedArticulations
+                // (e.g. -\sustainOn). These belong to the current note, not the next.
+                for pedal in pending_pedals.drain(..) {
+                    pedal_counter += 1;
+                    let pedal_ev = make_pedal(
+                        &current_id,
+                        pedal.staff_n,
+                        pedal.func,
+                        pedal.dir,
+                        pedal_counter,
+                    );
+                    measure.children.push(MeasureChild::Pedal(Box::new(pedal_ev)));
                 }
             }
 
