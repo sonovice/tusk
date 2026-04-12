@@ -567,6 +567,42 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
             }
         }
         Music::MusicFunction { name, args } => {
+            if name == "ottava" {
+                let numeric_args: Vec<_> = args
+                    .iter()
+                    .filter_map(|arg| {
+                        match arg {
+                            crate::model::FunctionArg::Number(n) => Some(*n),
+                            crate::model::FunctionArg::SchemeExpr(
+                                crate::model::SchemeExpr::Integer(n),
+                            ) => Some(*n as f64),
+                            _ => None,
+                        }
+                    })
+                    .collect();
+                let music_args: Vec<_> = args
+                    .iter()
+                    .filter_map(|arg| {
+                        if let crate::model::FunctionArg::Music(m) = arg {
+                            Some(m)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                if let Some(n) = numeric_args.first() {
+                    let fc = tusk_model::FunctionCall {
+                        name: name.clone(),
+                        args: vec![tusk_model::ExtValue::Number(*n)],
+                        is_partial: false,
+                    };
+                    events.push(LyEvent::MusicFunction(fc));
+                    for music_arg in music_args {
+                        collect_events(music_arg, events, ctx);
+                    }
+                    return;
+                }
+            }
             let fc = tusk_model::FunctionCall {
                 name: name.clone(),
                 args: args.iter().map(function_arg_to_ext_value).collect(),
@@ -585,6 +621,24 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
         Music::SchemeMusic(expr) => {
             let serialized = crate::serializer::serialize_scheme_expr(expr);
             events.push(LyEvent::SchemeMusic(serialized));
+        }
+        Music::Identifier(name)
+            if matches!(
+                name.as_str(),
+                "sustainOn"
+                    | "sustainOff"
+                    | "sostenutoOn"
+                    | "sostenutoOff"
+                    | "unaCorda"
+                    | "treCorde"
+            ) =>
+        {
+            let fc = tusk_model::FunctionCall {
+                name: name.clone(),
+                args: vec![],
+                is_partial: false,
+            };
+            events.push(LyEvent::MusicFunction(fc));
         }
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) | Music::LineComment(_)
         | Music::LyricMarkup(_) => {}

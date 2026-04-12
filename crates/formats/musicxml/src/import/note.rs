@@ -58,6 +58,9 @@ pub fn convert_note(
         None => ctx.generate_id_with_suffix("note"),
     };
     mei_note.common.xml_id = Some(note_id);
+    mei_note.note_log.tstamp = Some(tusk_model::data::DataBeat::from(
+        ctx.beat_position() / ctx.divisions() + 1.0,
+    ));
 
     // Convert pitch/unpitched content
     match &note.content {
@@ -511,6 +514,9 @@ pub fn convert_chord(
 
     // Get duration info from the first note (all notes in a chord share duration)
     if let Some(first_note) = notes.first() {
+        mei_chord.chord_log.tstamp = Some(tusk_model::data::DataBeat::from(
+            ctx.beat_position() / ctx.divisions() + 1.0,
+        ));
         if let Some(ref note_type) = first_note.note_type {
             let dur = convert_note_type_to_duration(note_type.value);
             mei_chord.chord_log.dur = Some(dur);
@@ -585,7 +591,6 @@ pub fn convert_chord(
         .collect();
     let chord_id = mei_chord.common.xml_id.clone().unwrap_or_default();
     ctx.fixup_tuplet_ids_for_chord(&child_note_ids, &chord_id);
-
     Ok(mei_chord)
 }
 
@@ -3334,6 +3339,55 @@ mod tests {
 
         // Grace chord should have grace attribute
         assert_eq!(mei_chord.chord_log.grace, Some(DataGrace::Acc));
+    }
+
+    #[test]
+    fn convert_note_preserves_pitch_before_octave_postpass() {
+        use crate::model::data::Step;
+        use crate::model::note::Pitch;
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+        let note = MusicXmlNote::pitched(Pitch::new(Step::E, 6), 4.0);
+        let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
+
+        assert_eq!(mei_note.note_log.oct, Some(DataOctave::from(6)));
+    }
+
+    #[test]
+    fn convert_note_sets_tstamp_from_current_beat_position() {
+        use crate::model::data::Step;
+        use crate::model::note::Pitch;
+        use tusk_model::data::DataBeat;
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        ctx.set_divisions(4.0);
+        ctx.set_beat_position(6.4);
+
+        let note = MusicXmlNote::pitched(Pitch::new(Step::C, 5), 4.0);
+        let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
+
+        assert_eq!(mei_note.note_log.tstamp, Some(DataBeat::from(2.6)));
+    }
+
+    #[test]
+    fn convert_chord_sets_tstamp_from_current_beat_position() {
+        use crate::model::data::Step;
+        use crate::model::elements::Empty;
+        use crate::model::note::{Note, Pitch};
+        use tusk_model::data::DataBeat;
+
+        let note1 = Note::pitched(Pitch::new(Step::C, 4), 4.0);
+        let mut note2 = Note::pitched(Pitch::new(Step::E, 4), 4.0);
+        note2.chord = Some(Empty);
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        ctx.set_divisions(4.0);
+        ctx.set_beat_position(10.0);
+
+        let mei_chord = convert_chord(&[note1, note2], &mut ctx).expect("conversion should succeed");
+
+        assert_eq!(mei_chord.chord_log.tstamp, Some(DataBeat::from(3.5)));
     }
 }
 

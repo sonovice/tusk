@@ -2022,3 +2022,19 @@ fn tremolo_without_tie() {
     assert!(output.contains(":32"), "tremolo 32: {output}");
     assert!(output.contains(":16"), "tremolo 16: {output}");
 }
+
+#[test]
+fn roundtrip_exports_semantic_ottava() {
+    let output = roundtrip("{ c'4 \\ottava #1 d'4 e'4 \\ottava #0 f'4 }");
+    assert!(output.contains("\\ottava #1") || output.contains("\\ottava 1"), "start ottava missing: {output}");
+    assert!(output.contains("\\ottava #0") || output.contains("\\ottava 0"), "stop ottava missing: {output}");
+}
+
+#[test]
+fn roundtrip_exports_semantic_pedal() {
+    let output = roundtrip("{ c'4 \\sustainOn d'4 \\sustainOff e'4 \\unaCorda f'4 \\treCorde g'4 }");
+    assert!(output.contains("\\sustainOn"), "sustainOn missing: {output}");
+    assert!(output.contains("\\sustainOff"), "sustainOff missing: {output}");
+    assert!(output.contains("\\unaCorda"), "unaCorda missing: {output}");
+    assert!(output.contains("\\treCorde"), "treCorde missing: {output}");
+}

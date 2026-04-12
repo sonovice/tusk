@@ -25,6 +25,7 @@
 mod glissandos;
 mod hairpins;
 mod ids;
+mod octaves;
 mod positions;
 mod slurs;
 mod ties;
@@ -38,6 +39,8 @@ use tusk_model::extensions::ExtensionStore;
 
 pub use glissandos::{CompletedGliss, PendingGliss};
 pub use hairpins::{CompletedHairpin, DeferredHairpinStop, PendingHairpin};
+pub(crate) use octaves::ActiveOctaveShift;
+pub use octaves::{CompletedOctaveShift, DeferredOctaveShiftStop, PendingOctaveShift};
 pub use positions::{ConversionWarning, DocumentPosition};
 pub use slurs::{CompletedSlur, DeferredSlurStop, PendingSlur};
 pub use ties::PendingTie;
@@ -114,6 +117,18 @@ pub struct ConversionContext {
 
     /// Deferred hairpin stops for cross-measure hairpins (MEI→MusicXML export).
     pub(super) deferred_hairpin_stops: Vec<hairpins::DeferredHairpinStop>,
+
+    /// Pending octave shifts waiting for their stop.
+    pub(super) pending_octave_shifts: Vec<octaves::PendingOctaveShift>,
+
+    /// Completed octave shifts with tstamp2 resolved, ready to be patched onto MEI octave elements.
+    pub(super) completed_octave_shifts: Vec<octaves::CompletedOctaveShift>,
+
+    /// Deferred octave-shift stops for cross-measure spans (MEI→MusicXML export).
+    pub(super) deferred_octave_shift_stops: Vec<octaves::DeferredOctaveShiftStop>,
+
+    /// Active octave shifts affecting subsequent imported note pitches.
+    pub(super) active_octave_shifts: Vec<octaves::ActiveOctaveShift>,
 
     /// Ornament control events collected during note processing, emitted after all staves.
     pub(super) pending_ornament_events: Vec<tusk_model::elements::MeasureChild>,
@@ -228,6 +243,10 @@ impl ConversionContext {
             pending_hairpins: Vec::new(),
             completed_hairpins: Vec::new(),
             deferred_hairpin_stops: Vec::new(),
+            pending_octave_shifts: Vec::new(),
+            completed_octave_shifts: Vec::new(),
+            deferred_octave_shift_stops: Vec::new(),
+            active_octave_shifts: Vec::new(),
             pending_ornament_events: Vec::new(),
             pending_tremolo: None,
             tremolo_map: HashMap::new(),
@@ -420,6 +439,10 @@ impl ConversionContext {
         self.pending_hairpins.clear();
         self.completed_hairpins.clear();
         self.deferred_hairpin_stops.clear();
+        self.pending_octave_shifts.clear();
+        self.completed_octave_shifts.clear();
+        self.deferred_octave_shift_stops.clear();
+        self.active_octave_shifts.clear();
         self.pending_ornament_events.clear();
         self.pending_tremolo = None;
         self.tremolo_map.clear();

@@ -5,10 +5,10 @@
 
 use tusk_model::elements::{
     BTrem, BTremChild, Dir, DirChild, Dynam, DynamChild, F, FChild, Fb, FbChild, Fermata, Hairpin,
-    Harm, HarmChild, Layer, LayerChild, MeasureChild, Mordent, Ornam, OrnamChild, Slur, Trill,
-    TupletSpan, Turn,
+    Harm, HarmChild, Layer, LayerChild, MeasureChild, Mordent, Octave, Ornam, OrnamChild, Pedal,
+    Slur, Trill, TupletSpan, Turn,
 };
-use tusk_model::generated::data::DataUri;
+use tusk_model::generated::data::{DataOctaveDis, DataPedalstyle, DataStaffrel, DataStaffrelBasic, DataUri};
 use tusk_model::ExtensionStore;
 
 use crate::model::note::{
@@ -623,6 +623,63 @@ pub(super) fn make_function_dir(
     dir.dir_log.staff = Some(staff_n.to_string());
     ext_store.insert_function_call(eid, fc.clone());
     dir
+}
+
+/// Create an MEI Octave control event from a LilyPond `\ottava` change.
+pub(super) fn make_octave(
+    start_id: &str,
+    end_id: Option<&str>,
+    ottava: i32,
+    staff_n: u32,
+    id: u32,
+) -> Octave {
+    let mut octave = Octave::default();
+    octave.common.xml_id = Some(format!("ly-octave-{id}"));
+    octave.octave_log.startid = Some(DataUri(format!("#{start_id}")));
+    octave.octave_log.staff = Some(staff_n.to_string());
+    octave.octave_log.dis = Some(DataOctaveDis(ottava_number_to_dis(ottava)));
+    octave.octave_log.dis_place = Some(if ottava >= 0 {
+        DataStaffrelBasic::Above
+    } else {
+        DataStaffrelBasic::Below
+    });
+    if let Some(end_id) = end_id {
+        octave.octave_log.endid = Some(DataUri(format!("#{end_id}")));
+    }
+    octave
+}
+
+fn ottava_number_to_dis(ottava: i32) -> u64 {
+    match ottava.abs() {
+        0 => 8,
+        1 => 8,
+        2 => 15,
+        3 => 22,
+        n => (7 * n + 1) as u64,
+    }
+}
+
+/// Create an MEI Pedal control event from a LilyPond pedal function.
+pub(super) fn make_pedal(
+    startid: &str,
+    staff_n: u32,
+    func: &str,
+    dir: &str,
+    id: u32,
+) -> Pedal {
+    let mut pedal = Pedal::default();
+    pedal.common.xml_id = Some(format!("ly-pedal-{id}"));
+    pedal.pedal_log.startid = Some(DataUri(format!("#{startid}")));
+    pedal.pedal_log.staff = Some(staff_n.to_string());
+    pedal.pedal_log.func = Some(func.to_string());
+    pedal.pedal_log.dir = Some(dir.to_string());
+    pedal.pedal_vis.place = Some(DataStaffrel::MeiDataStaffrelBasic(DataStaffrelBasic::Below));
+    pedal.pedal_vis.form = Some(match (func, dir) {
+        ("soft", _) => DataPedalstyle::Pedstar,
+        (_, "up") => DataPedalstyle::Pedstar,
+        _ => DataPedalstyle::Pedstar,
+    });
+    pedal
 }
 
 /// Create an MEI Dir for a LilyPond property operation (`\override`, `\set`, etc.).

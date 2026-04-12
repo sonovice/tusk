@@ -3,8 +3,9 @@
 use super::*;
 use crate::parser::Parser;
 use tusk_model::elements::{
-    Fermata as MeiFermata, Mei, MeiChild, Mordent as MeiMordent, Ornam as MeiOrnam, ScoreChild,
-    SectionChild, Trill as MeiTrill, Turn as MeiTurn,
+    Fermata as MeiFermata, Mei, MeiChild, Mordent as MeiMordent, Octave as MeiOctave,
+    Ornam as MeiOrnam, Pedal as MeiPedal, ScoreChild, SectionChild, Trill as MeiTrill,
+    Turn as MeiTurn,
 };
 use tusk_model::ExtensionStore;
 
@@ -164,6 +165,68 @@ fn measure_dirs(mei: &Mei) -> Vec<&tusk_model::elements::Dir> {
         }
     }
     dirs
+}
+
+fn measure_octaves(mei: &Mei) -> Vec<&MeiOctave> {
+    let mut octaves = Vec::new();
+    for child in &mei.children {
+        if let MeiChild::Music(music) = child {
+            for mc in &music.children {
+                let tusk_model::elements::MusicChild::Body(body) = mc else { continue; };
+                for bc in &body.children {
+                    let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
+                    for dc in &mdiv.children {
+                        let tusk_model::elements::MdivChild::Score(score) = dc else { continue; };
+                        for sc in &score.children {
+                            if let ScoreChild::Section(section) = sc {
+                                for sec_c in &section.children {
+                                    if let SectionChild::Measure(measure) = sec_c {
+                                        for mc2 in &measure.children {
+                                            if let MeasureChild::Octave(o) = mc2 {
+                                                octaves.push(o.as_ref());
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    octaves
+}
+
+fn measure_pedals(mei: &Mei) -> Vec<&MeiPedal> {
+    let mut pedals = Vec::new();
+    for child in &mei.children {
+        if let MeiChild::Music(music) = child {
+            for mc in &music.children {
+                let tusk_model::elements::MusicChild::Body(body) = mc else { continue; };
+                for bc in &body.children {
+                    let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
+                    for dc in &mdiv.children {
+                        let tusk_model::elements::MdivChild::Score(score) = dc else { continue; };
+                        for sc in &score.children {
+                            if let ScoreChild::Section(section) = sc {
+                                for sec_c in &section.children {
+                                    if let SectionChild::Measure(measure) = sec_c {
+                                        for mc2 in &measure.children {
+                                            if let MeasureChild::Pedal(p) = mc2 {
+                                                pedals.push(p.as_ref());
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    pedals
 }
 
 /// Collect all Trill control events from the first measure.
@@ -1257,4 +1320,59 @@ fn import_markup_with_command() {
     if let tusk_model::ControlEvent::Markup { serialized } = &markup_event.unwrap().event {
         assert!(serialized.contains("\\bold"), "should contain bold: {serialized}");
     }
+}
+
+#[test]
+fn import_ottava_as_mei_octave() {
+    let (mei, _ext_store) = parse_and_import(r#"{ c'4 \ottava #1 d'4 e'4 \ottava #0 f'4 }"#);
+    let octaves = measure_octaves(&mei);
+    assert_eq!(octaves.len(), 1, "expected one octave span");
+    let octave = octaves[0];
+    assert_eq!(octave.octave_log.dis.as_ref().map(|d| d.0), Some(8));
+    assert_eq!(
+        octave.octave_log.dis_place,
+        Some(tusk_model::data::DataStaffrelBasic::Above)
+    );
+    assert_eq!(
+        octave
+            .octave_log
+            .startid
+            .as_ref()
+            .map(|u| u.0.as_str()),
+        Some("#ly-note-2")
+    );
+    assert_eq!(
+        octave
+            .octave_log
+            .endid
+            .as_ref()
+            .map(|u| u.0.as_str()),
+        Some("#ly-note-4")
+    );
+}
+
+#[test]
+fn import_pedal_functions_as_mei_pedal() {
+    let (mei, _ext_store) = parse_and_import(r#"{ c'4 \sustainOn d'4 \sustainOff e'4 \unaCorda f'4 \treCorde g'4 }"#);
+    let pedals = measure_pedals(&mei);
+    assert_eq!(pedals.len(), 4, "expected four pedal events");
+
+    assert_eq!(pedals[0].pedal_log.func.as_deref(), Some("sustain"));
+    assert_eq!(pedals[0].pedal_log.dir.as_deref(), Some("down"));
+    assert_eq!(
+        pedals[0].pedal_log.startid.as_ref().map(|u| u.0.as_str()),
+        Some("#ly-note-2")
+    );
+
+    assert_eq!(pedals[1].pedal_log.func.as_deref(), Some("sustain"));
+    assert_eq!(pedals[1].pedal_log.dir.as_deref(), Some("up"));
+    assert_eq!(
+        pedals[1].pedal_log.startid.as_ref().map(|u| u.0.as_str()),
+        Some("#ly-note-3")
+    );
+
+    assert_eq!(pedals[2].pedal_log.func.as_deref(), Some("soft"));
+    assert_eq!(pedals[2].pedal_log.dir.as_deref(), Some("down"));
+    assert_eq!(pedals[3].pedal_log.func.as_deref(), Some("soft"));
+    assert_eq!(pedals[3].pedal_log.dir.as_deref(), Some("up"));
 }

@@ -229,6 +229,20 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
         map
     };
 
+    let global_semantic_function_ops = {
+        let mut ops = Vec::new();
+        for child in &score.children {
+            if let ScoreChild::Section(section) = child {
+                for sc in &section.children {
+                    if let SectionChild::Measure(measure) = sc {
+                        ops.extend(collect_semantic_function_ops(&measure.children));
+                    }
+                }
+            }
+        }
+        ops
+    };
+
     for child in &score.children {
         if let ScoreChild::Section(section) = child {
 
@@ -250,7 +264,8 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                     collect_text_script_post_events(&measure.children, &mut post_event_map, ext_store);
 
                     let property_ops = collect_property_ops(&measure.children, ext_store);
-                    let function_ops = collect_function_ops(&measure.children, ext_store);
+                    let mut function_ops = collect_function_ops(&measure.children, ext_store);
+                    function_ops.extend(global_semantic_function_ops.iter().cloned());
                     let scheme_music_ops = collect_scheme_music_ops(&measure.children, ext_store);
                     let tuplet_spans = collect_tuplet_spans(&measure.children, ext_store);
                     let repeat_spans = collect_repeat_spans(&measure.children, ext_store);
@@ -1985,7 +2000,8 @@ use figured_bass::{FiguredBassMeta, collect_figure_mode_fbs, extract_figured_bas
 mod operations;
 use operations::{
     InsertionLog, collect_function_ops, collect_property_ops, collect_scheme_music_ops,
-    inject_function_ops, inject_property_ops, inject_scheme_music_ops,
+    collect_semantic_function_ops, inject_function_ops, inject_property_ops,
+    inject_scheme_music_ops,
 };
 
 /// Apply an insertion log to a parallel array, inserting `None` at the logged positions.

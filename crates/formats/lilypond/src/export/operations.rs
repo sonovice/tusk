@@ -85,6 +85,7 @@ fn parse_property_op_str(s: &str) -> Option<Music> {
 // ---------------------------------------------------------------------------
 
 /// Collected music function call info: startid → Music.
+#[derive(Clone)]
 pub(super) struct FunctionOpInfo {
     pub(super) start_id: String,
     pub(super) music: Music,
@@ -112,6 +113,106 @@ pub(super) fn collect_function_ops(measure_children: &[MeasureChild], ext_store:
         }
     }
     ops
+}
+
+/// Collect semantic LilyPond function ops from native MEI control events.
+pub(super) fn collect_semantic_function_ops(measure_children: &[MeasureChild]) -> Vec<FunctionOpInfo> {
+    let mut ops = Vec::new();
+    for mc in measure_children {
+        match mc {
+            MeasureChild::Octave(octave) => ops.extend(octave_to_function_ops(octave)),
+            MeasureChild::Pedal(pedal) => {
+                if let Some(op) = pedal_to_function_op(pedal) {
+                    ops.push(op);
+                }
+            }
+            _ => {}
+        }
+    }
+    ops
+}
+
+fn octave_to_function_ops(octave: &tusk_model::elements::Octave) -> Vec<FunctionOpInfo> {
+    let start_id = octave
+        .octave_log
+        .startid
+        .as_ref()
+        .map(|u| u.0.trim_start_matches('#').to_string())
+        .unwrap_or_default();
+    if start_id.is_empty() {
+        return Vec::new();
+    }
+
+    let mut ops = Vec::new();
+    ops.push(FunctionOpInfo {
+        start_id,
+        music: Music::MusicFunction {
+            name: "ottava".to_string(),
+            args: vec![crate::model::FunctionArg::Number(dis_to_ottava_number(octave) as f64)],
+        },
+    });
+
+    if let Some(end_id) = octave
+        .octave_log
+        .endid
+        .as_ref()
+        .map(|u| u.0.trim_start_matches('#').to_string())
+        && !end_id.is_empty()
+    {
+        ops.push(FunctionOpInfo {
+            start_id: end_id,
+            music: Music::MusicFunction {
+                name: "ottava".to_string(),
+                args: vec![crate::model::FunctionArg::Number(0.0)],
+            },
+        });
+    }
+
+    ops
+}
+
+fn dis_to_ottava_number(octave: &tusk_model::elements::Octave) -> i32 {
+    let steps = octave.octave_log.dis.as_ref().map(|d| d.0).unwrap_or(8);
+    let magnitude = match steps {
+        8 => 1,
+        15 => 2,
+        22 => 3,
+        n => ((n as i64 - 1) / 7).max(1) as i32,
+    };
+    match octave.octave_log.dis_place {
+        Some(tusk_model::data::DataStaffrelBasic::Below) => -magnitude,
+        _ => magnitude,
+    }
+}
+
+fn pedal_to_function_op(pedal: &tusk_model::elements::Pedal) -> Option<FunctionOpInfo> {
+    let start_id = pedal
+        .pedal_log
+        .startid
+        .as_ref()
+        .map(|u| u.0.trim_start_matches('#').to_string())
+        .unwrap_or_default();
+    if start_id.is_empty() {
+        return None;
+    }
+
+    let name = match (pedal.pedal_log.func.as_deref(), pedal.pedal_log.dir.as_deref()) {
+        (Some("sostenuto"), Some("down")) => "sostenutoOn",
+        (Some("sostenuto"), Some("up")) => "sostenutoOff",
+        (Some("soft"), Some("down")) => "unaCorda",
+        (Some("soft"), Some("up")) => "treCorde",
+        (_, Some("down")) => "sustainOn",
+        (_, Some("up")) => "sustainOff",
+        _ => return None,
+    };
+
+    Some(FunctionOpInfo {
+        start_id,
+        music: Music::MusicFunction {
+            name: name.to_string(),
+            args: vec![],
+        },
+    })
 }
 
 /// Convert a typed `FunctionCall` back into a LilyPond `Music` variant.

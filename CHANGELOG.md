@@ -1,5 +1,55 @@
 # Changelog
 
+## [1.3.7] — 2026-04-11
+
+### MusicXML import (MusicXML → MEI)
+
+- **Ottava spans now preserve written MEI pitch correctly**: imported
+  MusicXML `<octave-shift>` directions continue to become real MEI `<octave>`
+  control events, and notes covered by the span are now also rewritten to the
+  proper written octave in MEI instead of remaining a sounding octave too high.
+- **Imported notes and chords now carry MEI `@tstamp`**: MusicXML note/chord
+  events now record their beat position directly during import, which makes
+  downstream control-event alignment deterministic and fixes ottava span
+  application across mixed rhythmic material.
+- **Pedal directions import as semantic MEI pedal events**: sustain pedal
+  start/stop markers now import as real `<pedal>` elements, including the stop
+  event, instead of degrading into generic directives.
+- **Ottava placement normalized for Verovio and roundtrip**: downward
+  octave-shift brackets now import as `dis.place="above"` and roundtrip back to
+  MusicXML as `type="down"` with stable start/stop pairing.
+
+### MusicXML export (MEI → MusicXML)
+
+- **Pedal stop export preserved**: MEI pedal stop events now export back to
+  MusicXML as proper stop pedals with `line="yes"` and `sign="no"`.
+- **Ottava start/stop roundtrip stabilized**: MEI `<octave>` spans with
+  `@tstamp2` or `@startid/@endid` now export back to paired MusicXML
+  `<octave-shift>` start/stop directions with stable numbering, and exported
+  MusicXML pitches are transposed under those spans so reimport can recover the
+  written MEI pitch.
+
+### Tests
+
+- **Ottava/Pedal regression coverage expanded**: new unit and roundtrip-facing
+  tests now cover Ottava pitch preservation, stop-boundary handling, backup
+  voice positioning, and semantic pedal import/export behavior in the MusicXML
+  crate.
+
+### LilyPond import/export (LilyPond ↔ MEI)
+
+- **Ottava commands now roundtrip as native MEI octave spans**: LilyPond
+  `\ottava` changes now import as real MEI `<octave>` elements instead of
+  opaque function-call directives, and MEI octave spans export back to stable
+  LilyPond ottava start/stop commands across measure boundaries.
+- **Pedal commands now roundtrip as native MEI pedal events**: LilyPond
+  `\sustainOn`, `\sustainOff`, `\sostenutoOn`, `\sostenutoOff`, `\unaCorda`,
+  and `\treCorde` now import as semantic MEI `<pedal>` events and export back
+  to LilyPond without relying on `ExtensionStore`.
+- **Cross-measure ottava export stabilized**: MEI-origin ottava spans are now
+  collected score-wide for LilyPond export so start and stop commands survive
+  spans whose anchors fall in different measures or voices.
+
 ## [1.3.6] — 2026-04-11
 
 ### LilyPond export (MEI → LilyPond)

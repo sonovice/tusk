@@ -1,6 +1,6 @@
 //! MEI control events to MusicXML direction conversion.
 //!
-//! This module handles conversion of MEI control events (dynam, hairpin, dir, tempo)
+//! This module handles conversion of MEI control events (dynam, hairpin, dir, octave, tempo)
 //! to MusicXML direction elements.
 
 use super::utils::convert_mei_duration_to_beat_unit;
@@ -255,6 +255,142 @@ pub fn convert_mei_hairpin(
     directions
 }
 
+/// Convert an MEI `<octave>` element to MusicXML `<octave-shift>` directions.
+pub fn convert_mei_octave(
+    octave: &tusk_model::elements::Octave,
+    ctx: &mut ConversionContext,
+) -> Vec<crate::model::direction::Direction> {
+    use crate::model::direction::{OctaveShift, OctaveShiftType};
+
+    let mut directions = Vec::new();
+
+    let shift_type = match octave.octave_log.dis_place {
+        Some(tusk_model::data::DataStaffrelBasic::Above) => OctaveShiftType::Down,
+        Some(tusk_model::data::DataStaffrelBasic::Below) => OctaveShiftType::Up,
+        None => OctaveShiftType::Up,
+    };
+
+    let number = Some(1);
+    let mut shift = OctaveShift::new(shift_type);
+    shift.number = number;
+    shift.size = octave.octave_log.dis.as_ref().map(|d| d.0 as u8);
+
+    if let Some(ref xml_id) = octave.common.xml_id {
+        shift.id = Some(xml_id.clone());
+        ctx.map_id(xml_id, xml_id.clone());
+    }
+
+    let direction_type = DirectionType {
+        content: DirectionTypeContent::OctaveShift(shift),
+        id: None,
+    };
+
+    let mut direction = Direction::new(vec![direction_type]);
+    if octave
+        .octave_log
+        .staff
+        .as_ref()
+        .is_some_and(|s| !s.is_empty())
+    {
+        direction.staff = Some(1);
+    }
+    direction.offset = convert_tstamp_to_offset(&octave.octave_log.tstamp, ctx);
+    directions.push(direction);
+
+    if let Some(ref tstamp2) = octave.octave_log.tstamp2 {
+        let (measures_ahead, stop_beat) = parse_tstamp2(&tstamp2.0);
+        let staff_n = octave
+            .octave_log
+            .staff
+            .as_ref()
+            .and_then(|s| s.split_whitespace().next())
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(1usize);
+
+        if measures_ahead == 0 {
+            directions.push(make_octave_shift_stop_direction(stop_beat, number, ctx));
+        } else {
+            ctx.add_deferred_octave_shift_stop(crate::context::DeferredOctaveShiftStop {
+                measures_remaining: measures_ahead - 1,
+                beat: stop_beat,
+                staff: staff_n,
+                number: number.unwrap_or(1),
+            });
+        }
+    }
+
+    directions
+}
+
+pub fn convert_mei_pedal(
+    pedal: &tusk_model::elements::Pedal,
+    ctx: &mut ConversionContext,
+) -> Option<crate::model::direction::Direction> {
+    use crate::model::data::YesNo;
+    use crate::model::direction::{Pedal, PedalType};
+
+    let pedal_type = match pedal.pedal_log.dir.as_deref() {
+        Some("down") => {
+            if pedal.pedal_log.func.as_deref() == Some("sostenuto") {
+                PedalType::Sostenuto
+            } else {
+                PedalType::Start
+            }
+        }
+        Some("up") => PedalType::Stop,
+        Some("bounce") => PedalType::Change,
+        _ => PedalType::Start,
+    };
+
+    let mut mxml_pedal = Pedal::new(pedal_type);
+    match pedal.pedal_vis.form {
+        Some(tusk_model::data::DataPedalstyle::Altpedstar) => {
+            mxml_pedal.sign = Some(YesNo::Yes);
+            mxml_pedal.abbreviated = Some(YesNo::Yes);
+        }
+        Some(tusk_model::data::DataPedalstyle::Pedstar) => {
+            if pedal_type == PedalType::Stop {
+                mxml_pedal.line = Some(YesNo::Yes);
+                mxml_pedal.sign = Some(YesNo::No);
+            } else {
+                mxml_pedal.sign = Some(YesNo::Yes);
+            }
+        }
+        Some(tusk_model::data::DataPedalstyle::Pedline)
+        | Some(tusk_model::data::DataPedalstyle::Line) => {
+            mxml_pedal.line = Some(YesNo::Yes);
+            if pedal_type == PedalType::Stop {
+                mxml_pedal.sign = Some(YesNo::No);
+            }
+        }
+        _ => {}
+    }
+
+    if let Some(ref xml_id) = pedal.common.xml_id {
+        mxml_pedal.id = Some(xml_id.clone());
+        ctx.map_id(xml_id, xml_id.clone());
+    }
+
+    let direction_type = DirectionType {
+        content: DirectionTypeContent::Pedal(mxml_pedal),
+        id: None,
+    };
+
+    let mut direction = Direction::new(vec![direction_type]);
+    if pedal
+        .pedal_log
+        .staff
+        .as_ref()
+        .is_some_and(|s| !s.is_empty())
+    {
+        direction.staff = Some(1);
+    }
+    direction.placement = convert_place_to_placement(&pedal.pedal_vis.place);
+    direction.offset = convert_tstamp_to_offset(&pedal.pedal_log.tstamp, ctx);
+    restore_direction_sound(&mut direction, pedal.common.xml_id.as_deref(), ctx);
+    Some(direction)
+}
+
 /// Parse MEI tstamp2 format "Nm+B" into (measures_ahead, beat).
 ///
 /// Examples: "0m+3" → (0, 3.0), "2m+1" → (2, 1.0), "1m+2.5" → (1, 2.5)
@@ -298,6 +434,31 @@ fn make_hairpin_stop_direction(
     direction
 }
 
+fn make_octave_shift_stop_direction(
+    beat: f64,
+    number: Option<u8>,
+    ctx: &ConversionContext,
+) -> crate::model::direction::Direction {
+    use crate::model::direction::{OctaveShift, OctaveShiftType};
+
+    let mut shift = OctaveShift::new(OctaveShiftType::Stop);
+    shift.number = number;
+
+    let direction_type = DirectionType {
+        content: DirectionTypeContent::OctaveShift(shift),
+        id: None,
+    };
+
+    let mut direction = Direction::new(vec![direction_type]);
+    direction.staff = Some(1);
+
+    let beat_position = beat - 1.0;
+    let offset_divisions = beat_position * ctx.divisions();
+    direction.offset = Some(crate::model::direction::Offset::new(offset_divisions));
+
+    direction
+}
+
 /// Resolve deferred hairpin stops that target the current measure.
 ///
 /// Call at the start of each measure during export. Decrements the counter on
@@ -318,6 +479,28 @@ pub fn resolve_deferred_hairpin_stops(
         } else {
             // Emit stop wedge in this measure
             let stop_dir = make_hairpin_stop_direction(stop.beat, stop.spread, ctx);
+            mxml_measure
+                .content
+                .push(MeasureContent::Direction(Box::new(stop_dir)));
+        }
+    }
+}
+
+/// Resolve deferred octave-shift stops that target the current measure.
+pub fn resolve_deferred_octave_shift_stops(
+    staff_n: usize,
+    mxml_measure: &mut crate::model::elements::Measure,
+    ctx: &mut ConversionContext,
+) {
+    let deferred = ctx.drain_deferred_octave_shift_stops();
+    for mut stop in deferred {
+        if stop.staff != staff_n {
+            ctx.add_deferred_octave_shift_stop(stop);
+        } else if stop.measures_remaining > 0 {
+            stop.measures_remaining -= 1;
+            ctx.add_deferred_octave_shift_stop(stop);
+        } else {
+            let stop_dir = make_octave_shift_stop_direction(stop.beat, Some(stop.number), ctx);
             mxml_measure
                 .content
                 .push(MeasureContent::Direction(Box::new(stop_dir)));
@@ -1009,6 +1192,82 @@ mod tests {
         } else {
             panic!("Expected wedge direction type");
         }
+    }
+
+    #[test]
+    fn test_convert_mei_octave_generates_start_and_stop() {
+        use crate::model::direction::{DirectionTypeContent, OctaveShiftType};
+        use tusk_model::data::{DataBeat, DataMeasurebeat, DataOctaveDis, DataStaffrelBasic};
+        use tusk_model::elements::Octave;
+
+        let mut octave = Octave::default();
+        octave.octave_log.tstamp = Some(DataBeat::from(2.0));
+        octave.octave_log.tstamp2 = Some(DataMeasurebeat::from("0m+4".to_string()));
+        octave.octave_log.staff = Some("1".to_string());
+        octave.octave_log.dis = Some(DataOctaveDis(8));
+        octave.octave_log.dis_place = Some(DataStaffrelBasic::Above);
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        let directions = convert_mei_octave(&octave, &mut ctx);
+
+        assert_eq!(directions.len(), 2);
+        assert!(matches!(
+            directions[0].direction_types[0].content,
+            DirectionTypeContent::OctaveShift(ref shift) if shift.shift_type == OctaveShiftType::Down
+        ));
+        assert!(matches!(
+            directions[1].direction_types[0].content,
+            DirectionTypeContent::OctaveShift(ref shift) if shift.shift_type == OctaveShiftType::Stop
+        ));
+    }
+
+    #[test]
+    fn test_convert_mei_pedal_generates_musicxml_pedal() {
+        use crate::model::direction::{DirectionTypeContent, PedalType};
+        use tusk_model::data::{DataBeat, DataStaffrel, DataStaffrelBasic};
+        use tusk_model::elements::Pedal;
+
+        let mut pedal = Pedal::default();
+        pedal.pedal_log.tstamp = Some(DataBeat::from(1.0));
+        pedal.pedal_log.staff = Some("1".to_string());
+        pedal.pedal_log.dir = Some("down".to_string());
+        pedal.pedal_log.func = Some("sustain".to_string());
+        pedal.pedal_vis.place =
+            Some(DataStaffrel::MeiDataStaffrelBasic(DataStaffrelBasic::Below));
+        pedal.pedal_vis.form = Some(tusk_model::data::DataPedalstyle::Pedstar);
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        let direction = convert_mei_pedal(&pedal, &mut ctx).expect("pedal direction");
+
+        assert!(matches!(
+            direction.direction_types[0].content,
+            DirectionTypeContent::Pedal(ref p) if p.pedal_type == PedalType::Start
+        ));
+    }
+
+    #[test]
+    fn test_convert_mei_pedal_stop_generates_musicxml_stop_line() {
+        use crate::model::data::YesNo;
+        use crate::model::direction::{DirectionTypeContent, PedalType};
+        use tusk_model::data::DataBeat;
+        use tusk_model::elements::Pedal;
+
+        let mut pedal = Pedal::default();
+        pedal.pedal_log.tstamp = Some(DataBeat::from(4.0));
+        pedal.pedal_log.staff = Some("1".to_string());
+        pedal.pedal_log.dir = Some("up".to_string());
+        pedal.pedal_log.func = Some("sustain".to_string());
+        pedal.pedal_vis.form = Some(tusk_model::data::DataPedalstyle::Pedstar);
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        let direction = convert_mei_pedal(&pedal, &mut ctx).expect("pedal direction");
+
+        let DirectionTypeContent::Pedal(ref p) = direction.direction_types[0].content else {
+            panic!("expected pedal direction type");
+        };
+        assert_eq!(p.pedal_type, PedalType::Stop);
+        assert_eq!(p.line, Some(YesNo::Yes));
+        assert_eq!(p.sign, Some(YesNo::No));
     }
 
     #[test]

@@ -5,7 +5,8 @@
 //! - `<wedge>` → `<hairpin>`
 //! - `<metronome>` → `<tempo>`
 //! - `<words>` → `<dir>`
-//! - Rehearsal, Segno, Coda, Pedal, OctaveShift, and other direction types → `<dir>` with
+//! - `<octave-shift>` → `<octave>`
+//! - Rehearsal, Segno, Coda, Pedal, and other direction types → `<dir>` with
 //!   data stored in ExtensionStore for roundtrip.
 
 use crate::context::ConversionContext;
@@ -14,11 +15,16 @@ use crate::import::utils::{
     beat_unit_string_to_duration, dynamics_value_to_string, format_metronome_text,
 };
 use crate::model::data::AboveBelow;
-use crate::model::direction::{Direction, DirectionTypeContent, MetronomeContent, WedgeType};
-use tusk_model::data::{
-    DataAugmentdot, DataBeat, DataBoolean, DataStaffrel, DataStaffrelBasic, DataTempovalue,
+use crate::model::direction::{
+    Direction, DirectionTypeContent, MetronomeContent, OctaveShiftType, PedalType, WedgeType,
 };
-use tusk_model::elements::{Dir, DirChild, Dynam, DynamChild, Hairpin, Tempo, TempoChild};
+use tusk_model::data::{
+    DataAugmentdot, DataBeat, DataBoolean, DataOctaveDis, DataStaffrel, DataStaffrelBasic,
+    DataTempovalue,
+};
+use tusk_model::elements::{
+    Dir, DirChild, Dynam, DynamChild, Hairpin, Octave, Pedal, Tempo, TempoChild,
+};
 use tusk_model::musicxml_ext::DirectionContentData;
 use tusk_model::musicxml_ext::{
     BeatUnitTiedData, MetricModulationData, MetronomeBeamData, MetronomeContentData, MetronomeData,
@@ -40,6 +46,10 @@ pub enum DirectionConversionResult {
     Hairpin(Hairpin),
     /// Tempo indication
     Tempo(Tempo),
+    /// Octave shift / ottava bracket
+    Octave(Octave),
+    /// Pedal mark
+    Pedal(Pedal),
     /// General directive text
     Dir(Dir),
 }
@@ -51,6 +61,8 @@ impl DirectionConversionResult {
             DirectionConversionResult::Dynam(d) => d.common.xml_id.as_deref(),
             DirectionConversionResult::Hairpin(h) => h.common.xml_id.as_deref(),
             DirectionConversionResult::Tempo(t) => t.common.xml_id.as_deref(),
+            DirectionConversionResult::Octave(o) => o.common.xml_id.as_deref(),
+            DirectionConversionResult::Pedal(p) => p.common.xml_id.as_deref(),
             DirectionConversionResult::Dir(d) => d.common.xml_id.as_deref(),
         }
     }
@@ -61,6 +73,8 @@ impl DirectionConversionResult {
             DirectionConversionResult::Dynam(d) => d.common.xml_id = Some(id),
             DirectionConversionResult::Hairpin(h) => h.common.xml_id = Some(id),
             DirectionConversionResult::Tempo(t) => t.common.xml_id = Some(id),
+            DirectionConversionResult::Octave(o) => o.common.xml_id = Some(id),
+            DirectionConversionResult::Pedal(p) => p.common.xml_id = Some(id),
             DirectionConversionResult::Dir(d) => d.common.xml_id = Some(id),
         }
     }
@@ -151,14 +165,15 @@ pub fn convert_direction(
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::Pedal(pedal) => {
-                let data = DirectionContentData::Pedal(pedal.clone());
-                let dir = dir_with_ext(tstamp.clone(), staff, place.clone(), ctx, data);
-                results.push(DirectionConversionResult::Dir(dir));
+                let pedal = convert_pedal(pedal, tstamp.clone(), staff, place.clone(), ctx);
+                results.push(DirectionConversionResult::Pedal(pedal));
             }
             DirectionTypeContent::OctaveShift(shift) => {
-                let data = DirectionContentData::OctaveShift(shift.clone());
-                let dir = dir_with_ext(tstamp.clone(), staff, place.clone(), ctx, data);
-                results.push(DirectionConversionResult::Dir(dir));
+                if let Some(octave) =
+                    convert_octave_shift(shift, tstamp.clone(), staff, place.clone(), ctx)
+                {
+                    results.push(DirectionConversionResult::Octave(octave));
+                }
             }
             DirectionTypeContent::HarpPedals(hp) => {
                 let data = DirectionContentData::HarpPedals(hp.clone());
@@ -421,6 +436,142 @@ fn convert_wedge(
             None
         }
     }
+}
+
+/// Convert MusicXML octave-shift to an MEI `<octave>` control event.
+///
+/// Start shifts create the `<octave>` element and register a pending span.
+/// Stop shifts resolve the span and patch `@tstamp2` in a later post-pass.
+/// Continue shifts are ignored because MEI does not need a separate continuation marker.
+fn convert_octave_shift(
+    shift: &crate::model::direction::OctaveShift,
+    tstamp: DataBeat,
+    staff: u32,
+    place: Option<DataStaffrel>,
+    ctx: &mut ConversionContext,
+) -> Option<Octave> {
+    use crate::context::{ActiveOctaveShift, PendingOctaveShift};
+    use tusk_model::data::{DataColor, DataColorvalues};
+
+    match shift.shift_type {
+        OctaveShiftType::Up | OctaveShiftType::Down => {
+            let mut octave = Octave::default();
+            let octave_id = ctx.generate_id_with_suffix("octave");
+            octave.common.xml_id = Some(octave_id.clone());
+
+            if let Some(ref orig_id) = shift.id {
+                ctx.map_id(orig_id, octave_id.clone());
+            }
+
+            octave.octave_log.tstamp = Some(tstamp.clone());
+            octave.octave_log.staff = Some((staff as u64).to_string());
+            octave.octave_log.dis = Some(DataOctaveDis(shift.size.unwrap_or(8) as u64));
+            octave.octave_log.dis_place = Some(match place {
+                Some(DataStaffrel::MeiDataStaffrelBasic(basic)) => basic,
+                _ => match shift.shift_type {
+                    OctaveShiftType::Up => DataStaffrelBasic::Below,
+                    OctaveShiftType::Down => DataStaffrelBasic::Above,
+                    OctaveShiftType::Stop | OctaveShiftType::Continue => unreachable!(),
+                },
+            });
+
+            if let Some(ref color) = shift.color {
+                octave.octave_vis.color =
+                    Some(DataColor::MeiDataColorvalues(DataColorvalues(color.clone())));
+            }
+
+            let part_id = ctx.position().part_id.clone().unwrap_or_default();
+            let number = shift.number.unwrap_or(1);
+            ctx.add_pending_octave_shift(PendingOctaveShift {
+                octave_id,
+                part_id: part_id.clone(),
+                number,
+                start_measure_idx: ctx.measure_idx(),
+            });
+            ctx.add_active_octave_shift(ActiveOctaveShift {
+                part_id,
+                staff,
+                number,
+                octave_delta: match shift.shift_type {
+                    OctaveShiftType::Up => (shift.size.unwrap_or(8) / 8) as i8,
+                    OctaveShiftType::Down => -((shift.size.unwrap_or(8) / 8) as i8),
+                    OctaveShiftType::Stop | OctaveShiftType::Continue => unreachable!(),
+                },
+            });
+
+            Some(octave)
+        }
+        OctaveShiftType::Stop => {
+            let part_id = ctx.position().part_id.clone().unwrap_or_default();
+            let number = shift.number.unwrap_or(1);
+            let _ = ctx.resolve_active_octave_shift(&part_id, staff, number);
+            if let Some(pending) = ctx.resolve_octave_shift(&part_id, number) {
+                let stop_tstamp = tstamp.0;
+                let measure_offset = ctx.measure_idx() - pending.start_measure_idx;
+                let tstamp2 = format!("{measure_offset}m+{stop_tstamp}");
+                ctx.add_completed_octave_shift(crate::context::CompletedOctaveShift {
+                    octave_id: pending.octave_id,
+                    tstamp2,
+                });
+            }
+            None
+        }
+        OctaveShiftType::Continue => None,
+    }
+}
+
+fn convert_pedal(
+    pedal: &crate::model::direction::Pedal,
+    tstamp: DataBeat,
+    staff: u32,
+    place: Option<DataStaffrel>,
+    ctx: &mut ConversionContext,
+) -> Pedal {
+    use crate::model::data::YesNo;
+    use tusk_model::data::{DataColor, DataColorvalues, DataPedalstyle};
+
+    let mut mei_pedal = Pedal::default();
+    let pedal_id = ctx.generate_id_with_suffix("pedal");
+    mei_pedal.common.xml_id = Some(pedal_id.clone());
+
+    if let Some(ref orig_id) = pedal.id {
+        ctx.map_id(orig_id, pedal_id);
+    }
+
+    mei_pedal.pedal_log.tstamp = Some(tstamp);
+    mei_pedal.pedal_log.staff = Some((staff as u64).to_string());
+    mei_pedal.pedal_vis.place = place;
+    mei_pedal.pedal_log.func = Some(match pedal.pedal_type {
+        PedalType::Sostenuto => "sostenuto".to_string(),
+        _ => "sustain".to_string(),
+    });
+    mei_pedal.pedal_log.dir = Some(match pedal.pedal_type {
+        PedalType::Start | PedalType::Resume | PedalType::Sostenuto | PedalType::Continue => {
+            "down".to_string()
+        }
+        PedalType::Stop | PedalType::Discontinue => "up".to_string(),
+        PedalType::Change => "bounce".to_string(),
+    });
+    mei_pedal.pedal_vis.form = match pedal.pedal_type {
+        PedalType::Stop | PedalType::Discontinue | PedalType::Change => Some(DataPedalstyle::Pedstar),
+        _ => match (
+            pedal.sign.as_ref() == Some(&YesNo::Yes),
+            pedal.line.as_ref() == Some(&YesNo::Yes),
+            pedal.abbreviated.as_ref() == Some(&YesNo::Yes),
+        ) {
+            (true, _, true) => Some(DataPedalstyle::Altpedstar),
+            (true, _, false) => Some(DataPedalstyle::Pedstar),
+            (false, true, _) => Some(DataPedalstyle::Pedline),
+            _ => None,
+        },
+    };
+
+    if let Some(ref color) = pedal.color {
+        mei_pedal.pedal_vis.color =
+            Some(DataColor::MeiDataColorvalues(DataColorvalues(color.clone())));
+    }
+
+    mei_pedal
 }
 
 /// Convert MusicXML metronome to MEI tempo element.
@@ -705,4 +856,130 @@ fn convert_words(
     }
 
     dir
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::context::{ConversionContext, ConversionDirection};
+
+    #[test]
+    fn convert_direction_octave_shift_creates_mei_octave() {
+        let mut direction = crate::model::direction::Direction::new(vec![
+            crate::model::direction::DirectionType {
+                content: DirectionTypeContent::OctaveShift(crate::model::direction::OctaveShift {
+                    shift_type: OctaveShiftType::Down,
+                    number: Some(1),
+                    size: Some(8),
+                    dash_length: None,
+                    space_length: None,
+                    default_x: None,
+                    default_y: None,
+                    font_family: None,
+                    font_size: None,
+                    color: None,
+                    id: None,
+                }),
+                id: None,
+            },
+        ]);
+        direction.placement = Some(AboveBelow::Above);
+        direction.staff = Some(1);
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        ctx.set_part("P1");
+        ctx.set_staff(1);
+        ctx.set_divisions(4.0);
+        ctx.set_measure_idx(20);
+        ctx.set_beat_position(6.4);
+
+        let results = convert_direction(&direction, &mut ctx).expect("convert direction");
+        assert_eq!(results.len(), 1);
+
+        let DirectionConversionResult::Octave(octave) = &results[0] else {
+            panic!("expected octave result");
+        };
+        assert_eq!(octave.octave_log.staff.as_deref(), Some("1"));
+        assert_eq!(octave.octave_log.dis, Some(DataOctaveDis(8)));
+        assert_eq!(octave.octave_log.dis_place, Some(DataStaffrelBasic::Above));
+        assert_eq!(octave.octave_log.tstamp, Some(DataBeat(2.6)));
+    }
+
+    #[test]
+    fn convert_direction_pedal_creates_mei_pedal() {
+        let mut direction = crate::model::direction::Direction::new(vec![
+            crate::model::direction::DirectionType {
+                content: DirectionTypeContent::Pedal(crate::model::direction::Pedal {
+                    pedal_type: PedalType::Resume,
+                    number: Some(1),
+                    line: Some(crate::model::data::YesNo::Yes),
+                    sign: Some(crate::model::data::YesNo::Yes),
+                    abbreviated: None,
+                    default_x: None,
+                    default_y: None,
+                    relative_x: None,
+                    relative_y: None,
+                    halign: None,
+                    valign: None,
+                    color: None,
+                    id: None,
+                }),
+                id: None,
+            },
+        ]);
+        direction.placement = Some(AboveBelow::Below);
+        direction.staff = Some(2);
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        ctx.set_part("P1");
+        ctx.set_staff(2);
+        ctx.set_divisions(4.0);
+
+        let results = convert_direction(&direction, &mut ctx).expect("convert direction");
+        let DirectionConversionResult::Pedal(pedal) = &results[0] else {
+            panic!("expected pedal result");
+        };
+        assert_eq!(pedal.pedal_log.staff.as_deref(), Some("2"));
+        assert_eq!(pedal.pedal_log.dir.as_deref(), Some("down"));
+        assert_eq!(pedal.pedal_log.func.as_deref(), Some("sustain"));
+        assert_eq!(pedal.pedal_vis.form, Some(tusk_model::data::DataPedalstyle::Pedstar));
+    }
+
+    #[test]
+    fn convert_direction_pedal_stop_uses_pedstar_form() {
+        let mut direction = crate::model::direction::Direction::new(vec![
+            crate::model::direction::DirectionType {
+                content: DirectionTypeContent::Pedal(crate::model::direction::Pedal {
+                    pedal_type: PedalType::Stop,
+                    number: Some(1),
+                    line: Some(crate::model::data::YesNo::Yes),
+                    sign: Some(crate::model::data::YesNo::No),
+                    abbreviated: None,
+                    default_x: None,
+                    default_y: None,
+                    relative_x: None,
+                    relative_y: None,
+                    halign: None,
+                    valign: None,
+                    color: None,
+                    id: None,
+                }),
+                id: None,
+            },
+        ]);
+        direction.placement = Some(AboveBelow::Below);
+        direction.staff = Some(2);
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        ctx.set_part("P1");
+        ctx.set_staff(2);
+        ctx.set_divisions(4.0);
+
+        let results = convert_direction(&direction, &mut ctx).expect("convert direction");
+        let DirectionConversionResult::Pedal(pedal) = &results[0] else {
+            panic!("expected pedal result");
+        };
+        assert_eq!(pedal.pedal_log.dir.as_deref(), Some("up"));
+        assert_eq!(pedal.pedal_vis.form, Some(tusk_model::data::DataPedalstyle::Pedstar));
+    }
 }

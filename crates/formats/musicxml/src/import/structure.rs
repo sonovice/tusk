@@ -93,6 +93,13 @@ pub fn convert_section(
     // Completed hairpins reference hairpin elements in earlier measures by ID.
     patch_hairpin_tstamp2(&mut section, ctx);
 
+    // Post-pass: patch completed octave shifts with tstamp2.
+    patch_octave_tstamp2(&mut section, ctx);
+
+    // Post-pass: transpose written note pitches covered by imported ottava spans.
+    apply_octave_spans_to_written_pitches(&mut section);
+    clear_transient_note_tstamps(&mut section);
+
     // Post-pass: detect barline endings and restructure into MEI <ending> containers.
     // MusicXML uses <barline><ending> on boundary measures; MEI uses structural <ending>
     // wrapping the measures. This restructuring also strips ending data from the barline
@@ -330,6 +337,16 @@ fn convert_measure_directions(
                             mei_measure
                                 .children
                                 .push(MeasureChild::Tempo(Box::new(tempo)));
+                        }
+                        DirectionConversionResult::Octave(octave) => {
+                            mei_measure
+                                .children
+                                .push(MeasureChild::Octave(Box::new(octave)));
+                        }
+                        DirectionConversionResult::Pedal(pedal) => {
+                            mei_measure
+                                .children
+                                .push(MeasureChild::Pedal(Box::new(pedal)));
                         }
                         DirectionConversionResult::Dir(dir) => {
                             mei_measure.children.push(MeasureChild::Dir(Box::new(dir)));
@@ -633,6 +650,955 @@ fn patch_hairpin_tstamp2(section: &mut Section, ctx: &mut ConversionContext) {
             break;
         }
     }
+}
+
+/// Patch completed octave shifts with @tstamp2 on their MEI octave elements.
+fn patch_octave_tstamp2(section: &mut Section, ctx: &mut ConversionContext) {
+    use tusk_model::generated::data::DataMeasurebeat;
+
+    let completed = ctx.drain_completed_octave_shifts();
+    if completed.is_empty() {
+        return;
+    }
+
+    let mut lookup: std::collections::HashMap<String, crate::context::CompletedOctaveShift> = completed
+        .into_iter()
+        .map(|c| (c.octave_id.clone(), c))
+        .collect();
+
+    for section_child in &mut section.children {
+        if let SectionChild::Measure(measure) = section_child {
+            for measure_child in &mut measure.children {
+                if let MeasureChild::Octave(octave) = measure_child {
+                    if let Some(ref id) = octave.common.xml_id {
+                        if let Some(completed) = lookup.remove(id) {
+                            octave.octave_log.tstamp2 = Some(DataMeasurebeat::from(completed.tstamp2));
+                        }
+                    }
+                }
+            }
+        }
+        if lookup.is_empty() {
+            break;
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct OctaveSpan {
+    staff: u32,
+    start_measure: usize,
+    start_beat: f64,
+    end_measure: usize,
+    end_beat: f64,
+    octave_delta: i16,
+}
+
+fn apply_octave_spans_to_written_pitches(section: &mut Section) {
+    let spans = collect_octave_spans(section);
+    if spans.is_empty() {
+        return;
+    }
+
+    for (measure_idx, section_child) in section.children.iter_mut().enumerate() {
+        let SectionChild::Measure(measure) = section_child else {
+            continue;
+        };
+        let quarter_ppq = estimate_measure_quarter_ppq(measure).unwrap_or(1.0);
+
+        for measure_child in &mut measure.children {
+            let MeasureChild::Staff(staff) = measure_child else {
+                continue;
+            };
+
+            let Some(staff_n) = staff
+                .n_integer
+                .n
+                .as_deref()
+                .and_then(|n| n.parse::<u32>().ok())
+            else {
+                continue;
+            };
+
+            let active_spans: Vec<OctaveSpan> = spans
+                .iter()
+                .copied()
+                .filter(|span| span.staff == staff_n)
+                .collect();
+            if active_spans.is_empty() {
+                continue;
+            }
+
+            for staff_child in &mut staff.children {
+                let StaffChild::Layer(layer) = staff_child else {
+                    continue;
+                };
+                transpose_layer_children(
+                    &mut layer.children,
+                    measure_idx,
+                    0.0,
+                    quarter_ppq,
+                    &active_spans,
+                );
+            }
+        }
+    }
+}
+
+fn clear_transient_note_tstamps(section: &mut Section) {
+    for section_child in &mut section.children {
+        let SectionChild::Measure(measure) = section_child else {
+            continue;
+        };
+
+        for measure_child in &mut measure.children {
+            let MeasureChild::Staff(staff) = measure_child else {
+                continue;
+            };
+
+            for staff_child in &mut staff.children {
+                let StaffChild::Layer(layer) = staff_child else {
+                    continue;
+                };
+                clear_layer_child_tstamps(&mut layer.children);
+            }
+        }
+    }
+}
+
+fn clear_layer_child_tstamps(children: &mut [LayerChild]) {
+    for child in children {
+        match child {
+            LayerChild::Note(note) => note.note_log.tstamp = None,
+            LayerChild::Chord(chord) => {
+                chord.chord_log.tstamp = None;
+                for chord_child in &mut chord.children {
+                    let tusk_model::elements::ChordChild::Note(note) = chord_child else {
+                        continue;
+                    };
+                    note.note_log.tstamp = None;
+                }
+            }
+            LayerChild::Beam(beam) => clear_beam_child_tstamps(&mut beam.children),
+            LayerChild::Tuplet(tuplet) => clear_tuplet_child_tstamps(&mut tuplet.children),
+            LayerChild::BTrem(btrem) => clear_btrem_child_tstamps(&mut btrem.children),
+            LayerChild::FTrem(ftrem) => clear_ftrem_child_tstamps(&mut ftrem.children),
+            _ => {}
+        }
+    }
+}
+
+fn clear_beam_child_tstamps(children: &mut [tusk_model::elements::BeamChild]) {
+    use tusk_model::elements::BeamChild;
+
+    for child in children {
+        match child {
+            BeamChild::Note(note) => note.note_log.tstamp = None,
+            BeamChild::Chord(chord) => {
+                chord.chord_log.tstamp = None;
+                for chord_child in &mut chord.children {
+                    let tusk_model::elements::ChordChild::Note(note) = chord_child else {
+                        continue;
+                    };
+                    note.note_log.tstamp = None;
+                }
+            }
+            BeamChild::Beam(beam) => clear_beam_child_tstamps(&mut beam.children),
+            BeamChild::BTrem(btrem) => clear_btrem_child_tstamps(&mut btrem.children),
+            BeamChild::FTrem(ftrem) => clear_ftrem_child_tstamps(&mut ftrem.children),
+            _ => {}
+        }
+    }
+}
+
+fn clear_tuplet_child_tstamps(children: &mut [tusk_model::elements::TupletChild]) {
+    use tusk_model::elements::TupletChild;
+
+    for child in children {
+        match child {
+            TupletChild::Note(note) => note.note_log.tstamp = None,
+            TupletChild::Beam(beam) => clear_beam_child_tstamps(&mut beam.children),
+            TupletChild::BTrem(btrem) => clear_btrem_child_tstamps(&mut btrem.children),
+            _ => {}
+        }
+    }
+}
+
+fn clear_btrem_child_tstamps(children: &mut [tusk_model::elements::BTremChild]) {
+    use tusk_model::elements::BTremChild;
+
+    for child in children {
+        match child {
+            BTremChild::Note(note) => note.note_log.tstamp = None,
+            BTremChild::Chord(chord) => {
+                chord.chord_log.tstamp = None;
+                for chord_child in &mut chord.children {
+                    let tusk_model::elements::ChordChild::Note(note) = chord_child else {
+                        continue;
+                    };
+                    note.note_log.tstamp = None;
+                }
+            }
+        }
+    }
+}
+
+fn clear_ftrem_child_tstamps(children: &mut [tusk_model::elements::FTremChild]) {
+    use tusk_model::elements::FTremChild;
+
+    for child in children {
+        match child {
+            FTremChild::Note(note) => note.note_log.tstamp = None,
+            FTremChild::Chord(chord) => {
+                chord.chord_log.tstamp = None;
+                for chord_child in &mut chord.children {
+                    let tusk_model::elements::ChordChild::Note(note) = chord_child else {
+                        continue;
+                    };
+                    note.note_log.tstamp = None;
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+fn collect_octave_spans(section: &Section) -> Vec<OctaveSpan> {
+    let mut spans = Vec::new();
+
+    for (measure_idx, section_child) in section.children.iter().enumerate() {
+        let SectionChild::Measure(measure) = section_child else {
+            continue;
+        };
+
+        for measure_child in &measure.children {
+            let MeasureChild::Octave(octave) = measure_child else {
+                continue;
+            };
+
+            let Some(staff) = octave
+                .octave_log
+                .staff
+                .as_deref()
+                .and_then(|staff| staff.parse::<u32>().ok())
+            else {
+                continue;
+            };
+            let Some(start_beat) = octave.octave_log.tstamp.as_ref().map(|beat| beat.0) else {
+                continue;
+            };
+            let Some(tstamp2) = octave.octave_log.tstamp2.as_ref() else {
+                continue;
+            };
+            let (measures_ahead, end_beat) = parse_tstamp2(&tstamp2.0);
+
+            let displacement = octave.octave_log.dis.as_ref().map(|dis| dis.0).unwrap_or(8);
+            let octave_steps = match displacement {
+                15 => 2,
+                22 => 3,
+                n if n >= 8 => (n / 8) as i16,
+                _ => 1,
+            };
+            let Some(dis_place) = octave.octave_log.dis_place else {
+                continue;
+            };
+            let octave_delta = match dis_place {
+                tusk_model::data::DataStaffrelBasic::Above => -octave_steps,
+                tusk_model::data::DataStaffrelBasic::Below => octave_steps,
+            };
+
+            spans.push(OctaveSpan {
+                staff,
+                start_measure: measure_idx,
+                start_beat,
+                end_measure: measure_idx + measures_ahead,
+                end_beat,
+                octave_delta,
+            });
+        }
+    }
+
+    spans
+}
+
+fn parse_tstamp2(s: &str) -> (usize, f64) {
+    let mut parts = s.split("m+");
+    let measures_ahead = parts
+        .next()
+        .and_then(|m| m.parse::<usize>().ok())
+        .unwrap_or(0);
+    let beat = parts
+        .next()
+        .and_then(|b| b.parse::<f64>().ok())
+        .unwrap_or(1.0);
+    (measures_ahead, beat)
+}
+
+fn transpose_layer_children(
+    children: &mut [LayerChild],
+    measure_idx: usize,
+    mut beat_cursor: f64,
+    quarter_ppq: f64,
+    spans: &[OctaveSpan],
+) -> f64 {
+    for child in children {
+        let child_start = beat_cursor + 1.0;
+        match child {
+            LayerChild::Note(note) => {
+                transpose_note_if_needed(note, measure_idx, child_start, spans);
+                beat_cursor += layer_child_duration_beats(child, quarter_ppq);
+            }
+            LayerChild::Chord(chord) => {
+                transpose_chord_if_needed(chord, measure_idx, child_start, spans);
+                beat_cursor += layer_child_duration_beats(child, quarter_ppq);
+            }
+            LayerChild::Beam(beam) => {
+                beat_cursor = transpose_beam_children(
+                    &mut beam.children,
+                    measure_idx,
+                    beat_cursor,
+                    quarter_ppq,
+                    spans,
+                );
+            }
+            LayerChild::Tuplet(tuplet) => {
+                beat_cursor = transpose_tuplet_children(
+                    &mut tuplet.children,
+                    measure_idx,
+                    beat_cursor,
+                    quarter_ppq,
+                    spans,
+                );
+            }
+            LayerChild::BTrem(btrem) => {
+                beat_cursor = transpose_btrem_children(
+                    &mut btrem.children,
+                    measure_idx,
+                    beat_cursor,
+                    quarter_ppq,
+                    spans,
+                );
+            }
+            LayerChild::FTrem(ftrem) => {
+                beat_cursor = transpose_ftrem_children(
+                    &mut ftrem.children,
+                    measure_idx,
+                    beat_cursor,
+                    quarter_ppq,
+                    spans,
+                );
+            }
+            _ => {
+                beat_cursor += layer_child_duration_beats(child, quarter_ppq);
+            }
+        }
+    }
+
+    beat_cursor
+}
+
+fn transpose_beam_children(
+    children: &mut [tusk_model::elements::BeamChild],
+    measure_idx: usize,
+    mut beat_cursor: f64,
+    quarter_ppq: f64,
+    spans: &[OctaveSpan],
+) -> f64 {
+    use tusk_model::elements::BeamChild;
+
+    for child in children {
+        let child_start = beat_cursor + 1.0;
+        match child {
+            BeamChild::Note(note) => {
+                transpose_note_if_needed(note, measure_idx, child_start, spans);
+                beat_cursor += beam_child_duration_beats(child, quarter_ppq);
+            }
+            BeamChild::Chord(chord) => {
+                transpose_chord_if_needed(chord, measure_idx, child_start, spans);
+                beat_cursor += beam_child_duration_beats(child, quarter_ppq);
+            }
+            BeamChild::Beam(beam) => {
+                beat_cursor = transpose_beam_children(
+                    &mut beam.children,
+                    measure_idx,
+                    beat_cursor,
+                    quarter_ppq,
+                    spans,
+                );
+            }
+            _ => {
+                beat_cursor += beam_child_duration_beats(child, quarter_ppq);
+            }
+        }
+    }
+
+    beat_cursor
+}
+
+fn transpose_tuplet_children(
+    children: &mut [tusk_model::elements::TupletChild],
+    measure_idx: usize,
+    mut beat_cursor: f64,
+    quarter_ppq: f64,
+    spans: &[OctaveSpan],
+) -> f64 {
+    use tusk_model::elements::TupletChild;
+
+    for child in children {
+        let child_start = beat_cursor + 1.0;
+        match child {
+            TupletChild::Note(note) => {
+                transpose_note_if_needed(note, measure_idx, child_start, spans);
+                beat_cursor += tuplet_child_duration_beats(child, quarter_ppq);
+            }
+            TupletChild::Beam(beam) => {
+                beat_cursor = transpose_beam_children(
+                    &mut beam.children,
+                    measure_idx,
+                    beat_cursor,
+                    quarter_ppq,
+                    spans,
+                );
+            }
+            TupletChild::BTrem(btrem) => {
+                beat_cursor = transpose_btrem_children(
+                    &mut btrem.children,
+                    measure_idx,
+                    beat_cursor,
+                    quarter_ppq,
+                    spans,
+                );
+            }
+            _ => {
+                beat_cursor += tuplet_child_duration_beats(child, quarter_ppq);
+            }
+        }
+    }
+
+    beat_cursor
+}
+
+fn transpose_btrem_children(
+    children: &mut [tusk_model::elements::BTremChild],
+    measure_idx: usize,
+    mut beat_cursor: f64,
+    quarter_ppq: f64,
+    spans: &[OctaveSpan],
+) -> f64 {
+    use tusk_model::elements::BTremChild;
+
+    for child in children {
+        let child_start = beat_cursor + 1.0;
+        match child {
+            BTremChild::Note(note) => {
+                transpose_note_if_needed(note, measure_idx, child_start, spans);
+                beat_cursor += btrem_child_duration_beats(child, quarter_ppq);
+            }
+            BTremChild::Chord(chord) => {
+                transpose_chord_if_needed(chord, measure_idx, child_start, spans);
+                beat_cursor += btrem_child_duration_beats(child, quarter_ppq);
+            }
+        }
+    }
+
+    beat_cursor
+}
+
+fn transpose_ftrem_children(
+    children: &mut [tusk_model::elements::FTremChild],
+    measure_idx: usize,
+    mut beat_cursor: f64,
+    quarter_ppq: f64,
+    spans: &[OctaveSpan],
+) -> f64 {
+    use tusk_model::elements::FTremChild;
+
+    for child in children {
+        let child_start = beat_cursor + 1.0;
+        match child {
+            FTremChild::Note(note) => {
+                transpose_note_if_needed(note, measure_idx, child_start, spans);
+                beat_cursor += ftrem_child_duration_beats(child, quarter_ppq);
+            }
+            FTremChild::Chord(chord) => {
+                transpose_chord_if_needed(chord, measure_idx, child_start, spans);
+                beat_cursor += ftrem_child_duration_beats(child, quarter_ppq);
+            }
+            _ => {
+                beat_cursor += ftrem_child_duration_beats(child, quarter_ppq);
+            }
+        }
+    }
+
+    beat_cursor
+}
+
+fn transpose_note_if_needed(
+    note: &mut tusk_model::elements::Note,
+    measure_idx: usize,
+    beat: f64,
+    spans: &[OctaveSpan],
+) {
+    let octave_delta: i16 = spans
+        .iter()
+        .filter(|span| span_contains_position(span, measure_idx, beat))
+        .map(|span| span.octave_delta)
+        .sum();
+    if octave_delta == 0 {
+        return;
+    }
+
+    if let Some(oct) = note.note_log.oct.as_mut() {
+        oct.0 = ((oct.0 as i64) + octave_delta as i64).max(0) as u64;
+    }
+}
+
+fn transpose_chord_if_needed(
+    chord: &mut tusk_model::elements::Chord,
+    measure_idx: usize,
+    beat: f64,
+    spans: &[OctaveSpan],
+) {
+    for child in &mut chord.children {
+        let tusk_model::elements::ChordChild::Note(note) = child else {
+            continue;
+        };
+        transpose_note_if_needed(note, measure_idx, beat, spans);
+    }
+}
+
+fn span_contains_position(span: &OctaveSpan, measure_idx: usize, beat: f64) -> bool {
+    const EPSILON: f64 = 0.000_001;
+
+    if measure_idx < span.start_measure || measure_idx > span.end_measure {
+        return false;
+    }
+    if measure_idx == span.start_measure && beat + EPSILON < span.start_beat {
+        return false;
+    }
+    if measure_idx == span.end_measure && beat + EPSILON >= span.end_beat {
+        return false;
+    }
+    true
+}
+
+fn estimate_measure_quarter_ppq(measure: &tusk_model::elements::Measure) -> Option<f64> {
+    for child in &measure.children {
+        let MeasureChild::Staff(staff) = child else {
+            continue;
+        };
+        for staff_child in &staff.children {
+            let StaffChild::Layer(layer) = staff_child else {
+                continue;
+            };
+            if let Some(quarter_ppq) = estimate_layer_quarter_ppq(&layer.children) {
+                return Some(quarter_ppq);
+            }
+        }
+    }
+    None
+}
+
+fn estimate_layer_quarter_ppq(children: &[LayerChild]) -> Option<f64> {
+    use tusk_model::elements::{BTremChild, BeamChild, FTremChild, TupletChild};
+
+    for child in children {
+        match child {
+            LayerChild::Note(note) => {
+                if let Some(quarter_ppq) =
+                    estimate_quarter_ppq(parse_ppq(note.note_ges.dur_ppq.as_deref()), note_duration_quarters(note))
+                {
+                    return Some(quarter_ppq);
+                }
+            }
+            LayerChild::Rest(rest) => {
+                if let Some(quarter_ppq) =
+                    estimate_quarter_ppq(parse_ppq(rest.rest_ges.dur_ppq.as_deref()), rest_duration_quarters(rest))
+                {
+                    return Some(quarter_ppq);
+                }
+            }
+            LayerChild::Chord(chord) => {
+                if let Some(quarter_ppq) =
+                    estimate_quarter_ppq(parse_ppq(chord.chord_ges.dur_ppq.as_deref()), chord_duration_quarters(chord))
+                {
+                    return Some(quarter_ppq);
+                }
+            }
+            LayerChild::Beam(beam) => {
+                for beam_child in &beam.children {
+                    match beam_child {
+                        BeamChild::Note(note) => {
+                            if let Some(quarter_ppq) = estimate_quarter_ppq(
+                                parse_ppq(note.note_ges.dur_ppq.as_deref()),
+                                note_duration_quarters(note),
+                            ) {
+                                return Some(quarter_ppq);
+                            }
+                        }
+                        BeamChild::Rest(rest) => {
+                            if let Some(quarter_ppq) = estimate_quarter_ppq(
+                                parse_ppq(rest.rest_ges.dur_ppq.as_deref()),
+                                rest_duration_quarters(rest),
+                            ) {
+                                return Some(quarter_ppq);
+                            }
+                        }
+                        BeamChild::Chord(chord) => {
+                            if let Some(quarter_ppq) = estimate_quarter_ppq(
+                                parse_ppq(chord.chord_ges.dur_ppq.as_deref()),
+                                chord_duration_quarters(chord),
+                            ) {
+                                return Some(quarter_ppq);
+                            }
+                        }
+                        BeamChild::Beam(inner) => {
+                            if let Some(quarter_ppq) = estimate_layer_quarter_ppq(&[LayerChild::Beam(inner.clone())]) {
+                                return Some(quarter_ppq);
+                            }
+                        }
+                        BeamChild::BTrem(btrem) => {
+                            for btrem_child in &btrem.children {
+                                match btrem_child {
+                                    BTremChild::Note(note) => {
+                                        if let Some(quarter_ppq) = estimate_quarter_ppq(
+                                            parse_ppq(note.note_ges.dur_ppq.as_deref()),
+                                            note_duration_quarters(note),
+                                        ) {
+                                            return Some(quarter_ppq);
+                                        }
+                                    }
+                                    BTremChild::Chord(chord) => {
+                                        if let Some(quarter_ppq) = estimate_quarter_ppq(
+                                            parse_ppq(chord.chord_ges.dur_ppq.as_deref()),
+                                            chord_duration_quarters(chord),
+                                        ) {
+                                            return Some(quarter_ppq);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        BeamChild::FTrem(ftrem) => {
+                            for ftrem_child in &ftrem.children {
+                                match ftrem_child {
+                                    FTremChild::Note(note) => {
+                                        if let Some(quarter_ppq) = estimate_quarter_ppq(
+                                            parse_ppq(note.note_ges.dur_ppq.as_deref()),
+                                            note_duration_quarters(note),
+                                        ) {
+                                            return Some(quarter_ppq);
+                                        }
+                                    }
+                                    FTremChild::Chord(chord) => {
+                                        if let Some(quarter_ppq) = estimate_quarter_ppq(
+                                            parse_ppq(chord.chord_ges.dur_ppq.as_deref()),
+                                            chord_duration_quarters(chord),
+                                        ) {
+                                            return Some(quarter_ppq);
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            LayerChild::Tuplet(tuplet) => {
+                for tuplet_child in &tuplet.children {
+                    match tuplet_child {
+                        TupletChild::Note(note) => {
+                            if let Some(quarter_ppq) = estimate_quarter_ppq(
+                                parse_ppq(note.note_ges.dur_ppq.as_deref()),
+                                note_duration_quarters(note),
+                            ) {
+                                return Some(quarter_ppq);
+                            }
+                        }
+                        TupletChild::Rest(rest) => {
+                            if let Some(quarter_ppq) = estimate_quarter_ppq(
+                                parse_ppq(rest.rest_ges.dur_ppq.as_deref()),
+                                rest_duration_quarters(rest),
+                            ) {
+                                return Some(quarter_ppq);
+                            }
+                        }
+                        TupletChild::Beam(inner) => {
+                            if let Some(quarter_ppq) = estimate_layer_quarter_ppq(&[LayerChild::Beam(inner.clone())]) {
+                                return Some(quarter_ppq);
+                            }
+                        }
+                        TupletChild::BTrem(btrem) => {
+                            for btrem_child in &btrem.children {
+                                match btrem_child {
+                                    BTremChild::Note(note) => {
+                                        if let Some(quarter_ppq) = estimate_quarter_ppq(
+                                            parse_ppq(note.note_ges.dur_ppq.as_deref()),
+                                            note_duration_quarters(note),
+                                        ) {
+                                            return Some(quarter_ppq);
+                                        }
+                                    }
+                                    BTremChild::Chord(chord) => {
+                                        if let Some(quarter_ppq) = estimate_quarter_ppq(
+                                            parse_ppq(chord.chord_ges.dur_ppq.as_deref()),
+                                            chord_duration_quarters(chord),
+                                        ) {
+                                            return Some(quarter_ppq);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            LayerChild::BTrem(btrem) => {
+                for btrem_child in &btrem.children {
+                    match btrem_child {
+                        BTremChild::Note(note) => {
+                            if let Some(quarter_ppq) = estimate_quarter_ppq(
+                                parse_ppq(note.note_ges.dur_ppq.as_deref()),
+                                note_duration_quarters(note),
+                            ) {
+                                return Some(quarter_ppq);
+                            }
+                        }
+                        BTremChild::Chord(chord) => {
+                            if let Some(quarter_ppq) = estimate_quarter_ppq(
+                                parse_ppq(chord.chord_ges.dur_ppq.as_deref()),
+                                chord_duration_quarters(chord),
+                            ) {
+                                return Some(quarter_ppq);
+                            }
+                        }
+                    }
+                }
+            }
+            LayerChild::FTrem(ftrem) => {
+                for ftrem_child in &ftrem.children {
+                    match ftrem_child {
+                        FTremChild::Note(note) => {
+                            if let Some(quarter_ppq) = estimate_quarter_ppq(
+                                parse_ppq(note.note_ges.dur_ppq.as_deref()),
+                                note_duration_quarters(note),
+                            ) {
+                                return Some(quarter_ppq);
+                            }
+                        }
+                        FTremChild::Chord(chord) => {
+                            if let Some(quarter_ppq) = estimate_quarter_ppq(
+                                parse_ppq(chord.chord_ges.dur_ppq.as_deref()),
+                                chord_duration_quarters(chord),
+                            ) {
+                                return Some(quarter_ppq);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    None
+}
+
+fn estimate_quarter_ppq(dur_ppq: f64, duration_quarters: Option<f64>) -> Option<f64> {
+    let quarters = duration_quarters?;
+    if dur_ppq > 0.0 && quarters > 0.0 {
+        Some(dur_ppq / quarters)
+    } else {
+        None
+    }
+}
+
+fn layer_child_duration_beats(child: &LayerChild, quarter_ppq: f64) -> f64 {
+    match child {
+        LayerChild::Note(note) => note_duration_quarters(note)
+            .unwrap_or_else(|| parse_ppq(note.note_ges.dur_ppq.as_deref()) / quarter_ppq),
+        LayerChild::Rest(rest) => rest_duration_quarters(rest)
+            .unwrap_or_else(|| parse_ppq(rest.rest_ges.dur_ppq.as_deref()) / quarter_ppq),
+        LayerChild::MRest(rest) => parse_ppq(rest.m_rest_ges.dur_ppq.as_deref()) / quarter_ppq,
+        LayerChild::Space(space) => duration_quarters(
+            space.space_log.dur.as_ref(),
+            space.space_log.dots.as_ref().map(|dots| dots.0),
+        )
+        .unwrap_or_else(|| parse_ppq(space.space_ges.dur_ppq.as_deref()) / quarter_ppq),
+        LayerChild::Chord(chord) => chord_duration_quarters(chord)
+            .unwrap_or_else(|| parse_ppq(chord.chord_ges.dur_ppq.as_deref()) / quarter_ppq),
+        LayerChild::Beam(beam) => beam
+            .children
+            .iter()
+            .map(|child| beam_child_duration_beats(child, quarter_ppq))
+            .sum(),
+        LayerChild::Tuplet(tuplet) => tuplet
+            .children
+            .iter()
+            .map(|child| tuplet_child_duration_beats(child, quarter_ppq))
+            .sum(),
+        LayerChild::BTrem(btrem) => btrem
+            .children
+            .iter()
+            .map(|child| btrem_child_duration_beats(child, quarter_ppq))
+            .sum(),
+        LayerChild::FTrem(ftrem) => ftrem
+            .children
+            .iter()
+            .map(|child| ftrem_child_duration_beats(child, quarter_ppq))
+            .sum(),
+        _ => 0.0,
+    }
+}
+
+fn beam_child_duration_beats(child: &tusk_model::elements::BeamChild, quarter_ppq: f64) -> f64 {
+    use tusk_model::elements::BeamChild;
+
+    match child {
+        BeamChild::Note(note) => note_duration_quarters(note)
+            .unwrap_or_else(|| parse_ppq(note.note_ges.dur_ppq.as_deref()) / quarter_ppq),
+        BeamChild::Rest(rest) => rest_duration_quarters(rest)
+            .unwrap_or_else(|| parse_ppq(rest.rest_ges.dur_ppq.as_deref()) / quarter_ppq),
+        BeamChild::Chord(chord) => chord_duration_quarters(chord)
+            .unwrap_or_else(|| parse_ppq(chord.chord_ges.dur_ppq.as_deref()) / quarter_ppq),
+        BeamChild::Beam(beam) => beam
+            .children
+            .iter()
+            .map(|child| beam_child_duration_beats(child, quarter_ppq))
+            .sum(),
+        BeamChild::Space(space) => duration_quarters(
+            space.space_log.dur.as_ref(),
+            space.space_log.dots.as_ref().map(|dots| dots.0),
+        )
+        .unwrap_or_else(|| parse_ppq(space.space_ges.dur_ppq.as_deref()) / quarter_ppq),
+        BeamChild::BTrem(btrem) => btrem
+            .children
+            .iter()
+            .map(|child| btrem_child_duration_beats(child, quarter_ppq))
+            .sum(),
+        BeamChild::FTrem(ftrem) => ftrem
+            .children
+            .iter()
+            .map(|child| ftrem_child_duration_beats(child, quarter_ppq))
+            .sum(),
+        _ => 0.0,
+    }
+}
+
+fn tuplet_child_duration_beats(child: &tusk_model::elements::TupletChild, quarter_ppq: f64) -> f64 {
+    use tusk_model::elements::TupletChild;
+
+    match child {
+        TupletChild::Note(note) => note_duration_quarters(note)
+            .unwrap_or_else(|| parse_ppq(note.note_ges.dur_ppq.as_deref()) / quarter_ppq),
+        TupletChild::Rest(rest) => rest_duration_quarters(rest)
+            .unwrap_or_else(|| parse_ppq(rest.rest_ges.dur_ppq.as_deref()) / quarter_ppq),
+        TupletChild::Beam(beam) => beam
+            .children
+            .iter()
+            .map(|child| beam_child_duration_beats(child, quarter_ppq))
+            .sum(),
+        TupletChild::BTrem(btrem) => btrem
+            .children
+            .iter()
+            .map(|child| btrem_child_duration_beats(child, quarter_ppq))
+            .sum(),
+    }
+}
+
+fn btrem_child_duration_beats(child: &tusk_model::elements::BTremChild, quarter_ppq: f64) -> f64 {
+    use tusk_model::elements::BTremChild;
+
+    match child {
+        BTremChild::Note(note) => note_duration_quarters(note)
+            .unwrap_or_else(|| parse_ppq(note.note_ges.dur_ppq.as_deref()) / quarter_ppq),
+        BTremChild::Chord(chord) => chord_duration_quarters(chord)
+            .unwrap_or_else(|| parse_ppq(chord.chord_ges.dur_ppq.as_deref()) / quarter_ppq),
+    }
+}
+
+fn ftrem_child_duration_beats(child: &tusk_model::elements::FTremChild, quarter_ppq: f64) -> f64 {
+    use tusk_model::elements::FTremChild;
+
+    match child {
+        FTremChild::Note(note) => note_duration_quarters(note)
+            .unwrap_or_else(|| parse_ppq(note.note_ges.dur_ppq.as_deref()) / quarter_ppq),
+        FTremChild::Chord(chord) => chord_duration_quarters(chord)
+            .unwrap_or_else(|| parse_ppq(chord.chord_ges.dur_ppq.as_deref()) / quarter_ppq),
+        _ => 0.0,
+    }
+}
+
+fn parse_ppq(ppq: Option<&str>) -> f64 {
+    ppq.and_then(|value| value.parse::<f64>().ok()).unwrap_or(0.0)
+}
+
+fn note_duration_quarters(note: &tusk_model::elements::Note) -> Option<f64> {
+    duration_quarters(note.note_log.dur.as_ref(), note.note_log.dots.as_ref().map(|dots| dots.0))
+}
+
+fn chord_duration_quarters(chord: &tusk_model::elements::Chord) -> Option<f64> {
+    duration_quarters(
+        chord.chord_log.dur.as_ref(),
+        chord.chord_log.dots.as_ref().map(|dots| dots.0),
+    )
+}
+
+fn rest_duration_quarters(rest: &tusk_model::elements::Rest) -> Option<f64> {
+    use tusk_model::data::DataDurationrests;
+
+    let base = match rest.rest_log.dur.as_ref()? {
+        DataDurationrests::MeiDataDurationCmn(dur) => data_duration_cmn_quarters(dur),
+        DataDurationrests::MeiDataDurationrestsMensural(_) => return None,
+    };
+    Some(apply_dots(base, rest.rest_log.dots.as_ref().map(|dots| dots.0).unwrap_or(0)))
+}
+
+fn duration_quarters(
+    dur: Option<&tusk_model::data::DataDuration>,
+    dots: Option<u64>,
+) -> Option<f64> {
+    use tusk_model::data::DataDuration;
+
+    let base = match dur? {
+        DataDuration::MeiDataDurationCmn(dur) => data_duration_cmn_quarters(dur),
+        _ => return None,
+    };
+    Some(apply_dots(base, dots.unwrap_or(0)))
+}
+
+fn data_duration_cmn_quarters(dur: &tusk_model::data::DataDurationCmn) -> f64 {
+    use tusk_model::data::DataDurationCmn;
+
+    match dur {
+        DataDurationCmn::Long => 16.0,
+        DataDurationCmn::Breve => 8.0,
+        DataDurationCmn::N1 => 4.0,
+        DataDurationCmn::N2 => 2.0,
+        DataDurationCmn::N4 => 1.0,
+        DataDurationCmn::N8 => 0.5,
+        DataDurationCmn::N16 => 0.25,
+        DataDurationCmn::N32 => 0.125,
+        DataDurationCmn::N64 => 0.0625,
+        DataDurationCmn::N128 => 0.03125,
+        DataDurationCmn::N256 => 0.015625,
+        DataDurationCmn::N512 => 0.0078125,
+        DataDurationCmn::N1024 => 0.00390625,
+        DataDurationCmn::N2048 => 0.001953125,
+    }
+}
+
+fn apply_dots(base: f64, dots: u64) -> f64 {
+    let mut total = base;
+    let mut addition = base / 2.0;
+    for _ in 0..dots {
+        total += addition;
+        addition /= 2.0;
+    }
+    total
 }
 
 /// Convert MusicXML measure barlines to MEI measure @left and @right.
@@ -1660,6 +2626,10 @@ mod tests {
     use crate::context::ConversionDirection;
     use crate::import::test_utils::make_score_part;
     use crate::model::elements::{Part, PartList, PartListItem};
+    use tusk_model::data::{
+        DataBeat, DataDuration, DataDurationCmn, DataMeasurebeat, DataOctave, DataOctaveDis,
+        DataPitchname, DataStaffrelBasic,
+    };
     use tusk_model::elements::MdivChild;
 
     // ============================================================================
@@ -2219,5 +3189,248 @@ mod tests {
         assert!(matches!(layer.children[0], LayerChild::Note(_)));
         assert!(matches!(layer.children[1], LayerChild::Chord(_)));
         assert!(matches!(layer.children[2], LayerChild::Note(_)));
+    }
+
+    #[test]
+    fn apply_octave_spans_transposes_notes_within_same_measure_span() {
+        let mut note1 = tusk_model::elements::Note::default();
+        note1.note_log.pname = Some(DataPitchname::from("c".to_string()));
+        note1.note_log.oct = Some(DataOctave::from(4));
+        note1.note_log.dur = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N4));
+        note1.note_ges.dur_ppq = Some("4".to_string());
+
+        let mut note2 = tusk_model::elements::Note::default();
+        note2.note_log.pname = Some(DataPitchname::from("d".to_string()));
+        note2.note_log.oct = Some(DataOctave::from(5));
+        note2.note_log.dur = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N4));
+        note2.note_ges.dur_ppq = Some("4".to_string());
+
+        let mut note3 = tusk_model::elements::Note::default();
+        note3.note_log.pname = Some(DataPitchname::from("e".to_string()));
+        note3.note_log.oct = Some(DataOctave::from(5));
+        note3.note_log.dur = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N4));
+        note3.note_ges.dur_ppq = Some("4".to_string());
+
+        let mut note4 = tusk_model::elements::Note::default();
+        note4.note_log.pname = Some(DataPitchname::from("f".to_string()));
+        note4.note_log.oct = Some(DataOctave::from(5));
+        note4.note_log.dur = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N4));
+        note4.note_ges.dur_ppq = Some("4".to_string());
+
+        let mut layer = tusk_model::elements::Layer::default();
+        layer.children.push(LayerChild::Note(Box::new(note1)));
+        layer.children.push(LayerChild::Note(Box::new(note2)));
+        layer.children.push(LayerChild::Note(Box::new(note3)));
+        layer.children.push(LayerChild::Note(Box::new(note4)));
+
+        let mut staff = tusk_model::elements::Staff::default();
+        staff.n_integer.n = Some("1".to_string());
+        staff.children.push(StaffChild::Layer(Box::new(layer)));
+
+        let mut octave = tusk_model::elements::Octave::default();
+        octave.octave_log.staff = Some("1".to_string());
+        octave.octave_log.tstamp = Some(DataBeat::from(2.0));
+        octave.octave_log.tstamp2 = Some(DataMeasurebeat::from("0m+4".to_string()));
+        octave.octave_log.dis = Some(DataOctaveDis(8));
+        octave.octave_log.dis_place = Some(DataStaffrelBasic::Above);
+
+        let mut measure = tusk_model::elements::Measure::default();
+        measure.children.push(MeasureChild::Staff(Box::new(staff)));
+        measure.children.push(MeasureChild::Octave(Box::new(octave)));
+
+        let mut section = Section::default();
+        section.children.push(SectionChild::Measure(Box::new(measure)));
+
+        apply_octave_spans_to_written_pitches(&mut section);
+
+        let SectionChild::Measure(measure) = &section.children[0] else {
+            panic!("expected measure");
+        };
+        let MeasureChild::Staff(staff) = &measure.children[0] else {
+            panic!("expected staff");
+        };
+        let StaffChild::Layer(layer) = &staff.children[0] else {
+            panic!("expected layer");
+        };
+
+        let LayerChild::Note(note1) = &layer.children[0] else {
+            panic!("expected note 1");
+        };
+        let LayerChild::Note(note2) = &layer.children[1] else {
+            panic!("expected note 2");
+        };
+        let LayerChild::Note(note3) = &layer.children[2] else {
+            panic!("expected note 3");
+        };
+        let LayerChild::Note(note4) = &layer.children[3] else {
+            panic!("expected note 4");
+        };
+
+        assert_eq!(note1.note_log.oct, Some(DataOctave::from(4)));
+        assert_eq!(note2.note_log.oct, Some(DataOctave::from(4)));
+        assert_eq!(note3.note_log.oct, Some(DataOctave::from(4)));
+        assert_eq!(note4.note_log.oct, Some(DataOctave::from(5)));
+    }
+
+    #[test]
+    fn apply_octave_spans_transposes_notes_inside_beams() {
+        let make_note = |oct: u64, dur_ppq: &str, dur: DataDurationCmn| {
+            let mut note = tusk_model::elements::Note::default();
+            note.note_log.oct = Some(DataOctave::from(oct));
+            note.note_log.dur = Some(DataDuration::MeiDataDurationCmn(dur));
+            note.note_ges.dur_ppq = Some(dur_ppq.to_string());
+            note
+        };
+
+        let mut beam1 = tusk_model::elements::Beam::default();
+        beam1.children.push(tusk_model::elements::BeamChild::Note(Box::new(make_note(
+            4,
+            "20",
+            DataDurationCmn::N8,
+        ))));
+        beam1.children.push(tusk_model::elements::BeamChild::Note(Box::new(make_note(
+            4,
+            "20",
+            DataDurationCmn::N8,
+        ))));
+        beam1.children.push(tusk_model::elements::BeamChild::Note(Box::new(make_note(
+            4,
+            "20",
+            DataDurationCmn::N8,
+        ))));
+
+        let mut beam2 = tusk_model::elements::Beam::default();
+        beam2.children.push(tusk_model::elements::BeamChild::Note(Box::new(make_note(
+            5,
+            "12",
+            DataDurationCmn::N16,
+        ))));
+        beam2.children.push(tusk_model::elements::BeamChild::Note(Box::new(make_note(
+            5,
+            "12",
+            DataDurationCmn::N16,
+        ))));
+        beam2.children.push(tusk_model::elements::BeamChild::Note(Box::new(make_note(
+            5,
+            "12",
+            DataDurationCmn::N16,
+        ))));
+        beam2.children.push(tusk_model::elements::BeamChild::Note(Box::new(make_note(
+            6,
+            "12",
+            DataDurationCmn::N16,
+        ))));
+        beam2.children.push(tusk_model::elements::BeamChild::Note(Box::new(make_note(
+            6,
+            "12",
+            DataDurationCmn::N16,
+        ))));
+
+        let mut layer = tusk_model::elements::Layer::default();
+        layer.children.push(LayerChild::Beam(Box::new(beam1)));
+        layer.children.push(LayerChild::Beam(Box::new(beam2)));
+
+        let mut staff = tusk_model::elements::Staff::default();
+        staff.n_integer.n = Some("1".to_string());
+        staff.children.push(StaffChild::Layer(Box::new(layer)));
+
+        let mut octave = tusk_model::elements::Octave::default();
+        octave.octave_log.staff = Some("1".to_string());
+        octave.octave_log.tstamp = Some(DataBeat::from(2.6));
+        octave.octave_log.tstamp2 = Some(DataMeasurebeat::from("0m+4".to_string()));
+        octave.octave_log.dis = Some(DataOctaveDis(8));
+        octave.octave_log.dis_place = Some(DataStaffrelBasic::Above);
+
+        let mut measure = tusk_model::elements::Measure::default();
+        measure.children.push(MeasureChild::Staff(Box::new(staff)));
+        measure.children.push(MeasureChild::Octave(Box::new(octave)));
+
+        let mut section = Section::default();
+        section.children.push(SectionChild::Measure(Box::new(measure)));
+
+        apply_octave_spans_to_written_pitches(&mut section);
+
+        let SectionChild::Measure(measure) = &section.children[0] else {
+            panic!("expected measure");
+        };
+        let MeasureChild::Staff(staff) = &measure.children[0] else {
+            panic!("expected staff");
+        };
+        let StaffChild::Layer(layer) = &staff.children[0] else {
+            panic!("expected layer");
+        };
+        let LayerChild::Beam(beam1) = &layer.children[0] else {
+            panic!("expected first beam");
+        };
+        let LayerChild::Beam(beam2) = &layer.children[1] else {
+            panic!("expected second beam");
+        };
+
+        let tusk_model::elements::BeamChild::Note(last_triplet) = &beam1.children[2] else {
+            panic!("expected triplet note");
+        };
+        let tusk_model::elements::BeamChild::Note(first_ottava_note) = &beam2.children[1] else {
+            panic!("expected ottava note");
+        };
+        let tusk_model::elements::BeamChild::Note(high_note) = &beam2.children[4] else {
+            panic!("expected high note");
+        };
+
+        assert_eq!(last_triplet.note_log.oct, Some(DataOctave::from(4)));
+        assert_eq!(first_ottava_note.note_log.oct, Some(DataOctave::from(4)));
+        assert_eq!(high_note.note_log.oct, Some(DataOctave::from(5)));
+    }
+
+    #[test]
+    fn clear_transient_note_tstamps_removes_import_only_timestamps() {
+        let mut note = tusk_model::elements::Note::default();
+        note.note_log.tstamp = Some(DataBeat::from(2.5));
+
+        let mut chord_note = tusk_model::elements::Note::default();
+        chord_note.note_log.tstamp = Some(DataBeat::from(3.0));
+        let mut chord = tusk_model::elements::Chord::default();
+        chord.chord_log.tstamp = Some(DataBeat::from(3.0));
+        chord
+            .children
+            .push(tusk_model::elements::ChordChild::Note(Box::new(chord_note)));
+
+        let mut layer = tusk_model::elements::Layer::default();
+        layer.children.push(LayerChild::Note(Box::new(note)));
+        layer.children.push(LayerChild::Chord(Box::new(chord)));
+
+        let mut staff = tusk_model::elements::Staff::default();
+        staff.n_integer.n = Some("1".to_string());
+        staff.children.push(StaffChild::Layer(Box::new(layer)));
+
+        let mut measure = tusk_model::elements::Measure::default();
+        measure.children.push(MeasureChild::Staff(Box::new(staff)));
+
+        let mut section = Section::default();
+        section.children.push(SectionChild::Measure(Box::new(measure)));
+
+        clear_transient_note_tstamps(&mut section);
+
+        let SectionChild::Measure(measure) = &section.children[0] else {
+            panic!("expected measure");
+        };
+        let MeasureChild::Staff(staff) = &measure.children[0] else {
+            panic!("expected staff");
+        };
+        let StaffChild::Layer(layer) = &staff.children[0] else {
+            panic!("expected layer");
+        };
+        let LayerChild::Note(note) = &layer.children[0] else {
+            panic!("expected note");
+        };
+        let LayerChild::Chord(chord) = &layer.children[1] else {
+            panic!("expected chord");
+        };
+        let tusk_model::elements::ChordChild::Note(chord_note) = &chord.children[0] else {
+            panic!("expected chord note");
+        };
+
+        assert_eq!(note.note_log.tstamp, None);
+        assert_eq!(chord.chord_log.tstamp, None);
+        assert_eq!(chord_note.note_log.tstamp, None);
     }
 }

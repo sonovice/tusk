@@ -20,11 +20,31 @@ use tusk_model::elements::{
 };
 
 use super::direction::{
-    convert_mei_dir, convert_mei_dynam, convert_mei_hairpin, convert_mei_tempo,
+    convert_mei_dir, convert_mei_dynam, convert_mei_hairpin, convert_mei_pedal,
+    convert_mei_tempo,
 };
 use super::note::{convert_mei_chord, convert_mei_mrest, convert_mei_note, convert_mei_rest};
 use super::structure::convert_mei_measure;
 use super::utils::find_score_def;
+
+#[derive(Debug, Clone)]
+struct ExportOctaveSpan {
+    part_idx: usize,
+    staff: usize,
+    start_measure: usize,
+    start_beat: f64,
+    end_measure: usize,
+    end_beat: f64,
+    octave_delta: i16,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct MeiEventPosition {
+    staff: usize,
+    measure_idx: usize,
+    beat: f64,
+    duration_beats: f64,
+}
 
 /// Pre-assign MusicXML slur numbers using interval graph coloring.
 ///
@@ -322,6 +342,8 @@ pub fn convert_mei_score_content(
 ) -> ConversionResult<Vec<TimewiseMeasure>> {
     // Collect all MEI measures from sections (and ending spans)
     let (mei_measures, ending_spans) = collect_measures_from_score(mei_score);
+    let note_positions = collect_mei_event_positions(&mei_measures);
+    let octave_spans = collect_export_octave_spans(&mei_measures, &note_positions, part_ids, ctx);
 
     // Pre-assign slur numbers using interval graph coloring so that
     // cross-measure slurs get unique numbers on reimport.
@@ -626,10 +648,20 @@ pub fn convert_mei_score_content(
                 }
             }
 
+            apply_export_octave_spans_to_measure(
+                measure_idx,
+                part_idx,
+                &mut mxml_measure,
+                &octave_spans,
+                &note_positions,
+            );
+
             // Store the measure for future cross-measure slur resolution
             part_prev_measures[part_idx].push(mxml_measure);
         }
     }
+
+    apply_octave_directions_to_parts(&mei_measures, &note_positions, part_ids, &mut part_prev_measures, ctx);
 
     // Apply ending/volta brackets from MEI <ending> containers.
     // For each ending span, add <barline><ending> to the first/last measures
@@ -1101,6 +1133,1073 @@ fn replace_barline_at_location(
     }
 }
 
+fn collect_mei_event_positions(
+    mei_measures: &[&tusk_model::elements::Measure],
+) -> HashMap<String, MeiEventPosition> {
+    let mut positions = HashMap::new();
+
+    for (measure_idx, measure) in mei_measures.iter().enumerate() {
+        for child in &measure.children {
+            let MeasureChild::Staff(staff) = child else {
+                continue;
+            };
+            for staff_child in &staff.children {
+                let StaffChild::Layer(layer) = staff_child else {
+                    continue;
+                };
+                let quarter_ppq = estimate_layer_quarter_ppq(&layer.children);
+                collect_layer_event_positions(
+                    &layer.children,
+                    measure_idx,
+                    staff
+                        .n_integer
+                        .n
+                        .as_deref()
+                        .and_then(|value| value.parse::<usize>().ok())
+                        .unwrap_or(1),
+                    0.0,
+                    quarter_ppq,
+                    &mut positions,
+                );
+            }
+        }
+    }
+
+    positions
+}
+
+fn collect_export_octave_spans(
+    mei_measures: &[&tusk_model::elements::Measure],
+    note_positions: &HashMap<String, MeiEventPosition>,
+    part_ids: &[String],
+    ctx: &ConversionContext,
+) -> Vec<ExportOctaveSpan> {
+    let mut spans = Vec::new();
+
+    for (measure_idx, measure) in mei_measures.iter().enumerate() {
+        for child in &measure.children {
+            let MeasureChild::Octave(octave) = child else {
+                continue;
+            };
+
+            let Some(global_staff) = octave
+                .octave_log
+                .staff
+                .as_deref()
+                .and_then(|value| value.split_whitespace().next())
+                .and_then(|value| value.parse::<usize>().ok())
+            else {
+                continue;
+            };
+            let Some((part_idx, local_staff)) =
+                resolve_part_and_local_staff(global_staff, part_ids, ctx)
+            else {
+                continue;
+            };
+            let start_position =
+                if let Some(start_beat) = octave.octave_log.tstamp.as_ref().map(|beat| beat.0) {
+                    Some((measure_idx, start_beat))
+                } else {
+                    octave
+                        .octave_log
+                        .startid
+                        .as_ref()
+                        .and_then(|id| note_positions.get(strip_uri_fragment(&id.0)))
+                        .map(|pos| (pos.measure_idx, pos.beat))
+                };
+            let Some((start_measure, start_beat)) = start_position else {
+                continue;
+            };
+            let end_position = if let Some(endid) = octave.octave_log.endid.as_ref() {
+                note_positions
+                    .get(strip_uri_fragment(&endid.0))
+                    .map(|pos| (pos.measure_idx, pos.beat + pos.duration_beats))
+            } else if let Some(tstamp2) = octave.octave_log.tstamp2.as_ref() {
+                let (measures_ahead, end_beat) = parse_measurebeat(&tstamp2.0);
+                let end_measure = measure_idx + measures_ahead;
+                Some((end_measure, end_beat))
+            } else {
+                octave
+                    .octave_log
+                    .endid
+                    .as_ref()
+                    .and_then(|id| note_positions.get(strip_uri_fragment(&id.0)))
+                    .map(|pos| (pos.measure_idx, pos.beat + pos.duration_beats))
+            };
+            let Some((end_measure, end_beat)) = end_position else {
+                continue;
+            };
+            let displacement = octave.octave_log.dis.as_ref().map(|dis| dis.0).unwrap_or(8);
+            let octave_steps = match displacement {
+                15 => 2,
+                22 => 3,
+                n if n >= 8 => (n / 8) as i16,
+                _ => 1,
+            };
+            let Some(dis_place) = octave.octave_log.dis_place else {
+                continue;
+            };
+            let octave_delta = match dis_place {
+                tusk_model::data::DataStaffrelBasic::Above => octave_steps,
+                tusk_model::data::DataStaffrelBasic::Below => -octave_steps,
+            };
+
+            spans.push(ExportOctaveSpan {
+                part_idx,
+                staff: local_staff,
+                start_measure,
+                start_beat,
+                end_measure,
+                end_beat,
+                octave_delta,
+            });
+        }
+    }
+
+    spans
+}
+
+fn apply_export_octave_spans_to_measure(
+    measure_idx: usize,
+    part_idx: usize,
+    mxml_measure: &mut MxmlMeasure,
+    spans: &[ExportOctaveSpan],
+    note_positions: &HashMap<String, MeiEventPosition>,
+) {
+    if spans.is_empty() {
+        return;
+    }
+
+    let mut beat_position = 0.0;
+    let mut current_event_beat = 1.0;
+    for content in &mut mxml_measure.content {
+        match content {
+            MeasureContent::Note(note) => {
+                let staff = note.staff.unwrap_or(1) as usize;
+                let beat = note
+                    .id
+                    .as_ref()
+                    .and_then(|id| note_positions.get(id))
+                    .filter(|pos| pos.measure_idx == measure_idx)
+                    .map(|pos| pos.beat)
+                    .unwrap_or_else(|| {
+                        if note.is_chord() {
+                            current_event_beat
+                        } else {
+                            beat_position + 1.0
+                        }
+                    });
+                let octave_delta: i16 = spans
+                    .iter()
+                    .filter(|span| {
+                        span.part_idx == part_idx
+                            && span.staff == staff
+                            && span_contains_position_with_end(span, measure_idx, beat, span.end_beat)
+                    })
+                    .map(|span| span.octave_delta)
+                    .sum();
+                if octave_delta != 0 {
+                    transpose_musicxml_note_pitch(note, octave_delta);
+                }
+
+                if !note.is_chord() && !note.is_grace() {
+                    current_event_beat = beat;
+                    beat_position += note.duration.unwrap_or(0.0);
+                }
+            }
+            MeasureContent::Backup(backup) => {
+                beat_position -= backup.duration;
+            }
+            MeasureContent::Forward(forward) => {
+                beat_position += forward.duration;
+            }
+            MeasureContent::Attributes(_)
+            | MeasureContent::Direction(_)
+            | MeasureContent::Harmony(_)
+            | MeasureContent::FiguredBass(_)
+            | MeasureContent::Print(_)
+            | MeasureContent::Sound(_)
+            | MeasureContent::Listening(_)
+            | MeasureContent::Barline(_)
+            | MeasureContent::Grouping(_)
+            | MeasureContent::Link(_)
+            | MeasureContent::Bookmark(_) => {}
+        }
+    }
+}
+
+fn collect_layer_event_positions(
+    children: &[LayerChild],
+    measure_idx: usize,
+    staff: usize,
+    mut beat_cursor: f64,
+    quarter_ppq: Option<f64>,
+    positions: &mut HashMap<String, MeiEventPosition>,
+) -> f64 {
+    for child in children {
+        let child_start = beat_cursor + 1.0;
+        match child {
+            LayerChild::Note(note) => {
+                let duration_beats = mei_note_duration_beats(note, quarter_ppq);
+                let beat = note
+                    .note_log
+                    .tstamp
+                    .as_ref()
+                    .map(|tstamp| tstamp.0)
+                    .unwrap_or(child_start);
+                if let Some(id) = note.common.xml_id.as_ref() {
+                    positions.insert(
+                        id.clone(),
+                        MeiEventPosition {
+                            staff,
+                            measure_idx,
+                            beat,
+                            duration_beats,
+                        },
+                    );
+                }
+                beat_cursor += duration_beats;
+            }
+            LayerChild::Chord(chord) => {
+                let duration_beats = mei_chord_duration_beats(chord, quarter_ppq);
+                let beat = chord
+                    .chord_log
+                    .tstamp
+                    .as_ref()
+                    .map(|tstamp| tstamp.0)
+                    .unwrap_or(child_start);
+                if let Some(id) = chord.common.xml_id.as_ref() {
+                    positions.insert(
+                        id.clone(),
+                        MeiEventPosition {
+                            staff,
+                            measure_idx,
+                            beat,
+                            duration_beats,
+                        },
+                    );
+                }
+                for chord_child in &chord.children {
+                    let tusk_model::elements::ChordChild::Note(note) = chord_child else {
+                        continue;
+                    };
+                    if let Some(id) = note.common.xml_id.as_ref() {
+                        positions.insert(
+                            id.clone(),
+                            MeiEventPosition {
+                                staff,
+                                measure_idx,
+                                beat,
+                                duration_beats,
+                            },
+                        );
+                    }
+                }
+                beat_cursor += duration_beats;
+            }
+            LayerChild::Rest(rest) => beat_cursor += mei_rest_duration_beats(rest, quarter_ppq),
+            LayerChild::MRest(_) => beat_cursor += 4.0,
+            LayerChild::Space(space) => beat_cursor += mei_space_duration_beats(space, quarter_ppq),
+            LayerChild::Beam(beam) => {
+                beat_cursor =
+                    collect_beam_event_positions(&beam.children, measure_idx, staff, beat_cursor, quarter_ppq, positions);
+            }
+            LayerChild::Tuplet(tuplet) => {
+                beat_cursor = collect_tuplet_event_positions(
+                    &tuplet.children,
+                    measure_idx,
+                    staff,
+                    beat_cursor,
+                    quarter_ppq,
+                    positions,
+                );
+            }
+            LayerChild::BTrem(btrem) => {
+                beat_cursor =
+                    collect_btrem_event_positions(&btrem.children, measure_idx, staff, beat_cursor, quarter_ppq, positions);
+            }
+            LayerChild::FTrem(ftrem) => {
+                beat_cursor =
+                    collect_ftrem_event_positions(&ftrem.children, measure_idx, staff, beat_cursor, quarter_ppq, positions);
+            }
+            _ => {}
+        }
+    }
+
+    beat_cursor
+}
+
+fn collect_beam_event_positions(
+    children: &[tusk_model::elements::BeamChild],
+    measure_idx: usize,
+    staff: usize,
+    mut beat_cursor: f64,
+    quarter_ppq: Option<f64>,
+    positions: &mut HashMap<String, MeiEventPosition>,
+) -> f64 {
+    use tusk_model::elements::BeamChild;
+
+    for child in children {
+        let child_start = beat_cursor + 1.0;
+        match child {
+            BeamChild::Note(note) => {
+                let duration_beats = mei_note_duration_beats(note, quarter_ppq);
+                let beat = note
+                    .note_log
+                    .tstamp
+                    .as_ref()
+                    .map(|tstamp| tstamp.0)
+                    .unwrap_or(child_start);
+                if let Some(id) = note.common.xml_id.as_ref() {
+                    positions.insert(
+                        id.clone(),
+                        MeiEventPosition {
+                            staff,
+                            measure_idx,
+                            beat,
+                            duration_beats,
+                        },
+                    );
+                }
+                beat_cursor += duration_beats;
+            }
+            BeamChild::Chord(chord) => {
+                let duration_beats = mei_chord_duration_beats(chord, quarter_ppq);
+                let beat = chord
+                    .chord_log
+                    .tstamp
+                    .as_ref()
+                    .map(|tstamp| tstamp.0)
+                    .unwrap_or(child_start);
+                if let Some(id) = chord.common.xml_id.as_ref() {
+                    positions.insert(
+                        id.clone(),
+                        MeiEventPosition {
+                            staff,
+                            measure_idx,
+                            beat,
+                            duration_beats,
+                        },
+                    );
+                }
+                for chord_child in &chord.children {
+                    let tusk_model::elements::ChordChild::Note(note) = chord_child else {
+                        continue;
+                    };
+                    if let Some(id) = note.common.xml_id.as_ref() {
+                        positions.insert(
+                            id.clone(),
+                            MeiEventPosition {
+                                staff,
+                                measure_idx,
+                                beat,
+                                duration_beats,
+                            },
+                        );
+                    }
+                }
+                beat_cursor += duration_beats;
+            }
+            BeamChild::Rest(rest) => beat_cursor += mei_rest_duration_beats(rest, quarter_ppq),
+            BeamChild::Beam(beam) => {
+                beat_cursor =
+                    collect_beam_event_positions(&beam.children, measure_idx, staff, beat_cursor, quarter_ppq, positions);
+            }
+            BeamChild::BTrem(btrem) => {
+                beat_cursor =
+                    collect_btrem_event_positions(&btrem.children, measure_idx, staff, beat_cursor, quarter_ppq, positions);
+            }
+            BeamChild::FTrem(ftrem) => {
+                beat_cursor =
+                    collect_ftrem_event_positions(&ftrem.children, measure_idx, staff, beat_cursor, quarter_ppq, positions);
+            }
+            _ => {}
+        }
+    }
+
+    beat_cursor
+}
+
+fn collect_tuplet_event_positions(
+    children: &[tusk_model::elements::TupletChild],
+    measure_idx: usize,
+    staff: usize,
+    mut beat_cursor: f64,
+    quarter_ppq: Option<f64>,
+    positions: &mut HashMap<String, MeiEventPosition>,
+) -> f64 {
+    use tusk_model::elements::TupletChild;
+
+    for child in children {
+        let child_start = beat_cursor + 1.0;
+        match child {
+            TupletChild::Note(note) => {
+                let duration_beats = mei_note_duration_beats(note, quarter_ppq);
+                let beat = note
+                    .note_log
+                    .tstamp
+                    .as_ref()
+                    .map(|tstamp| tstamp.0)
+                    .unwrap_or(child_start);
+                if let Some(id) = note.common.xml_id.as_ref() {
+                    positions.insert(
+                        id.clone(),
+                        MeiEventPosition {
+                            staff,
+                            measure_idx,
+                            beat,
+                            duration_beats,
+                        },
+                    );
+                }
+                beat_cursor += duration_beats;
+            }
+            TupletChild::Beam(beam) => {
+                beat_cursor =
+                    collect_beam_event_positions(&beam.children, measure_idx, staff, beat_cursor, quarter_ppq, positions);
+            }
+            TupletChild::BTrem(btrem) => {
+                beat_cursor =
+                    collect_btrem_event_positions(&btrem.children, measure_idx, staff, beat_cursor, quarter_ppq, positions);
+            }
+            _ => {}
+        }
+    }
+
+    beat_cursor
+}
+
+fn collect_btrem_event_positions(
+    children: &[tusk_model::elements::BTremChild],
+    measure_idx: usize,
+    staff: usize,
+    mut beat_cursor: f64,
+    quarter_ppq: Option<f64>,
+    positions: &mut HashMap<String, MeiEventPosition>,
+) -> f64 {
+    use tusk_model::elements::BTremChild;
+
+    for child in children {
+        let child_start = beat_cursor + 1.0;
+        match child {
+            BTremChild::Note(note) => {
+                let duration_beats = mei_note_duration_beats(note, quarter_ppq);
+                let beat = note
+                    .note_log
+                    .tstamp
+                    .as_ref()
+                    .map(|tstamp| tstamp.0)
+                    .unwrap_or(child_start);
+                if let Some(id) = note.common.xml_id.as_ref() {
+                    positions.insert(
+                        id.clone(),
+                        MeiEventPosition {
+                            staff,
+                            measure_idx,
+                            beat,
+                            duration_beats,
+                        },
+                    );
+                }
+                beat_cursor += duration_beats;
+            }
+            BTremChild::Chord(chord) => {
+                let duration_beats = mei_chord_duration_beats(chord, quarter_ppq);
+                let beat = chord
+                    .chord_log
+                    .tstamp
+                    .as_ref()
+                    .map(|tstamp| tstamp.0)
+                    .unwrap_or(child_start);
+                if let Some(id) = chord.common.xml_id.as_ref() {
+                    positions.insert(
+                        id.clone(),
+                        MeiEventPosition {
+                            staff,
+                            measure_idx,
+                            beat,
+                            duration_beats,
+                        },
+                    );
+                }
+                for chord_child in &chord.children {
+                    let tusk_model::elements::ChordChild::Note(note) = chord_child else {
+                        continue;
+                    };
+                    if let Some(id) = note.common.xml_id.as_ref() {
+                        positions.insert(
+                            id.clone(),
+                            MeiEventPosition {
+                                staff,
+                                measure_idx,
+                                beat,
+                                duration_beats,
+                            },
+                        );
+                    }
+                }
+                beat_cursor += duration_beats;
+            }
+        }
+    }
+
+    beat_cursor
+}
+
+fn collect_ftrem_event_positions(
+    children: &[tusk_model::elements::FTremChild],
+    measure_idx: usize,
+    staff: usize,
+    mut beat_cursor: f64,
+    quarter_ppq: Option<f64>,
+    positions: &mut HashMap<String, MeiEventPosition>,
+) -> f64 {
+    use tusk_model::elements::FTremChild;
+
+    for child in children {
+        let child_start = beat_cursor + 1.0;
+        match child {
+            FTremChild::Note(note) => {
+                let duration_beats = mei_note_duration_beats(note, quarter_ppq);
+                let beat = note
+                    .note_log
+                    .tstamp
+                    .as_ref()
+                    .map(|tstamp| tstamp.0)
+                    .unwrap_or(child_start);
+                if let Some(id) = note.common.xml_id.as_ref() {
+                    positions.insert(
+                        id.clone(),
+                        MeiEventPosition {
+                            staff,
+                            measure_idx,
+                            beat,
+                            duration_beats,
+                        },
+                    );
+                }
+                beat_cursor += duration_beats;
+            }
+            FTremChild::Chord(chord) => {
+                let duration_beats = mei_chord_duration_beats(chord, quarter_ppq);
+                let beat = chord
+                    .chord_log
+                    .tstamp
+                    .as_ref()
+                    .map(|tstamp| tstamp.0)
+                    .unwrap_or(child_start);
+                if let Some(id) = chord.common.xml_id.as_ref() {
+                    positions.insert(
+                        id.clone(),
+                        MeiEventPosition {
+                            staff,
+                            measure_idx,
+                            beat,
+                            duration_beats,
+                        },
+                    );
+                }
+                for chord_child in &chord.children {
+                    let tusk_model::elements::ChordChild::Note(note) = chord_child else {
+                        continue;
+                    };
+                    if let Some(id) = note.common.xml_id.as_ref() {
+                        positions.insert(
+                            id.clone(),
+                            MeiEventPosition {
+                                staff,
+                                measure_idx,
+                                beat,
+                                duration_beats,
+                            },
+                        );
+                    }
+                }
+                beat_cursor += duration_beats;
+            }
+            _ => {}
+        }
+    }
+
+    beat_cursor
+}
+
+fn estimate_layer_quarter_ppq(children: &[LayerChild]) -> Option<f64> {
+    children.iter().find_map(|child| estimate_layer_child_quarter_ppq(child))
+}
+
+fn estimate_layer_child_quarter_ppq(child: &LayerChild) -> Option<f64> {
+    match child {
+        LayerChild::Note(note) => {
+            estimate_quarter_ppq(parse_ppq(note.note_ges.dur_ppq.as_deref()), duration_quarters(note.note_log.dur.as_ref(), note.note_log.dots.as_ref().map(|dots| dots.0)))
+        }
+        LayerChild::Rest(rest) => {
+            estimate_quarter_ppq(parse_ppq(rest.rest_ges.dur_ppq.as_deref()), rest_duration_quarters(rest))
+        }
+        LayerChild::Chord(chord) => {
+            estimate_quarter_ppq(parse_ppq(chord.chord_ges.dur_ppq.as_deref()), duration_quarters(chord.chord_log.dur.as_ref(), chord.chord_log.dots.as_ref().map(|dots| dots.0)))
+        }
+        LayerChild::Beam(beam) => beam.children.iter().find_map(estimate_beam_child_quarter_ppq),
+        LayerChild::Tuplet(tuplet) => tuplet.children.iter().find_map(estimate_tuplet_child_quarter_ppq),
+        LayerChild::BTrem(btrem) => btrem.children.iter().find_map(estimate_btrem_child_quarter_ppq),
+        LayerChild::FTrem(ftrem) => ftrem.children.iter().find_map(estimate_ftrem_child_quarter_ppq),
+        _ => None,
+    }
+}
+
+fn estimate_beam_child_quarter_ppq(child: &tusk_model::elements::BeamChild) -> Option<f64> {
+    use tusk_model::elements::BeamChild;
+
+    match child {
+        BeamChild::Note(note) => {
+            estimate_quarter_ppq(parse_ppq(note.note_ges.dur_ppq.as_deref()), duration_quarters(note.note_log.dur.as_ref(), note.note_log.dots.as_ref().map(|dots| dots.0)))
+        }
+        BeamChild::Rest(rest) => {
+            estimate_quarter_ppq(parse_ppq(rest.rest_ges.dur_ppq.as_deref()), rest_duration_quarters(rest))
+        }
+        BeamChild::Chord(chord) => {
+            estimate_quarter_ppq(parse_ppq(chord.chord_ges.dur_ppq.as_deref()), duration_quarters(chord.chord_log.dur.as_ref(), chord.chord_log.dots.as_ref().map(|dots| dots.0)))
+        }
+        BeamChild::Beam(beam) => beam.children.iter().find_map(estimate_beam_child_quarter_ppq),
+        BeamChild::BTrem(btrem) => btrem.children.iter().find_map(estimate_btrem_child_quarter_ppq),
+        BeamChild::FTrem(ftrem) => ftrem.children.iter().find_map(estimate_ftrem_child_quarter_ppq),
+        _ => None,
+    }
+}
+
+fn estimate_tuplet_child_quarter_ppq(child: &tusk_model::elements::TupletChild) -> Option<f64> {
+    use tusk_model::elements::TupletChild;
+
+    match child {
+        TupletChild::Note(note) => {
+            estimate_quarter_ppq(parse_ppq(note.note_ges.dur_ppq.as_deref()), duration_quarters(note.note_log.dur.as_ref(), note.note_log.dots.as_ref().map(|dots| dots.0)))
+        }
+        TupletChild::Rest(rest) => {
+            estimate_quarter_ppq(parse_ppq(rest.rest_ges.dur_ppq.as_deref()), rest_duration_quarters(rest))
+        }
+        TupletChild::Beam(beam) => beam.children.iter().find_map(estimate_beam_child_quarter_ppq),
+        TupletChild::BTrem(btrem) => btrem.children.iter().find_map(estimate_btrem_child_quarter_ppq),
+    }
+}
+
+fn estimate_btrem_child_quarter_ppq(child: &tusk_model::elements::BTremChild) -> Option<f64> {
+    use tusk_model::elements::BTremChild;
+
+    match child {
+        BTremChild::Note(note) => {
+            estimate_quarter_ppq(parse_ppq(note.note_ges.dur_ppq.as_deref()), duration_quarters(note.note_log.dur.as_ref(), note.note_log.dots.as_ref().map(|dots| dots.0)))
+        }
+        BTremChild::Chord(chord) => {
+            estimate_quarter_ppq(parse_ppq(chord.chord_ges.dur_ppq.as_deref()), duration_quarters(chord.chord_log.dur.as_ref(), chord.chord_log.dots.as_ref().map(|dots| dots.0)))
+        }
+    }
+}
+
+fn estimate_ftrem_child_quarter_ppq(child: &tusk_model::elements::FTremChild) -> Option<f64> {
+    use tusk_model::elements::FTremChild;
+
+    match child {
+        FTremChild::Note(note) => {
+            estimate_quarter_ppq(parse_ppq(note.note_ges.dur_ppq.as_deref()), duration_quarters(note.note_log.dur.as_ref(), note.note_log.dots.as_ref().map(|dots| dots.0)))
+        }
+        FTremChild::Chord(chord) => {
+            estimate_quarter_ppq(parse_ppq(chord.chord_ges.dur_ppq.as_deref()), duration_quarters(chord.chord_log.dur.as_ref(), chord.chord_log.dots.as_ref().map(|dots| dots.0)))
+        }
+        _ => None,
+    }
+}
+
+fn estimate_quarter_ppq(dur_ppq: f64, duration_quarters: Option<f64>) -> Option<f64> {
+    let quarters = duration_quarters?;
+    if dur_ppq > 0.0 && quarters > 0.0 {
+        Some(dur_ppq / quarters)
+    } else {
+        None
+    }
+}
+
+fn mei_note_duration_beats(note: &tusk_model::elements::Note, quarter_ppq: Option<f64>) -> f64 {
+    if note.note_log.grace.is_some() {
+        return 0.0;
+    }
+    if let Some(quarter_ppq) = quarter_ppq {
+        let dur_ppq = parse_ppq(note.note_ges.dur_ppq.as_deref());
+        if dur_ppq > 0.0 {
+            return dur_ppq / quarter_ppq;
+        }
+    }
+    note.note_log
+        .dur
+        .as_ref()
+        .map(super::utils::duration_to_quarter_notes)
+        .map(|base| {
+            super::utils::apply_dots(base, note.note_log.dots.as_ref().map(|dots| dots.0).unwrap_or(0))
+        })
+        .unwrap_or(0.0)
+}
+
+fn mei_chord_duration_beats(chord: &tusk_model::elements::Chord, quarter_ppq: Option<f64>) -> f64 {
+    if let Some(quarter_ppq) = quarter_ppq {
+        let dur_ppq = parse_ppq(chord.chord_ges.dur_ppq.as_deref());
+        if dur_ppq > 0.0 {
+            return dur_ppq / quarter_ppq;
+        }
+    }
+    chord
+        .chord_log
+        .dur
+        .as_ref()
+        .map(super::utils::duration_to_quarter_notes)
+        .map(|base| {
+            super::utils::apply_dots(base, chord.chord_log.dots.as_ref().map(|dots| dots.0).unwrap_or(0))
+        })
+        .or_else(|| {
+            chord.children.iter().find_map(|child| {
+                let tusk_model::elements::ChordChild::Note(note) = child else {
+                    return None;
+                };
+                Some(mei_note_duration_beats(note, quarter_ppq))
+            })
+        })
+        .unwrap_or(0.0)
+}
+
+fn mei_rest_duration_beats(rest: &tusk_model::elements::Rest, quarter_ppq: Option<f64>) -> f64 {
+    if let Some(quarter_ppq) = quarter_ppq {
+        let dur_ppq = parse_ppq(rest.rest_ges.dur_ppq.as_deref());
+        if dur_ppq > 0.0 {
+            return dur_ppq / quarter_ppq;
+        }
+    }
+    rest.rest_log
+        .dur
+        .as_ref()
+        .map(super::utils::duration_rests_to_quarter_notes)
+        .map(|base| {
+            super::utils::apply_dots(base, rest.rest_log.dots.as_ref().map(|dots| dots.0).unwrap_or(0))
+        })
+        .unwrap_or(0.0)
+}
+
+fn mei_space_duration_beats(space: &tusk_model::elements::Space, quarter_ppq: Option<f64>) -> f64 {
+    if let Some(quarter_ppq) = quarter_ppq {
+        let dur_ppq = parse_ppq(space.space_ges.dur_ppq.as_deref());
+        if dur_ppq > 0.0 {
+            return dur_ppq / quarter_ppq;
+        }
+    }
+    space
+        .space_log
+        .dur
+        .as_ref()
+        .map(super::utils::duration_to_quarter_notes)
+        .map(|base| {
+            super::utils::apply_dots(base, space.space_log.dots.as_ref().map(|dots| dots.0).unwrap_or(0))
+        })
+        .unwrap_or(0.0)
+}
+
+fn parse_ppq(ppq: Option<&str>) -> f64 {
+    ppq.and_then(|value| value.parse::<f64>().ok()).unwrap_or(0.0)
+}
+
+fn rest_duration_quarters(rest: &tusk_model::elements::Rest) -> Option<f64> {
+    use tusk_model::data::DataDurationrests;
+
+    let base = match rest.rest_log.dur.as_ref()? {
+        DataDurationrests::MeiDataDurationCmn(dur) => data_duration_cmn_to_quarters(dur),
+        DataDurationrests::MeiDataDurationrestsMensural(_) => return None,
+    };
+    Some(super::utils::apply_dots(
+        base,
+        rest.rest_log.dots.as_ref().map(|dots| dots.0).unwrap_or(0),
+    ))
+}
+
+fn duration_quarters(
+    dur: Option<&tusk_model::data::DataDuration>,
+    dots: Option<u64>,
+) -> Option<f64> {
+    use tusk_model::data::DataDuration;
+
+    let base = match dur? {
+        DataDuration::MeiDataDurationCmn(dur) => data_duration_cmn_to_quarters(dur),
+        _ => return None,
+    };
+    Some(super::utils::apply_dots(base, dots.unwrap_or(0)))
+}
+
+fn data_duration_cmn_to_quarters(dur: &tusk_model::data::DataDurationCmn) -> f64 {
+    use tusk_model::data::DataDurationCmn;
+
+    match dur {
+        DataDurationCmn::Long => 16.0,
+        DataDurationCmn::Breve => 8.0,
+        DataDurationCmn::N1 => 4.0,
+        DataDurationCmn::N2 => 2.0,
+        DataDurationCmn::N4 => 1.0,
+        DataDurationCmn::N8 => 0.5,
+        DataDurationCmn::N16 => 0.25,
+        DataDurationCmn::N32 => 0.125,
+        DataDurationCmn::N64 => 0.0625,
+        DataDurationCmn::N128 => 0.03125,
+        DataDurationCmn::N256 => 0.015625,
+        DataDurationCmn::N512 => 0.0078125,
+        DataDurationCmn::N1024 => 0.00390625,
+        DataDurationCmn::N2048 => 0.001953125,
+    }
+}
+
+fn transpose_musicxml_note_pitch(note: &mut crate::model::note::Note, octave_delta: i16) {
+    let crate::model::note::FullNoteContent::Pitch(pitch) = &mut note.content else {
+        return;
+    };
+    pitch.octave = ((pitch.octave as i16) + octave_delta).max(0) as u8;
+}
+
+fn parse_measurebeat(value: &str) -> (usize, f64) {
+    let Some((measures, beat)) = value.split_once("m+") else {
+        return (0, value.parse().unwrap_or(1.0));
+    };
+    (
+        measures.parse::<usize>().unwrap_or(0),
+        beat.parse::<f64>().unwrap_or(1.0),
+    )
+}
+
+fn span_contains_position(span: &ExportOctaveSpan, measure_idx: usize, beat: f64) -> bool {
+    span_contains_position_with_end(span, measure_idx, beat, span.end_beat)
+}
+
+fn span_contains_position_with_end(
+    span: &ExportOctaveSpan,
+    measure_idx: usize,
+    beat: f64,
+    end_beat: f64,
+) -> bool {
+    const EPSILON: f64 = 0.000_001;
+
+    if measure_idx < span.start_measure || measure_idx > span.end_measure {
+        return false;
+    }
+    if measure_idx == span.start_measure && beat + EPSILON < span.start_beat {
+        return false;
+    }
+    if measure_idx == span.end_measure && beat + EPSILON >= end_beat {
+        return false;
+    }
+    true
+}
+
+fn apply_octave_directions_to_parts(
+    mei_measures: &[&tusk_model::elements::Measure],
+    note_positions: &HashMap<String, MeiEventPosition>,
+    part_ids: &[String],
+    part_prev_measures: &mut [Vec<MxmlMeasure>],
+    ctx: &ConversionContext,
+) {
+    let mut staff_numbers: HashMap<usize, u8> = HashMap::new();
+
+    for (measure_idx, measure) in mei_measures.iter().enumerate() {
+        for child in &measure.children {
+            let MeasureChild::Octave(octave) = child else {
+                continue;
+            };
+
+            let staff = octave
+                .octave_log
+                .staff
+                .as_deref()
+                .and_then(|value| value.split_whitespace().next())
+                .and_then(|value| value.parse::<usize>().ok())
+                .unwrap_or(1);
+            let Some((part_idx, local_staff)) = resolve_part_and_local_staff(staff, part_ids, ctx) else {
+                continue;
+            };
+            let number = {
+                let next = staff_numbers.entry(staff).or_insert(1);
+                let current = *next;
+                *next = next.saturating_add(1);
+                current
+            };
+            let size = octave.octave_log.dis.as_ref().map(|dis| dis.0 as u8).unwrap_or(8);
+
+            let start_position = if let Some(beat) = octave.octave_log.tstamp.as_ref().map(|beat| beat.0) {
+                Some((measure_idx, beat))
+            } else {
+                octave
+                    .octave_log
+                    .startid
+                    .as_ref()
+                    .and_then(|id| note_positions.get(strip_uri_fragment(&id.0)))
+                    .map(|pos| (pos.measure_idx, pos.beat))
+            };
+            if let Some((start_measure_idx, start_beat)) = start_position {
+                insert_direction_near_start(
+                    &mut part_prev_measures[part_idx][start_measure_idx].content,
+                    make_octave_direction(
+                        local_staff,
+                        start_beat,
+                        octave_start_type(octave),
+                        number,
+                        size,
+                        octave.common.xml_id.clone(),
+                        ctx,
+                    ),
+                );
+            }
+
+            let stop_position = if let Some(endid) = octave.octave_log.endid.as_ref() {
+                note_positions
+                    .get(strip_uri_fragment(&endid.0))
+                    .map(|pos| (pos.measure_idx, pos.beat + pos.duration_beats))
+            } else if let Some(tstamp2) = octave.octave_log.tstamp2.as_ref() {
+                let (measures_ahead, beat) = parse_measurebeat(&tstamp2.0);
+                Some((measure_idx + measures_ahead, beat))
+            } else {
+                None
+            };
+            if let Some((stop_measure_idx, stop_beat)) = stop_position {
+                insert_direction_near_start(
+                    &mut part_prev_measures[part_idx][stop_measure_idx].content,
+                    make_octave_direction(
+                        local_staff,
+                        stop_beat,
+                        crate::model::direction::OctaveShiftType::Stop,
+                        number,
+                        size,
+                        None,
+                        ctx,
+                    ),
+                );
+            }
+        }
+    }
+}
+
+fn resolve_part_and_local_staff(
+    global_staff: usize,
+    part_ids: &[String],
+    ctx: &ConversionContext,
+) -> Option<(usize, usize)> {
+    for (part_idx, part_id) in part_ids.iter().enumerate() {
+        for local_staff in 1..=ctx.staves_for_part(part_id) as usize {
+            if ctx.global_staff_for_part(part_id, local_staff as u32)? as usize == global_staff {
+                return Some((part_idx, local_staff));
+            }
+        }
+    }
+    None
+}
+
+fn octave_start_type(
+    octave: &tusk_model::elements::Octave,
+) -> crate::model::direction::OctaveShiftType {
+    match octave.octave_log.dis_place {
+        Some(tusk_model::data::DataStaffrelBasic::Above) => crate::model::direction::OctaveShiftType::Down,
+        Some(tusk_model::data::DataStaffrelBasic::Below) => crate::model::direction::OctaveShiftType::Up,
+        None => crate::model::direction::OctaveShiftType::Up,
+    }
+}
+
+fn make_octave_direction(
+    local_staff: usize,
+    beat: f64,
+    shift_type: crate::model::direction::OctaveShiftType,
+    number: u8,
+    size: u8,
+    id: Option<String>,
+    ctx: &ConversionContext,
+) -> crate::model::elements::MeasureContent {
+    use crate::model::direction::{Direction, DirectionType, DirectionTypeContent, OctaveShift};
+
+    let mut shift = OctaveShift::new(shift_type);
+    shift.number = Some(number);
+    shift.size = Some(size);
+    shift.id = id;
+
+    let direction_type = DirectionType {
+        content: DirectionTypeContent::OctaveShift(shift),
+        id: None,
+    };
+    let mut direction = Direction::new(vec![direction_type]);
+    direction.staff = Some(local_staff as u32);
+
+    let beat_position = beat - 1.0;
+    let offset = beat_position * ctx.divisions();
+    if offset.abs() >= 0.001 {
+        direction.offset = Some(crate::model::direction::Offset::new(offset));
+    }
+
+    MeasureContent::Direction(Box::new(direction))
+}
+
+fn insert_direction_near_start(
+    content: &mut Vec<MeasureContent>,
+    direction: MeasureContent,
+) {
+    let new_offset = direction_content_offset(&direction);
+    let new_is_stop = direction_is_octave_stop(&direction);
+
+    let mut index = 0;
+    while index < content.len() {
+        match &content[index] {
+            MeasureContent::Barline(_) | MeasureContent::Attributes(_) | MeasureContent::Print(_) => {
+                index += 1;
+            }
+            MeasureContent::Direction(existing) => {
+                let existing_offset = existing.offset.as_ref().map(|offset| offset.value).unwrap_or(0.0);
+                if existing_offset > new_offset
+                    || ((existing_offset - new_offset).abs() < 0.001
+                        && direction_precedes_existing(new_is_stop, &content[index]))
+                {
+                    break;
+                }
+                index += 1;
+            }
+            _ => break,
+        }
+    }
+    content.insert(index, direction);
+}
+
+fn direction_content_offset(content: &MeasureContent) -> f64 {
+    match content {
+        MeasureContent::Direction(direction) => {
+            direction.offset.as_ref().map(|offset| offset.value).unwrap_or(0.0)
+        }
+        _ => 0.0,
+    }
+}
+
+fn direction_is_octave_stop(content: &MeasureContent) -> bool {
+    let MeasureContent::Direction(direction) = content else {
+        return false;
+    };
+    direction.direction_types.iter().any(|direction_type| {
+        matches!(
+            direction_type.content,
+            crate::model::direction::DirectionTypeContent::OctaveShift(
+                crate::model::direction::OctaveShift {
+                    shift_type: crate::model::direction::OctaveShiftType::Stop,
+                    ..
+                }
+            )
+        )
+    })
+}
+
+fn direction_precedes_existing(new_is_octave_stop: bool, existing: &MeasureContent) -> bool {
+    if new_is_octave_stop {
+        return false;
+    }
+    direction_is_octave_stop(existing)
+}
+
+fn strip_uri_fragment(uri: &str) -> &str {
+    uri.strip_prefix('#').unwrap_or(uri)
+}
+
 /// Convert MEI direction events (dynam, hairpin, dir, tempo) to MusicXML directions.
 ///
 /// Direction events in MEI are children of `<measure>`, not `<staff>`. Each event
@@ -1248,6 +2347,23 @@ fn convert_direction_events(
                     .unwrap_or(1) as usize;
                 if event_staff == staff_n
                     && let Some(mut direction) = convert_mei_tempo(tempo, ctx)
+                {
+                    direction.staff = Some(local_staff_n as u32);
+                    mxml_measure
+                        .content
+                        .push(MeasureContent::Direction(Box::new(direction)));
+                }
+            }
+            MeasureChild::Pedal(pedal) => {
+                let event_staff = pedal
+                    .pedal_log
+                    .staff
+                    .as_ref()
+                    .and_then(|s| s.split_whitespace().next())
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(1) as usize;
+                if event_staff == staff_n
+                    && let Some(mut direction) = convert_mei_pedal(pedal, ctx)
                 {
                     direction.staff = Some(local_staff_n as u32);
                     mxml_measure
@@ -4106,4 +5222,281 @@ mod tests {
         // Default: one quarter note = 4 divisions
         assert!((forward.duration - 4.0).abs() < 1e-10);
     }
+
+    #[test]
+    fn test_apply_export_octave_spans_to_measure_transposes_entire_chord_on_same_onset() {
+        use crate::model::data::Step;
+        use crate::model::elements::{Empty, MeasureContent};
+        use crate::model::note::{Note as MxmlNote, Pitch};
+
+        let mut measure = MxmlMeasure::new("1");
+
+        let mut first = MxmlNote::pitched(
+            Pitch {
+                step: Step::C,
+                alter: None,
+                octave: 4,
+            },
+            1.0,
+        );
+        first.staff = Some(1);
+        measure.content.push(MeasureContent::Note(Box::new(first)));
+
+        let mut chord_root = MxmlNote::pitched(
+            Pitch {
+                step: Step::E,
+                alter: None,
+                octave: 4,
+            },
+            1.0,
+        );
+        chord_root.staff = Some(1);
+        measure.content.push(MeasureContent::Note(Box::new(chord_root)));
+
+        let mut chord_top = MxmlNote::pitched(
+            Pitch {
+                step: Step::G,
+                alter: None,
+                octave: 4,
+            },
+            1.0,
+        );
+        chord_top.staff = Some(1);
+        chord_top.chord = Some(Empty);
+        measure.content.push(MeasureContent::Note(Box::new(chord_top)));
+
+        apply_export_octave_spans_to_measure(
+            0,
+            0,
+            &mut measure,
+            &[ExportOctaveSpan {
+                part_idx: 0,
+                staff: 1,
+                start_measure: 0,
+                start_beat: 2.0,
+                end_measure: 0,
+                end_beat: 3.0,
+                octave_delta: 1,
+            }],
+            &HashMap::new(),
+        );
+
+        let MeasureContent::Note(first) = &measure.content[0] else {
+            panic!("expected first note");
+        };
+        let MeasureContent::Note(chord_root) = &measure.content[1] else {
+            panic!("expected chord root");
+        };
+        let MeasureContent::Note(chord_top) = &measure.content[2] else {
+            panic!("expected chord top");
+        };
+
+        let crate::model::note::FullNoteContent::Pitch(first_pitch) = &first.content else {
+            panic!("expected pitched first note");
+        };
+        let crate::model::note::FullNoteContent::Pitch(root_pitch) = &chord_root.content else {
+            panic!("expected pitched chord root");
+        };
+        let crate::model::note::FullNoteContent::Pitch(top_pitch) = &chord_top.content else {
+            panic!("expected pitched chord top");
+        };
+
+        assert_eq!(first_pitch.octave, 4);
+        assert_eq!(root_pitch.octave, 5);
+        assert_eq!(top_pitch.octave, 5);
+    }
+
+    #[test]
+    fn test_insert_direction_near_start_orders_octave_start_before_stop() {
+        use crate::model::elements::MeasureContent;
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(12.0);
+
+        let mut content = vec![
+            MeasureContent::Attributes(Box::default()),
+            MeasureContent::Print(Box::new(crate::model::print::Print {
+                page_layout: None,
+                system_layout: None,
+                staff_layouts: Vec::new(),
+                measure_layout: None,
+                measure_numbering: None,
+                part_name_display: None,
+                part_abbreviation_display: None,
+                staff_spacing: None,
+                new_system: None,
+                new_page: None,
+                blank_page: None,
+                page_number: None,
+                id: None,
+            })),
+        ];
+
+        insert_direction_near_start(
+            &mut content,
+            make_octave_direction(
+                1,
+                6.0,
+                crate::model::direction::OctaveShiftType::Stop,
+                1,
+                8,
+                None,
+                &ctx,
+            ),
+        );
+        insert_direction_near_start(
+            &mut content,
+            make_octave_direction(
+                1,
+                5.0,
+                crate::model::direction::OctaveShiftType::Down,
+                1,
+                8,
+                Some("tusk-octave-1".to_string()),
+                &ctx,
+            ),
+        );
+
+        let MeasureContent::Direction(first_direction) = &content[2] else {
+            panic!("expected first direction");
+        };
+        let MeasureContent::Direction(second_direction) = &content[3] else {
+            panic!("expected second direction");
+        };
+
+        let first_shift = first_direction.direction_types.first().and_then(|direction_type| {
+            match &direction_type.content {
+                crate::model::direction::DirectionTypeContent::OctaveShift(shift) => Some(shift),
+                _ => None,
+            }
+        });
+        let second_shift = second_direction.direction_types.first().and_then(|direction_type| {
+            match &direction_type.content {
+                crate::model::direction::DirectionTypeContent::OctaveShift(shift) => Some(shift),
+                _ => None,
+            }
+        });
+
+        assert!(matches!(
+            first_shift.map(|shift| shift.shift_type),
+            Some(crate::model::direction::OctaveShiftType::Down)
+        ));
+        assert!(matches!(
+            second_shift.map(|shift| shift.shift_type),
+            Some(crate::model::direction::OctaveShiftType::Stop)
+        ));
+    }
+
+    #[test]
+    fn test_apply_octave_directions_prefers_endid_over_tstamp2_for_stop() {
+        use crate::model::data::Step;
+        use crate::model::elements::MeasureContent;
+        use crate::model::note::{Note as MxmlNote, Pitch};
+        use tusk_model::data::{
+            DataBeat, DataMeasurebeat, DataOctaveDis, DataStaffrelBasic, DataUri,
+        };
+        use tusk_model::elements::Octave as MeiOctave;
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(8.0);
+        ctx.register_part_staff("P1", 1, 1);
+
+        let mut measures = vec![MxmlMeasure::new("1")];
+        let mut written = MxmlNote::pitched(
+            Pitch {
+                step: Step::C,
+                alter: None,
+                octave: 5,
+            },
+            1.0,
+        );
+        written.staff = Some(1);
+        written.id = Some("n-after".to_string());
+        measures[0].content.push(MeasureContent::Note(Box::new(written)));
+
+        let mut octave = MeiOctave::default();
+        octave.octave_log.staff = Some("1".to_string());
+        octave.octave_log.tstamp = Some(DataBeat::from(1.0));
+        octave.octave_log.tstamp2 = Some(DataMeasurebeat::from("0m+4".to_string()));
+        octave.octave_log.endid = Some(DataUri::from("#n-stop".to_string()));
+        octave.octave_log.dis = Some(DataOctaveDis(8));
+        octave.octave_log.dis_place = Some(DataStaffrelBasic::Above);
+
+        let mei_measure = tusk_model::elements::Measure {
+            children: vec![tusk_model::elements::MeasureChild::Octave(Box::new(octave))],
+            ..Default::default()
+        };
+
+        let mut note_positions = HashMap::new();
+        note_positions.insert(
+            "n-stop".to_string(),
+            MeiEventPosition {
+                staff: 1,
+                measure_idx: 0,
+                beat: 2.0,
+                duration_beats: 1.0,
+            },
+        );
+        note_positions.insert(
+            "n-after".to_string(),
+            MeiEventPosition {
+                staff: 1,
+                measure_idx: 0,
+                beat: 4.0,
+                duration_beats: 1.0,
+            },
+        );
+
+        let part_ids = vec!["P1".to_string()];
+        let mut part_measures = vec![measures];
+        apply_octave_directions_to_parts(
+            &[&mei_measure],
+            &note_positions,
+            &part_ids,
+            &mut part_measures,
+            &ctx,
+        );
+
+        let directions: Vec<_> = part_measures[0][0]
+            .content
+            .iter()
+            .filter_map(|content| match content {
+                MeasureContent::Direction(direction) => Some(direction.as_ref()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(directions.len(), 2);
+
+        let start = directions[0]
+            .direction_types
+            .first()
+            .and_then(|direction_type| match &direction_type.content {
+                crate::model::direction::DirectionTypeContent::OctaveShift(shift) => Some(shift),
+                _ => None,
+            })
+            .expect("expected octave shift start");
+        let stop = directions[1]
+            .direction_types
+            .first()
+            .and_then(|direction_type| match &direction_type.content {
+                crate::model::direction::DirectionTypeContent::OctaveShift(shift) => Some(shift),
+                _ => None,
+            })
+            .expect("expected octave shift stop");
+
+        assert!(matches!(
+            start.shift_type,
+            crate::model::direction::OctaveShiftType::Down
+        ));
+        assert!(matches!(
+            stop.shift_type,
+            crate::model::direction::OctaveShiftType::Stop
+        ));
+        assert_eq!(directions[0].offset.as_ref().map(|offset| offset.value), None);
+        assert_eq!(
+            directions[1].offset.as_ref().map(|offset| offset.value),
+            Some(16.0)
+        );
+    }
+
 }

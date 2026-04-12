@@ -546,6 +546,33 @@ fn ly_dir_to_curvedir(d: crate::model::note::Direction) -> String {
     }
 }
 
+fn ottava_change(fc: &tusk_model::FunctionCall) -> Option<i32> {
+    if fc.is_partial || fc.name != "ottava" {
+        return None;
+    }
+    match fc.args.first()? {
+        tusk_model::ExtValue::Number(n) => Some(*n as i32),
+        tusk_model::ExtValue::Scheme(s) => s.trim_start_matches('#').parse().ok(),
+        _ => None,
+    }
+}
+
+fn pedal_change(fc: &tusk_model::FunctionCall, staff_n: u32) -> Option<PendingPedal> {
+    if fc.is_partial {
+        return None;
+    }
+    let (func, dir) = match fc.name.as_str() {
+        "sustainOn" => ("sustain", "down"),
+        "sustainOff" => ("sustain", "up"),
+        "sostenutoOn" => ("sostenuto", "down"),
+        "sostenutoOff" => ("sostenuto", "up"),
+        "unaCorda" => ("soft", "down"),
+        "treCorde" => ("soft", "up"),
+        _ => return None,
+    };
+    Some(PendingPedal { func, dir, staff_n })
+}
+
 /// A pending slur or phrasing slur waiting for its end note.
 struct PendingSpanner {
     start_id: String,
@@ -598,6 +625,20 @@ struct PendingTuplet {
     numerator: u32,
     denominator: u32,
     span_duration: Option<crate::model::Duration>,
+    staff_n: u32,
+}
+
+/// An active ottava span waiting for its stop marker.
+struct ActiveOttava {
+    start_id: String,
+    ottava: i32,
+    staff_n: u32,
+}
+
+/// A pending pedal event waiting for the next anchor element.
+struct PendingPedal {
+    func: &'static str,
+    dir: &'static str,
     staff_n: u32,
 }
 
@@ -753,6 +794,9 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
             let mut pending_property_ops: Vec<String> = Vec::new();
             let mut pending_function_ops: Vec<tusk_model::FunctionCall> = Vec::new();
             let mut pending_scheme_music: Vec<String> = Vec::new();
+            let mut pending_pedals: Vec<PendingPedal> = Vec::new();
+            let mut pending_ottava_changes: Vec<i32> = Vec::new();
+            let mut active_ottava: Option<ActiveOttava> = None;
             let mut cross_staff_override: Option<tusk_model::ContextChange> = None;
 
             // Track all layer children across measures for lyrics attachment
@@ -1059,6 +1103,14 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
                         continue;
                     }
                     LyEvent::MusicFunction(fc) => {
+                        if let Some(ottava) = ottava_change(fc) {
+                            pending_ottava_changes.push(ottava);
+                            continue;
+                        }
+                        if let Some(pedal) = pedal_change(fc, staff_info.n) {
+                            pending_pedals.push(pedal);
+                            continue;
+                        }
                         pending_function_ops.push(fc.clone());
                         continue;
                     }
@@ -1164,6 +1216,55 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
                     func_counter += 1;
                     let dir = make_function_dir(&fc, &current_id, staff_info.n, func_counter, ext_store);
                     measure.children.push(MeasureChild::Dir(Box::new(dir)));
+                }
+
+                // Flush pending ottava changes onto the current anchor.
+                for ottava in pending_ottava_changes.drain(..) {
+                    if ottava == 0 {
+                        if let Some(active) = active_ottava.take() {
+                            func_counter += 1;
+                            let octave = make_octave(
+                                &active.start_id,
+                                Some(&current_id),
+                                active.ottava,
+                                active.staff_n,
+                                func_counter,
+                            );
+                            measure.children.push(MeasureChild::Octave(Box::new(octave)));
+                        }
+                        continue;
+                    }
+
+                    if let Some(active) = active_ottava.take() {
+                        func_counter += 1;
+                        let octave = make_octave(
+                            &active.start_id,
+                            Some(&current_id),
+                            active.ottava,
+                            active.staff_n,
+                            func_counter,
+                        );
+                        measure.children.push(MeasureChild::Octave(Box::new(octave)));
+                    }
+
+                    active_ottava = Some(ActiveOttava {
+                        start_id: current_id.clone(),
+                        ottava,
+                        staff_n: staff_info.n,
+                    });
+                }
+
+                // Flush pending pedal changes onto the current anchor.
+                for pedal in pending_pedals.drain(..) {
+                    func_counter += 1;
+                    let pedal = make_pedal(
+                        &current_id,
+                        pedal.staff_n,
+                        pedal.func,
+                        pedal.dir,
+                        func_counter,
+                    );
+                    measure.children.push(MeasureChild::Pedal(Box::new(pedal)));
                 }
 
                 // Flush pending Scheme music expressions
@@ -1454,6 +1555,21 @@ fn build_section_from_staves(layout: &StaffLayout<'_>, ext_store: &mut Extension
                 cross_staff_override = None;
             } // end measure group loop
 
+            if let Some(active) = active_ottava.take()
+                && let Some(last_id) = last_note_id.as_deref()
+                && let Some(last_measure) = measures.last_mut()
+            {
+                func_counter += 1;
+                let octave = make_octave(
+                    &active.start_id,
+                    Some(last_id),
+                    active.ottava,
+                    active.staff_n,
+                    func_counter,
+                );
+                last_measure.children.push(MeasureChild::Octave(Box::new(octave)));
+            }
+
             // Attach lyrics across all measures' layer children for this voice
             if !staff_info.lyrics.is_empty() {
                 // Collect all children for sequential lyrics attachment
@@ -1581,9 +1697,10 @@ use beams::{duration_to_beats, group_beamed_notes};
 
 use control_events::{
     make_artic_dir, make_dynam, make_ending_dir, make_fb, make_fing_dir, make_function_dir,
-    make_hairpin, make_harm, make_mark_dir, make_ornament_control_event, make_property_dir,
-    make_repeat_dir, make_scheme_music_dir, make_slur, make_string_dir, make_tempo,
-    make_text_script_dir, make_textmark_dir, make_tuplet_span, wrap_last_in_btrem,
+    make_hairpin, make_harm, make_mark_dir, make_octave, make_ornament_control_event,
+    make_pedal, make_property_dir, make_repeat_dir, make_scheme_music_dir, make_slur,
+    make_string_dir, make_tempo, make_text_script_dir, make_textmark_dir, make_tuplet_span,
+    wrap_last_in_btrem,
 };
 
 mod utils;
