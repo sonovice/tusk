@@ -119,11 +119,24 @@ pub(super) fn collect_function_ops(measure_children: &[MeasureChild], ext_store:
 ///
 /// Uses a tstamp→note_id map as fallback when control events lack @startid
 /// (common for MusicXML-originated octave-shift directions).
-pub(super) fn collect_semantic_function_ops(measure_children: &[MeasureChild]) -> Vec<FunctionOpInfo> {
+/// Collect semantic function ops across all measures for cross-measure resolution.
+///
+/// Ottava spans use `@tstamp2` (e.g. `2m+1.0`) which references a note in a
+/// future measure. This function builds tstamp maps for all measures so both
+/// start and stop can be resolved.
+pub(super) fn collect_semantic_function_ops_global(
+    all_measures: &[&tusk_model::elements::Measure],
+) -> Vec<FunctionOpInfo> {
+    let tstamp_maps: Vec<TstampIdMap> = all_measures
+        .iter()
+        .map(|m| build_tstamp_id_map(&m.children))
+        .collect();
     let mut ops = Vec::new();
-    for mc in measure_children {
-        if let MeasureChild::Octave(octave) = mc {
-            ops.extend(octave_to_function_ops(octave));
+    for (measure_idx, measure) in all_measures.iter().enumerate() {
+        for mc in &measure.children {
+            if let MeasureChild::Octave(octave) = mc {
+                ops.extend(octave_to_function_ops(octave, &tstamp_maps, measure_idx));
+            }
         }
     }
     ops
@@ -158,6 +171,23 @@ fn resolve_pedal_target(
     pedal: &tusk_model::elements::Pedal,
     tstamp_map: &TstampIdMap,
 ) -> Option<(String, String)> {
+    // For pedal stop with tstamp past the last note: attach to the last note
+    // in the measure.  The post-processing consolidation pass will then move
+    // it to the next \sustainOn note for seamless bracket retakes.
+    if pedal.pedal_log.dir.as_deref() == Some("up") {
+        if let Some(ts) = pedal.pedal_log.tstamp.as_ref() {
+            let staff_n = pedal.pedal_log.staff.as_deref().unwrap_or("1");
+            if let Some(entries) = tstamp_map.get(staff_n) {
+                if let Some((last_beat, last_id)) = entries.last() {
+                    if ts.0 > *last_beat + 0.01 {
+                        // Attach to last note instead of skipping
+                        return Some((last_id.clone(), "sustainOff".to_string()));
+                    }
+                }
+            }
+        }
+    }
+
     let start_id = pedal
         .pedal_log
         .startid
@@ -187,16 +217,30 @@ fn resolve_pedal_target(
     Some((start_id, name.to_string()))
 }
 
-fn octave_to_function_ops(octave: &tusk_model::elements::Octave) -> Vec<FunctionOpInfo> {
+fn octave_to_function_ops(
+    octave: &tusk_model::elements::Octave,
+    tstamp_maps: &[TstampIdMap],
+    measure_idx: usize,
+) -> Vec<FunctionOpInfo> {
     let start_id = octave
         .octave_log
         .startid
         .as_ref()
         .map(|u| u.0.trim_start_matches('#').to_string())
         .unwrap_or_default();
-    if start_id.is_empty() {
-        return Vec::new();
-    }
+    // Fallback: resolve tstamp + staff → note ID in current measure
+    let start_id = if start_id.is_empty() {
+        match resolve_tstamp(
+            octave.octave_log.tstamp.as_ref(),
+            octave.octave_log.staff.as_deref(),
+            tstamp_maps.get(measure_idx).unwrap_or(&HashMap::new()),
+        ) {
+            Some(id) => id,
+            None => return Vec::new(),
+        }
+    } else {
+        start_id
+    };
 
     let mut ops = Vec::new();
     ops.push(FunctionOpInfo {
@@ -207,15 +251,32 @@ fn octave_to_function_ops(octave: &tusk_model::elements::Octave) -> Vec<Function
         },
     });
 
-    if let Some(end_id) = octave
+    // Resolve end: try endid first, then tstamp2 (cross-measure)
+    let end_id = octave
         .octave_log
         .endid
         .as_ref()
         .map(|u| u.0.trim_start_matches('#').to_string())
-        && !end_id.is_empty()
-    {
+        .filter(|s| !s.is_empty());
+    let end_id = end_id.or_else(|| {
+        // Parse tstamp2: "Nm+beat" → measure offset N, beat position
+        let ts2 = octave.octave_log.tstamp2.as_ref().map(|t| t.0.as_str())?;
+        let (offset_str, beat_str) = ts2.split_once("m+")?;
+        let offset: usize = offset_str.parse().ok()?;
+        let beat: f64 = beat_str.parse().ok()?;
+        let target_measure = measure_idx + offset;
+        let target_map = tstamp_maps.get(target_measure)?;
+        let staff = octave.octave_log.staff.as_deref();
+        resolve_tstamp(
+            Some(&tusk_model::data::DataBeat::from(beat)),
+            staff,
+            target_map,
+        )
+    });
+
+    if let Some(eid) = end_id {
         ops.push(FunctionOpInfo {
-            start_id: end_id,
+            start_id: eid,
             music: Music::MusicFunction {
                 name: "ottava".to_string(),
                 args: vec![crate::model::FunctionArg::Number(0.0)],
@@ -674,8 +735,9 @@ fn apply_dots(base: f64, dots: Option<&tusk_model::generated::data::DataAugmentd
 
 /// Resolve a tstamp + staff to a note xml:id using the tstamp map.
 ///
-/// Finds the note whose beat position is closest to the given tstamp
-/// (within 0.01 tolerance).
+/// Finds the last note whose beat position is ≤ the given tstamp
+/// (the note sounding at that time). Falls back to nearest note
+/// if none is at or before the tstamp.
 fn resolve_tstamp(
     tstamp: Option<&tusk_model::data::DataBeat>,
     staff: Option<&str>,
@@ -684,11 +746,11 @@ fn resolve_tstamp(
     let ts = tstamp?.0;
     let staff_n = staff.unwrap_or("1");
     let entries = map.get(staff_n)?;
+    // Find last note at or before the tstamp (the note sounding at that time)
     entries
         .iter()
-        .min_by(|a, b| {
-            (a.0 - ts).abs().partial_cmp(&(b.0 - ts).abs()).unwrap_or(std::cmp::Ordering::Equal)
-        })
-        .filter(|(beat, _)| (beat - ts).abs() < 0.01)
+        .filter(|(beat, _)| *beat <= ts + 0.01)
+        .last()
+        .or_else(|| entries.first()) // fallback: first note if tstamp precedes all
         .map(|(_, id)| id.clone())
 }

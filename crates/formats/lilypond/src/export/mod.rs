@@ -230,17 +230,13 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
     };
 
     let global_semantic_function_ops = {
-        let mut ops = Vec::new();
-        for child in &score.children {
-            if let ScoreChild::Section(section) = child {
-                for sc in &section.children {
-                    if let SectionChild::Measure(measure) = sc {
-                        ops.extend(collect_semantic_function_ops(&measure.children));
-                    }
-                }
-            }
-        }
-        ops
+        // Collect all measures for cross-measure tstamp2 resolution
+        let all_measures: Vec<&tusk_model::elements::Measure> = score.children.iter()
+            .filter_map(|c| if let ScoreChild::Section(s) = c { Some(s) } else { None })
+            .flat_map(|s| s.children.iter())
+            .filter_map(|sc| if let SectionChild::Measure(m) = sc { Some(m.as_ref()) } else { None })
+            .collect();
+        collect_semantic_function_ops_global(&all_measures)
     };
 
     for child in &score.children {
@@ -452,16 +448,10 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                             let pure_mrest_measure = is_pure_mrest_measure(&measure_items);
                             let stream = &mut staff_music[staff_idx][0];
                             if !(staff_last_measure_was_pure_mrest[staff_idx] && pure_mrest_measure) {
-                                if is_musicxml {
-                                    // Explicit barline resets timing counter —
-                                    // prevents cascading barline misplacement
-                                    // when source has irregular measure durations.
-                                    stream.push(Music::BarLine {
-                                        bar_type: "|".to_string(),
-                                    });
-                                } else {
-                                    stream.push(Music::BarCheck);
-                                }
+                                // Use barcheck (not explicit \bar "|") — explicit
+                                // barlines create duplicate barlines in PianoStaff
+                                // when measures start with grace notes.
+                                stream.push(Music::BarCheck);
                             }
                             stream.extend(measure_items);
                             staff_last_measure_was_pure_mrest[staff_idx] = pure_mrest_measure;
@@ -469,14 +459,39 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                             staff_layer_children[staff_idx].extend(raw_layers.into_iter().take(1));
                         }
                     }
-                    // Note: barlines from ly_end_barlines are NOT re-emitted here.
-                    // Re-emitting to all staves creates roundtrip instability
-                    // because the import may place barlines differently on
-                    // subsequent passes.
+                    // Emit right barline (final bar, repeat signs, etc.)
+                    // Only for MusicXML-origin content: the LilyPond import does
+                    // not reconstruct measure_log.right from \bar commands, so
+                    // emitting them for MEI-origin content creates roundtrip
+                    // instability (spacers get stripped in pass 1 but not pass 2).
+                    if is_musicxml {
+                        if let Some(bar_type) = mei_barrendition_to_ly(
+                            measure.measure_log.right.as_ref(),
+                        ) {
+                            for stream in staff_music.iter_mut() {
+                                if let Some(s) = stream.first_mut() {
+                                    strip_trailing_spacer(s);
+                                    s.push(Music::BarLine { bar_type: bar_type.clone() });
+                                }
+                            }
+                        }
+                    }
                     if !staves_initialized && num_staves > 0 {
                         staves_initialized = true;
                     }
                 }
+            }
+        }
+    }
+
+    // Post-process: consolidate consecutive \sustainOff → \sustainOn across
+    // measure boundaries.  Move \sustainOff from note N to the note that has
+    // \sustainOn, so the bracket spans the full measure.
+    // Only for MusicXML-origin content to preserve LilyPond roundtrip fidelity.
+    if is_musicxml {
+        for streams in &mut staff_music {
+            for stream in streams.iter_mut() {
+                consolidate_pedal_retakes(stream);
             }
         }
     }
@@ -1639,6 +1654,120 @@ fn is_pure_mrest_measure(items: &[Music]) -> bool {
     !items.is_empty() && items.iter().all(|m| matches!(m, Music::MultiMeasureRest(_)))
 }
 
+/// Convert MEI DataBarrendition to LilyPond bar type string.
+fn mei_barrendition_to_ly(
+    barrendition: Option<&tusk_model::generated::data::DataBarrendition>,
+) -> Option<String> {
+    use tusk_model::generated::data::DataBarrendition;
+    match barrendition? {
+        DataBarrendition::End => Some("|.".to_string()),
+        DataBarrendition::Dbl => Some("||".to_string()),
+        DataBarrendition::Rptstart => Some(".|:".to_string()),
+        DataBarrendition::Rptend => Some(":|.".to_string()),
+        DataBarrendition::Rptboth => Some(":|.|:".to_string()),
+        DataBarrendition::Dashed => Some("dashed".to_string()),
+        DataBarrendition::Dotted => Some(";".to_string()),
+        DataBarrendition::Heavy => Some(".".to_string()),
+        DataBarrendition::Dblheavy => Some("..".to_string()),
+        DataBarrendition::Invis => Some("".to_string()),
+        _ => None,
+    }
+}
+
+/// Strip trailing spacer skip from the end of a music stream.
+/// Move `\sustainOff` from one note to the next note that has `\sustainOn`,
+/// so pedal brackets span the full measure instead of ending early.
+///
+/// When a `\sustainOff` appears on a note and the next note-like event has
+/// `\sustainOn`, the off is moved to the on-note (placed before the on).
+/// This produces `note-\sustainOff-\sustainOn` which LilyPond renders as a
+/// seamless bracket retake.
+fn consolidate_pedal_retakes(items: &mut Vec<Music>) {
+    use crate::model::note::PostEvent;
+
+    fn has_sustain_off(events: &[PostEvent]) -> bool {
+        events.iter().any(|e| matches!(e, PostEvent::NamedArticulation { name, .. } if name == "sustainOff"))
+    }
+    fn has_sustain_on(events: &[PostEvent]) -> bool {
+        events.iter().any(|e| matches!(e, PostEvent::NamedArticulation { name, .. } if name == "sustainOn"))
+    }
+    fn remove_sustain_off(events: &mut Vec<PostEvent>) {
+        events.retain(|e| !matches!(e, PostEvent::NamedArticulation { name, .. } if name == "sustainOff"));
+    }
+    fn get_post_events(m: &Music) -> Option<&Vec<PostEvent>> {
+        match m {
+            Music::Note(n) => Some(&n.post_events),
+            Music::Chord(c) => Some(&c.post_events),
+            Music::Rest(r) => Some(&r.post_events),
+            Music::Skip(s) => Some(&s.post_events),
+            _ => None,
+        }
+    }
+    fn get_post_events_mut(m: &mut Music) -> Option<&mut Vec<PostEvent>> {
+        match m {
+            Music::Note(n) => Some(&mut n.post_events),
+            Music::Chord(c) => Some(&mut c.post_events),
+            Music::Rest(r) => Some(&mut r.post_events),
+            Music::Skip(s) => Some(&mut s.post_events),
+            _ => None,
+        }
+    }
+
+    // Find indices of notes with sustainOff
+    let off_indices: Vec<usize> = items.iter().enumerate()
+        .filter_map(|(i, m)| {
+            get_post_events(m).and_then(|evs| if has_sustain_off(evs) { Some(i) } else { None })
+        })
+        .collect();
+
+    for off_idx in off_indices.into_iter().rev() {
+        // Find next note-like element after off_idx
+        let next_note = items[off_idx + 1..].iter().position(|m| get_post_events(m).is_some());
+        if let Some(rel_idx) = next_note {
+            let on_idx = off_idx + 1 + rel_idx;
+            if let Some(evs) = get_post_events(&items[on_idx]) {
+                if has_sustain_on(evs) {
+                    // Move sustainOff from off_idx to on_idx (insert before sustainOn)
+                    if let Some(evs) = get_post_events_mut(&mut items[off_idx]) {
+                        remove_sustain_off(evs);
+                    }
+                    if let Some(evs) = get_post_events_mut(&mut items[on_idx]) {
+                        let on_pos = evs.iter().position(|e| matches!(e, PostEvent::NamedArticulation { name, .. } if name == "sustainOn")).unwrap_or(evs.len());
+                        evs.insert(on_pos, PostEvent::NamedArticulation {
+                            direction: crate::model::note::Direction::Neutral,
+                            name: "sustainOff".to_string(),
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    // Final \sustainOff (no following \sustainOn): drop it entirely.
+    // LilyPond extends the bracket to the final barline automatically
+    // when no explicit \sustainOff is given.  Keeping it on the last
+    // note would end the bracket at the note's ATTACK rather than at
+    // the barline, visually cutting the pedal short.
+    if let Some(last_off) = items.iter().rposition(|m| {
+        get_post_events(m).is_some_and(|evs| has_sustain_off(evs))
+    }) {
+        let any_on_after = items[last_off + 1..].iter().any(|m| {
+            get_post_events(m).is_some_and(|evs| has_sustain_on(evs))
+        });
+        if !any_on_after {
+            if let Some(evs) = get_post_events_mut(&mut items[last_off]) {
+                remove_sustain_off(evs);
+            }
+        }
+    }
+}
+
+fn strip_trailing_spacer(items: &mut Vec<Music>) {
+    if let Some(Music::Skip(_)) = items.last() {
+        items.pop();
+    }
+}
+
 fn should_append_spacer(items: &[Music], spacer: &Music) -> bool {
     let Music::Skip(skip) = spacer else {
         return true;
@@ -2003,7 +2132,7 @@ use figured_bass::{FiguredBassMeta, collect_figure_mode_fbs, extract_figured_bas
 mod operations;
 use operations::{
     InsertionLog, collect_function_ops, collect_pedal_post_events, collect_property_ops,
-    collect_scheme_music_ops, collect_semantic_function_ops, inject_function_ops,
+    collect_scheme_music_ops, collect_semantic_function_ops_global, inject_function_ops,
     inject_property_ops, inject_scheme_music_ops,
 };
 
@@ -2772,7 +2901,13 @@ fn is_known_ly_ornament(name: &str) -> bool {
 
 /// Extract LilyPond Direction from a Fing element's placement.
 fn fing_direction(fing: &tusk_model::elements::Fing) -> Direction {
-    staffrel_to_direction(fing.fing_vis.place.as_ref())
+    // Default to Up (^) when no placement is specified.
+    // Neutral (-) causes LilyPond to place fingerings on the stem side,
+    // which leads to inconsistent distances from noteheads.
+    match staffrel_to_direction(fing.fing_vis.place.as_ref()) {
+        Direction::Neutral => Direction::Up,
+        d => d,
+    }
 }
 
 /// Convert a DataStaffrel to a LilyPond Direction.

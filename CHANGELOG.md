@@ -1,5 +1,42 @@
 # Changelog
 
+## [1.3.9] — 2026-04-12
+
+### LilyPond export (MEI → LilyPond)
+
+- **No more duplicate barlines around grace notes**: replaced explicit
+  `\bar "|"` with `|` barchecks — explicit barlines created duplicate
+  barline glyphs in PianoStaff when measures started with grace notes,
+  visually bracketing them in their own mini-bar.
+- **Pickup partial duration excludes spacer**: `\partial` duration in pickup
+  measures no longer includes the spacer voice, fixing `\partial 1` → correct
+  `\partial 4` (or appropriate duration) for anacrusis bars.
+- **Ottava tstamp→note resolution**: MusicXML `<octave-shift>` directions
+  now resolve `@tstamp`/`@tstamp2` to note IDs across measures, emitting
+  `\ottava 1`/`\ottava 0` pairs. Previously silently dropped.
+- **Tstamp resolution uses "note sounding at" strategy**: tstamp→note
+  resolution now finds the last note at or before the target beat instead
+  of requiring exact match, handling mid-beat direction offsets.
+- **Final and special barlines emitted**: MEI `@right` barline attributes
+  (`end`, `dbl`, `rptstart`, `rptend`, etc.) now produce correct LilyPond
+  `\bar` commands for MusicXML-origin content.  MEI-origin content skips
+  right barline emission because the LilyPond import does not reconstruct
+  `measure_log.right`, which caused spacer-stripping instability.
+- **Pedal retake consolidation**: consecutive `\sustainOff` → `\sustainOn`
+  across measure boundaries are consolidated onto the same note, producing
+  seamless bracket retakes instead of gaps.  Only for MusicXML-origin.
+- **Barline-tstamp pedal stops preserved**: `\sustainOff` events whose
+  tstamp falls after the last note are now attached to the last note
+  (previously silently dropped), enabling the consolidation pass.
+
+### LilyPond import (LilyPond → MEI)
+
+- **Post-event pedal commands recognized**: `-\sustainOn`, `-\sustainOff`,
+  `-\unaCorda`, `-\treCorde` written as post-event articulations are now
+  correctly imported as MEI `<pedal>` elements.  Previously they were
+  silently treated as articulation `<dir>` elements, causing pedal loss
+  in roundtrips.
+
 ## [1.3.8] — 2026-04-12
 
 ### LilyPond export (MEI → LilyPond)
@@ -13,9 +50,6 @@
   notes (`c4\sustainOn`) instead of pre-note functions (`\sustainOn c4`),
   matching LilyPond semantics and eliminating "Unattached SustainEvent"
   warnings.
-- **Pickup partial duration excludes spacer**: `\partial` duration in pickup
-  measures no longer includes the spacer voice, fixing `\partial 1` → correct
-  `\partial 4` (or appropriate duration) for anacrusis bars.
 - **Grace notes excluded from tstamp map**: grace notes no longer participate
   in tstamp→note resolution, preventing pedal/ottava events from attaching
   to grace notes instead of the main note at that beat.
