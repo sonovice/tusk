@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.3.10] — 2026-04-13
+
+### MusicXML import (MusicXML → MEI)
+
+- **Gestural accidental always set from `<alter>`**: `accid.ges` is now
+  derived from `<alter>` even when a visual `<accidental>` element is
+  present.  Previously the `is_none()` guard skipped `accid.ges` for notes
+  with explicit accidentals, causing sharps/flats to be silently dropped
+  (e.g. G#4 imported as G4 natural in the Chopin Waltz tuplet passages).
+- **Natural alter skipped**: `<alter>0</alter>` no longer produces
+  `accid.ges="n"` — natural is the default and emitting it caused MEI
+  roundtrip instability.
+
+### LilyPond export (MEI → LilyPond)
+
+- **Fingering direction defaults to Up**: fingerings without explicit
+  `@place` now export as `^1` (above) instead of `-1` (neutral).
+  Neutral caused LilyPond to place fingerings on the stem side, leading
+  to inconsistent distances from noteheads.
+- **Final `\sustainOff` dropped**: the last `\sustainOff` in a stream
+  (no following `\sustainOn`) is removed so the pedal bracket extends
+  to the final barline instead of ending at the last note's attack.
+
 ## [1.3.9] — 2026-04-12
 
 ### LilyPond export (MEI → LilyPond)
