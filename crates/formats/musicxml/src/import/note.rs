@@ -68,10 +68,13 @@ pub fn convert_note(
             mei_note.note_log.pname = Some(convert_pitch_name(pitch.step));
             mei_note.note_log.oct = Some(DataOctave::from(pitch.octave as u64));
 
-            if let Some(alter) = pitch.alter
-                && note.accidental.is_none()
-            {
-                mei_note.note_ges.accid_ges = Some(convert_alter_to_gestural_accid(alter));
+            // Always set gestural accidental from <alter> — it encodes the
+            // sounding pitch regardless of whether a visual <accidental>
+            // element is present.  Skip alter=0 (natural is the default).
+            if let Some(alter) = pitch.alter {
+                if alter.abs() > 1e-9 {
+                    mei_note.note_ges.accid_ges = Some(convert_alter_to_gestural_accid(alter));
+                }
             }
         }
         FullNoteContent::Unpitched(unpitched) => {
@@ -2604,7 +2607,8 @@ mod tests {
                 ))
             );
         }
-        assert!(mei_note.note_ges.accid_ges.is_none());
+        // accid_ges is ALWAYS set from alter, even when <accidental> is present
+        assert!(mei_note.note_ges.accid_ges.is_some());
     }
 
     #[test]
@@ -2632,7 +2636,8 @@ mod tests {
                 ))
             );
         }
-        assert!(mei_note.note_ges.accid_ges.is_none());
+        // accid_ges is ALWAYS set from alter, even when <accidental> is present
+        assert!(mei_note.note_ges.accid_ges.is_some());
     }
 
     #[test]
