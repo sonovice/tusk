@@ -20,7 +20,7 @@ fn music_arg_count(name: &str) -> Option<u8> {
         | "crossStaff" | "cueClef" | "cueDuring" | "cueDuringWithClef"
         | "displayLilyMusic" | "displayMusic" | "enablePolymeter"
         | "featherDurations" | "footnote" | "grace" | "harmonicsOn"
-        | "keepWithTag" | "magnifyMusic" | "musicMap" | "ottava"
+        | "keepWithTag" | "magnifyMusic" | "musicMap"
         | "parallelMusic" | "parenthesize"
         | "partCombineForce"
         | "phrasingSlurDashPattern" | "pitchedTrill" | "quoteDuring"
@@ -37,7 +37,8 @@ fn music_arg_count(name: &str) -> Option<u8> {
         | "partCombine" | "partCombineDown" | "partCombineUp"
         | "partcombine" | "partcombineDown" | "partcombineUp" => 2,
         // — 0 music args (known identifiers / void functions) —
-        "cadenzaOn" | "cadenzaOff" | "break" | "noBreak" | "pageBreak"
+        "ottava"  // takes integer only, no music arg
+        | "cadenzaOn" | "cadenzaOff" | "break" | "noBreak" | "pageBreak"
         | "noPageBreak" | "pageTurn" | "noPageTurn"
         | "voiceOne" | "voiceTwo" | "voiceThree" | "voiceFour"
         | "oneVoice" | "autoBeamOn" | "autoBeamOff" | "stemUp" | "stemDown"
@@ -135,6 +136,19 @@ impl<'src> Parser<'src> {
             if self.peek_is_symbol_list_start() {
                 let sl = self.parse_symbol_list_arg()?;
                 args.push(FunctionArg::SymbolList(sl));
+                continue;
+            }
+            // Negative number as function argument (e.g. `\ottava -1`):
+            // Dash followed by an unsigned integer → negative number.
+            if *self.peek() == Token::Dash
+                && matches!(self.peek2(), Ok(Token::Unsigned(_)))
+            {
+                self.advance()?; // consume -
+                if let Token::Unsigned(n) = self.peek() {
+                    let n = *n;
+                    self.advance()?;
+                    args.push(FunctionArg::Number(-(n as f64)));
+                }
                 continue;
             }
             match self.peek() {

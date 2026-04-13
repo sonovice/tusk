@@ -239,6 +239,10 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
         collect_semantic_function_ops_global(&all_measures)
     };
 
+    // Track active ottava level per staff across measures (for MusicXML pitch transpose).
+    // Index = staff index, value = current ottava displacement.
+    let mut staff_ottava_levels: Vec<i8> = Vec::new();
+
     for child in &score.children {
         if let ScoreChild::Section(section) = child {
 
@@ -270,8 +274,11 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
 
                     // Build all staves' layers for this measure
                     let mut all_staves: Vec<(Vec<Vec<Music>>, Vec<&[LayerChild]>)> = Vec::new();
+                    let mut staff_idx_counter = 0usize;
                     for mc in &measure.children {
                         if let MeasureChild::Staff(staff) = mc {
+                            let current_staff_idx = staff_idx_counter;
+                            staff_idx_counter += 1;
                             let layer_count = staff.children.iter().filter(|sc| matches!(sc, tusk_model::elements::StaffChild::Layer(_))).count();
                             let suppress_chord_rep = layer_count > 1;
                             let mut layers: Vec<Vec<Music>> = Vec::new();
@@ -318,6 +325,20 @@ fn export_single_score(score: &tusk_model::elements::Score, ext_store: &Extensio
                                 }
                                 let log1 = inject_property_ops(&mut items, &mut item_ids, &property_ops);
                                 let log2 = inject_function_ops(&mut items, &mut item_ids, &function_ops);
+                                // MusicXML import stores written pitch under ottava spans
+                                // (via apply_octave_spans_to_written_pitches), but LilyPond
+                                // needs sounding pitch. Convert written → sounding.
+                                if is_musicxml {
+                                    // Ensure per-staff ottava tracking is initialized
+                                    while staff_ottava_levels.len() <= current_staff_idx {
+                                        staff_ottava_levels.push(0);
+                                    }
+                                    let new_level = transpose_ottava_pitches(
+                                        &mut items,
+                                        staff_ottava_levels[current_staff_idx],
+                                    );
+                                    staff_ottava_levels[current_staff_idx] = new_level;
+                                }
                                 let log3 = inject_scheme_music_ops(&mut items, &mut item_ids, &scheme_music_ops);
                                 apply_insertion_log(&mut grace_types, &log1);
                                 apply_insertion_log(&mut grace_types, &log2);
@@ -2252,6 +2273,44 @@ fn convert_layer_child_to_items(
             }
         }
     }
+}
+
+/// Transpose pitches inside `\ottava` spans from written (MEI) to sounding pitch.
+///
+/// LilyPond's `\ottava N` shifts the display by -N octaves, so we must provide
+/// sounding pitch = written + N octaves for the notes to appear at the correct
+/// staff position.  MEI stores written pitch, so we add the ottava displacement.
+///
+/// `initial_ottava` is the ottava level carried from the previous measure.
+/// Returns the ottava level at the end of these items (for the next measure).
+fn transpose_ottava_pitches(items: &mut [Music], initial_ottava: i8) -> i8 {
+    let mut ottava: i8 = initial_ottava;
+    for item in items.iter_mut() {
+        // Detect \ottava N commands and track the current ottava level
+        if let Music::MusicFunction { name, args } = item {
+            if name == "ottava" {
+                if let Some(crate::model::FunctionArg::Number(n)) = args.first() {
+                    ottava = *n as i8;
+                }
+                continue;
+            }
+        }
+        if ottava == 0 {
+            continue;
+        }
+        match item {
+            Music::Note(note) => {
+                note.pitch.octave += ottava;
+            }
+            Music::Chord(chord) => {
+                for p in &mut chord.pitches {
+                    p.octave += ottava;
+                }
+            }
+            _ => {}
+        }
+    }
+    ottava
 }
 
 /// Extract a `\change` context change from a LayerChild via ext_store.

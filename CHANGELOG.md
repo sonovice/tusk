@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.3.11] — 2026-04-13
+
+### LilyPond parser
+
+- **Negative number function arguments**: `\ottava -1` and similar
+  constructs now parse correctly.  Previously the `-` was not recognised
+  as part of a negative integer in function argument position, so
+  `\ottava -1` (8vb) was silently misparsed.
+- **`\ottava` music arg count fixed (1 → 0)**: `\ottava` takes only an
+  integer argument — no trailing music argument.  The parser previously
+  consumed the first note after `\ottava` as a music argument, wrapping
+  it inside the function scope.  This caused the note to be imported at
+  the wrong octave (one octave lower) and broke cross-measure ottava
+  spans where subsequent measures' notes were not transposed.
+
+### LilyPond export (MEI → LilyPond)
+
+- **Ottava pitch transposition (written → sounding)**: notes inside
+  `\ottava` spans are now transposed from written pitch (as stored in
+  MEI after MusicXML import) to sounding pitch (as LilyPond expects).
+  LilyPond's `\ottava N` shifts the display by −N octaves, so providing
+  written pitch caused notes to render one octave too low.  The ottava
+  level is tracked across measure boundaries per staff.
+
 ## [1.3.10] — 2026-04-13
 
 ### MusicXML import (MusicXML → MEI)
