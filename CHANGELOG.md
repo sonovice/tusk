@@ -12,6 +12,19 @@
 - **Natural alter skipped**: `<alter>0</alter>` no longer produces
   `accid.ges="n"` — natural is the default and emitting it caused MEI
   roundtrip instability.
+- **Octave `@startid` resolved from tstamp**: `<octave>` elements now
+  get a `@startid` pointing to the note at the ottava start position,
+  resolved via `dur_ppq`-based beat calculation.  Previously only
+  `@tstamp` was set, which Verovio resolved incorrectly for notes inside
+  tuplets due to floating-point beat position mismatches.
+- **Beam child duration uses `dur_ppq`**: beat calculation for notes
+  inside beams now uses `dur_ppq / quarter_ppq` (actual sounding duration)
+  instead of the notated `dur` value.  Notated duration doesn't reflect
+  tuplet scaling, causing `apply_octave_spans` to transpose the wrong
+  notes (e.g. notes before the ottava start were incorrectly transposed).
+- **`estimate_measure_quarter_ppq` picks maximum**: the quarter-note PPQ
+  estimation now collects all estimates and picks the maximum, avoiding
+  tuplet notes that give artificially low values.
 
 ### LilyPond export (MEI → LilyPond)
 

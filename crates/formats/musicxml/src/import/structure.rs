@@ -96,6 +96,10 @@ pub fn convert_section(
     // Post-pass: patch completed octave shifts with tstamp2.
     patch_octave_tstamp2(&mut section, ctx);
 
+    // Post-pass: resolve octave tstamp → startid for unambiguous positioning.
+    // Uses dur_ppq-based beat calculation which correctly handles tuplet scaling.
+    patch_octave_startids(&mut section, ctx.divisions());
+
     // Post-pass: transpose written note pitches covered by imported ottava spans.
     apply_octave_spans_to_written_pitches(&mut section);
     clear_transient_note_tstamps(&mut section);
@@ -684,6 +688,119 @@ fn patch_octave_tstamp2(section: &mut Section, ctx: &mut ConversionContext) {
     }
 }
 
+/// Resolve `@tstamp` on `<octave>` elements to `@startid` by finding the
+/// note at the matching beat position. `@startid` is unambiguous and avoids
+/// floating-point tstamp resolution issues in renderers like Verovio.
+fn patch_octave_startids(section: &mut Section, divisions: f64) {
+    let quarter_ppq = if divisions > 0.0 { divisions } else { 60.0 };
+
+    for section_child in &mut section.children {
+        let SectionChild::Measure(measure) = section_child else { continue };
+
+        // Build a map of (staff, beat) → note_id for this measure
+        let mut beat_to_note: Vec<(u32, f64, String)> = Vec::new(); // (staff, beat, id)
+        for mc in &measure.children {
+            let MeasureChild::Staff(staff) = mc else { continue };
+            let staff_n: u32 = staff.n_integer.n.as_deref()
+                .and_then(|n| n.parse().ok()).unwrap_or(1);
+            for sc in &staff.children {
+                let StaffChild::Layer(layer) = sc else { continue };
+                let mut beat = 0.0_f64;
+                for lc in &layer.children {
+                    collect_note_beats(lc, staff_n, &mut beat, quarter_ppq, &mut beat_to_note);
+                }
+                break; // first layer only
+            }
+        }
+
+        // Patch octave elements
+        for mc in &mut measure.children {
+            let MeasureChild::Octave(octave) = mc else { continue };
+            if octave.octave_log.startid.is_some() { continue; } // already has startid
+            let Some(ref tstamp) = octave.octave_log.tstamp else { continue };
+            let target_beat = tstamp.0 - 1.0; // tstamp is 1-based, beats are 0-based
+            let staff_n: u32 = octave.octave_log.staff.as_deref()
+                .and_then(|s| s.parse().ok()).unwrap_or(1);
+
+            // Find the note closest to target_beat on this staff
+            let best = beat_to_note.iter()
+                .filter(|(s, _, _)| *s == staff_n)
+                .min_by(|(_, b1, _), (_, b2, _)| {
+                    let d1 = (b1 - target_beat).abs();
+                    let d2 = (b2 - target_beat).abs();
+                    d1.partial_cmp(&d2).unwrap_or(std::cmp::Ordering::Equal)
+                });
+
+            if let Some((_, _, note_id)) = best {
+                octave.octave_log.startid = Some(tusk_model::data::DataUri(
+                    format!("#{note_id}")
+                ));
+            }
+        }
+    }
+}
+
+/// Collect (staff, beat, note_id) tuples from a layer child, using dur_ppq for beat calculation.
+fn collect_note_beats(
+    lc: &LayerChild,
+    staff_n: u32,
+    beat: &mut f64,
+    quarter_ppq: f64,
+    out: &mut Vec<(u32, f64, String)>,
+) {
+    match lc {
+        LayerChild::Note(note) => {
+            if note.note_log.grace.is_some() { return; }
+            if let Some(ref id) = note.common.xml_id {
+                out.push((staff_n, *beat, id.clone()));
+            }
+            let ppq = parse_ppq(note.note_ges.dur_ppq.as_deref());
+            *beat += if ppq > 0.0 { ppq / quarter_ppq } else {
+                note_duration_quarters(note).unwrap_or(0.0)
+            };
+        }
+        LayerChild::Beam(beam) => {
+            for bc in &beam.children {
+                match bc {
+                    tusk_model::elements::BeamChild::Note(note) => {
+                        if note.note_log.grace.is_some() { continue; }
+                        if let Some(ref id) = note.common.xml_id {
+                            out.push((staff_n, *beat, id.clone()));
+                        }
+                        let ppq = parse_ppq(note.note_ges.dur_ppq.as_deref());
+                        *beat += if ppq > 0.0 { ppq / quarter_ppq } else {
+                            note_duration_quarters(note).unwrap_or(0.0)
+                        };
+                    }
+                    tusk_model::elements::BeamChild::Rest(rest) => {
+                        let ppq = parse_ppq(rest.rest_ges.dur_ppq.as_deref());
+                        *beat += if ppq > 0.0 { ppq / quarter_ppq } else {
+                            rest_duration_quarters(rest).unwrap_or(0.0)
+                        };
+                    }
+                    _ => {}
+                }
+            }
+        }
+        LayerChild::Rest(rest) => {
+            let ppq = parse_ppq(rest.rest_ges.dur_ppq.as_deref());
+            *beat += if ppq > 0.0 { ppq / quarter_ppq } else {
+                rest_duration_quarters(rest).unwrap_or(0.0)
+            };
+        }
+        LayerChild::Chord(chord) => {
+            if let Some(ref id) = chord.common.xml_id {
+                out.push((staff_n, *beat, id.clone()));
+            }
+            let ppq = parse_ppq(chord.chord_ges.dur_ppq.as_deref());
+            *beat += if ppq > 0.0 { ppq / quarter_ppq } else {
+                chord_duration_quarters(chord).unwrap_or(0.0)
+            };
+        }
+        _ => {}
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 struct OctaveSpan {
     staff: u32,
@@ -1183,6 +1300,10 @@ fn span_contains_position(span: &OctaveSpan, measure_idx: usize, beat: f64) -> b
 }
 
 fn estimate_measure_quarter_ppq(measure: &tusk_model::elements::Measure) -> Option<f64> {
+    // Collect ALL estimates and pick the maximum. Non-tuplet notes give
+    // the correct (highest) ppq; tuplet notes give lower values due to
+    // their scaled dur_ppq.
+    let mut best: Option<f64> = None;
     for child in &measure.children {
         let MeasureChild::Staff(staff) = child else {
             continue;
@@ -1192,11 +1313,11 @@ fn estimate_measure_quarter_ppq(measure: &tusk_model::elements::Measure) -> Opti
                 continue;
             };
             if let Some(quarter_ppq) = estimate_layer_quarter_ppq(&layer.children) {
-                return Some(quarter_ppq);
+                best = Some(best.map_or(quarter_ppq, |b: f64| b.max(quarter_ppq)));
             }
         }
     }
-    None
+    best
 }
 
 fn estimate_layer_quarter_ppq(children: &[LayerChild]) -> Option<f64> {
@@ -1457,13 +1578,24 @@ fn layer_child_duration_beats(child: &LayerChild, quarter_ppq: f64) -> f64 {
 fn beam_child_duration_beats(child: &tusk_model::elements::BeamChild, quarter_ppq: f64) -> f64 {
     use tusk_model::elements::BeamChild;
 
+    // Prefer dur_ppq (actual sounding duration, accounts for tuplet scaling)
+    // over notated dur (which doesn't reflect tuplet ratios).
     match child {
-        BeamChild::Note(note) => note_duration_quarters(note)
-            .unwrap_or_else(|| parse_ppq(note.note_ges.dur_ppq.as_deref()) / quarter_ppq),
-        BeamChild::Rest(rest) => rest_duration_quarters(rest)
-            .unwrap_or_else(|| parse_ppq(rest.rest_ges.dur_ppq.as_deref()) / quarter_ppq),
-        BeamChild::Chord(chord) => chord_duration_quarters(chord)
-            .unwrap_or_else(|| parse_ppq(chord.chord_ges.dur_ppq.as_deref()) / quarter_ppq),
+        BeamChild::Note(note) => {
+            let ppq = parse_ppq(note.note_ges.dur_ppq.as_deref());
+            if ppq > 0.0 { ppq / quarter_ppq }
+            else { note_duration_quarters(note).unwrap_or(0.0) }
+        }
+        BeamChild::Rest(rest) => {
+            let ppq = parse_ppq(rest.rest_ges.dur_ppq.as_deref());
+            if ppq > 0.0 { ppq / quarter_ppq }
+            else { rest_duration_quarters(rest).unwrap_or(0.0) }
+        }
+        BeamChild::Chord(chord) => {
+            let ppq = parse_ppq(chord.chord_ges.dur_ppq.as_deref());
+            if ppq > 0.0 { ppq / quarter_ppq }
+            else { chord_duration_quarters(chord).unwrap_or(0.0) }
+        }
         BeamChild::Beam(beam) => beam
             .children
             .iter()
